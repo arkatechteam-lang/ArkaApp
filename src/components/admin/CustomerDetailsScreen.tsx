@@ -1,0 +1,1015 @@
+import React, { useState } from 'react';
+import { AdminScreen, Customer, AdminOrder } from '../../AdminApp';
+import { ArrowLeft, Plus, Edit2, Trash2, X } from 'lucide-react';
+import { Popup } from '../Popup';
+
+interface CustomerDetailsScreenProps {
+  customer: Customer;
+  onNavigate: (screen: AdminScreen) => void;
+  onOrderSelect: (order: AdminOrder) => void;
+}
+
+interface Payment {
+  id: string;
+  date: string;
+  amount: number;
+  modeOfPayment: 'Cash' | 'UPI' | 'Bank Transfer' | 'Cheque';
+  senderAccountInfo: string;
+  receiverAccountInfo: string;
+}
+
+// Mock order history for customer
+const MOCK_CUSTOMER_ORDERS: AdminOrder[] = [
+  {
+    id: 'ORD-001',
+    date: '2025-12-08',
+    deliveryDate: '2025-12-08',
+    customerName: 'Rajesh Kumar',
+    customerNumber: '9876543210',
+    customerId: 'CUST-001',
+    quantity: 5000,
+    pricePerBrick: 10,
+    paperPrice: 50000,
+    location: '123 MG Road, Bangalore',
+    finalPrice: 50000,
+    paymentStatus: 'Not Paid',
+    loadMen: ['Raju Kumar', 'Suresh Yadav'],
+    deliveryToday: true,
+    isDelivered: true,
+    gstNumber: '29ABCDE1234F1Z5',
+    deliveryChallanNumber: '12345',
+  },
+  {
+    id: 'ORD-015',
+    date: '2025-11-25',
+    deliveryDate: '2025-11-26',
+    customerName: 'Rajesh Kumar',
+    customerNumber: '9876543210',
+    customerId: 'CUST-001',
+    quantity: 3000,
+    pricePerBrick: 10,
+    paperPrice: 30000,
+    location: '123 MG Road, Bangalore',
+    finalPrice: 30000,
+    paymentStatus: 'Fully Paid',
+    amountPaid: 30000,
+    loadMen: ['Mohan Singh'],
+    deliveryToday: false,
+    isDelivered: true,
+  },
+  {
+    id: 'ORD-025',
+    date: '2025-11-10',
+    deliveryDate: '2025-11-11',
+    customerName: 'Rajesh Kumar',
+    customerNumber: '9876543210',
+    customerId: 'CUST-001',
+    quantity: 7000,
+    pricePerBrick: 9.8,
+    paperPrice: 68600,
+    location: '123 MG Road, Bangalore',
+    finalPrice: 68600,
+    paymentStatus: 'Partially Paid',
+    amountPaid: 35000,
+    loadMen: ['Raju Kumar'],
+    deliveryToday: false,
+    isDelivered: true,
+    gstNumber: '29FGHIJ6789K2L6',
+    deliveryChallanNumber: '67890',
+  },
+];
+
+const MOCK_PAYMENTS: Payment[] = [
+  { id: 'PAY-001', date: '2025-12-07', amount: 30000, modeOfPayment: 'UPI', senderAccountInfo: 'rajesh@okicici', receiverAccountInfo: 'brickfactory@oksbi' },
+  { id: 'PAY-002', date: '2025-11-26', amount: 35000, modeOfPayment: 'Bank Transfer', senderAccountInfo: '1234567890', receiverAccountInfo: '9876543210' },
+  { id: 'PAY-003', date: '2025-11-15', amount: 50000, modeOfPayment: 'Cash', senderAccountInfo: 'N/A', receiverAccountInfo: 'N/A' },
+];
+
+// Mock receiver account numbers for dropdown
+const RECEIVER_ACCOUNTS = [
+  { id: '1', label: 'SBI - 9876543210', value: '9876543210' },
+  { id: '2', label: 'ICICI - 1234567890', value: '1234567890' },
+  { id: '3', label: 'HDFC - 5555666677', value: '5555666677' },
+  { id: '4', label: 'Axis - 9999888877', value: '9999888877' },
+];
+
+export function CustomerDetailsScreen({ customer, onNavigate, onOrderSelect }: CustomerDetailsScreenProps) {
+  const [activeTab, setActiveTab] = useState<'Orders' | 'Payments'>('Orders');
+  const [displayCount, setDisplayCount] = useState(10);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  
+  // Edit Customer Modal states
+  const [showEditCustomerModal, setShowEditCustomerModal] = useState(false);
+  const [editCustomerName, setEditCustomerName] = useState('');
+  const [editCustomerPhone, setEditCustomerPhone] = useState('');
+  const [editCustomerGst, setEditCustomerGst] = useState('');
+  const [editCustomerAddress, setEditCustomerAddress] = useState('');
+  const [customerNameError, setCustomerNameError] = useState('');
+  const [customerPhoneError, setCustomerPhoneError] = useState('');
+  const [customerGstError, setCustomerGstError] = useState('');
+  const [customerAddressError, setCustomerAddressError] = useState('');
+  
+  // Export Modal states
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportFromDate, setExportFromDate] = useState('');
+  const [exportToDate, setExportToDate] = useState('');
+  const [exportFormat, setExportFormat] = useState<'PDF' | 'Image'>('PDF');
+  const [dateRangeError, setDateRangeError] = useState('');
+  const [showNoTransactionsPopup, setShowNoTransactionsPopup] = useState(false);
+  const [showExportErrorPopup, setShowExportErrorPopup] = useState(false);
+
+  // Payment form states
+  const [paymentDate, setPaymentDate] = useState('');
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentMode, setPaymentMode] = useState<'Cash' | 'UPI' | 'Bank Transfer' | 'Cheque'>('Cash');
+  const [senderAccount, setSenderAccount] = useState('');
+  const [receiverAccount, setReceiverAccount] = useState('');
+
+  const handleAddPayment = () => {
+    // Reset form
+    setPaymentDate('');
+    setPaymentAmount('');
+    setPaymentMode('Cash');
+    setSenderAccount('');
+    setReceiverAccount('');
+    setEditingPayment(null);
+    setShowPaymentModal(true);
+  };
+
+  const handleEditPayment = (payment: Payment) => {
+    setPaymentDate(payment.date);
+    setPaymentAmount(payment.amount.toString());
+    setPaymentMode(payment.modeOfPayment);
+    setSenderAccount(payment.senderAccountInfo);
+    setReceiverAccount(payment.receiverAccountInfo);
+    setEditingPayment(payment);
+    setShowPaymentModal(true);
+  };
+
+  const handleCancelPaymentModal = () => {
+    setShowPaymentModal(false);
+    setEditingPayment(null);
+    setPaymentDate('');
+    setPaymentAmount('');
+    setPaymentMode('Cash');
+    setSenderAccount('');
+    setReceiverAccount('');
+  };
+
+  const handleConfirmPayment = () => {
+    if (editingPayment) {
+      setSuccessMessage('Updated payment successfully');
+    } else {
+      setSuccessMessage('Added payment successfully');
+    }
+    setShowPaymentModal(false);
+    setShowSuccessPopup(true);
+    // Reset form
+    setPaymentDate('');
+    setPaymentAmount('');
+    setPaymentMode('Cash');
+    setSenderAccount('');
+    setReceiverAccount('');
+    setEditingPayment(null);
+  };
+
+  const handleDeletePayment = (paymentId: string) => {
+    // In a real app, this would delete the payment
+    console.log('Delete payment:', paymentId);
+  };
+  
+  const handleOpenEditCustomer = () => {
+    setEditCustomerName(customer.name);
+    setEditCustomerPhone(customer.phoneNumber);
+    setEditCustomerGst(customer.gstNumber || '');
+    setEditCustomerAddress(customer.address);
+    setCustomerNameError('');
+    setCustomerPhoneError('');
+    setCustomerGstError('');
+    setCustomerAddressError('');
+    setShowEditCustomerModal(true);
+  };
+  
+  const handleCloseEditCustomer = () => {
+    setShowEditCustomerModal(false);
+    setCustomerNameError('');
+    setCustomerPhoneError('');
+    setCustomerGstError('');
+    setCustomerAddressError('');
+  };
+  
+  const validateCustomerForm = () => {
+    let isValid = true;
+    setCustomerNameError('');
+    setCustomerPhoneError('');
+    setCustomerGstError('');
+    setCustomerAddressError('');
+    
+    if (!editCustomerName.trim()) {
+      setCustomerNameError('Name is required');
+      isValid = false;
+    }
+    
+    if (!editCustomerPhone.trim()) {
+      setCustomerPhoneError('Phone number is required');
+      isValid = false;
+    } else if (!/^[0-9]{10}$/.test(editCustomerPhone.trim())) {
+      setCustomerPhoneError('Phone number must be 10 digits');
+      isValid = false;
+    }
+    
+    if (!editCustomerAddress.trim()) {
+      setCustomerAddressError('Address is required');
+      isValid = false;
+    } else if (editCustomerAddress.length > 200) {
+      setCustomerAddressError('Address cannot exceed 200 characters');
+      isValid = false;
+    }
+    
+    // Validate GST Number - if entered, must be exactly 15 characters
+    if (editCustomerGst.trim() && editCustomerGst.trim().length !== 15) {
+      setCustomerGstError('Enter valid GST Number');
+      isValid = false;
+    }
+    
+    return isValid;
+  };
+  
+  const handleConfirmEditCustomer = () => {
+    if (validateCustomerForm()) {
+      setSuccessMessage('Customer details updated successfully');
+      setShowEditCustomerModal(false);
+      setShowSuccessPopup(true);
+    }
+  };
+  
+  const handleOpenExportModal = () => {
+    setExportFromDate('');
+    setExportToDate('');
+    setExportFormat('PDF');
+    setDateRangeError('');
+    setShowExportModal(true);
+  };
+  
+  const handleCloseExportModal = () => {
+    setShowExportModal(false);
+    setDateRangeError('');
+  };
+  
+  const handleDownloadExport = () => {
+    // Clear previous errors
+    setDateRangeError('');
+    
+    // Validate required fields
+    if (!exportFromDate || !exportToDate) {
+      return;
+    }
+    
+    // Validate date range
+    const fromDate = new Date(exportFromDate);
+    const toDate = new Date(exportToDate);
+    
+    if (fromDate > toDate) {
+      setDateRangeError('From date cannot be greater than To date.');
+      return;
+    }
+    
+    // Filter orders and payments within date range
+    const ordersInRange = MOCK_CUSTOMER_ORDERS.filter(order => {
+      const orderDate = new Date(order.date);
+      return orderDate >= fromDate && orderDate <= toDate;
+    });
+    
+    const paymentsInRange = MOCK_PAYMENTS.filter(payment => {
+      const paymentDate = new Date(payment.date);
+      return paymentDate >= fromDate && paymentDate <= toDate;
+    });
+    
+    // Check if transactions exist
+    if (ordersInRange.length === 0 && paymentsInRange.length === 0) {
+      setShowExportModal(false);
+      setShowNoTransactionsPopup(true);
+      return;
+    }
+    
+    // Simulate export generation
+    try {
+      // Calculate totals
+      const totalOrderAmount = ordersInRange.reduce((sum, order) => sum + order.finalPrice, 0);
+      const totalPaidAmount = paymentsInRange.reduce((sum, payment) => sum + payment.amount, 0);
+      const closingBalance = customer.unpaidAmount;
+      
+      // In a real app, this would generate a PDF or Image file
+      console.log('Exporting ledger:', {
+        customerName: customer.name,
+        customerPhone: customer.phoneNumber,
+        dateRange: `${exportFromDate} to ${exportToDate}`,
+        openingBalance: customer.unpaidAmount,
+        orders: ordersInRange,
+        payments: paymentsInRange,
+        totalOrderAmount,
+        totalPaidAmount,
+        closingBalance,
+        format: exportFormat
+      });
+      
+      // Simulate successful download
+      setSuccessMessage(`Customer ledger exported successfully as ${exportFormat}`);
+      setShowExportModal(false);
+      setShowSuccessPopup(true);
+    } catch (error) {
+      setShowExportModal(false);
+      setShowExportErrorPopup(true);
+    }
+  };
+
+  const displayedOrders = MOCK_CUSTOMER_ORDERS.slice(0, displayCount);
+  const displayedPayments = MOCK_PAYMENTS.slice(0, displayCount);
+  const hasMoreOrders = displayCount < MOCK_CUSTOMER_ORDERS.length;
+  const hasMorePayments = displayCount < MOCK_PAYMENTS.length;
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Header */}
+        <div className="mb-8">
+          <button
+            onClick={() => onNavigate('customers')}
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            Back to Customers
+          </button>
+          
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-gray-900">Customer Details</h1>
+              <p className="text-gray-600 mt-1">{customer.name}</p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleOpenExportModal}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                Export
+              </button>
+              {activeTab === 'Payments' && (
+                <button
+                  onClick={handleAddPayment}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Plus className="w-5 h-5" />
+                  Add payment
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Customer Details Card */}
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
+          <div className="flex justify-between items-start mb-6">
+            <h3 className="text-gray-900">Customer Information</h3>
+            <button
+              onClick={handleOpenEditCustomer}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Edit2 className="w-4 h-4" />
+              Edit
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <p className="text-gray-600 text-sm mb-1">Name</p>
+              <p className="text-gray-900">{customer.name}</p>
+            </div>
+            <div>
+              <p className="text-gray-600 text-sm mb-1">Phone Number</p>
+              <p className="text-gray-900">{customer.phoneNumber}</p>
+            </div>
+            <div>
+              <p className="text-gray-600 text-sm mb-1">GST Number</p>
+              <p className="text-gray-900">{customer.gstNumber || '-'}</p>
+            </div>
+            <div className="md:col-span-2">
+              <p className="text-gray-600 text-sm mb-1">Address</p>
+              <p className="text-gray-900">{customer.address}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Top Quarter - Financial Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {/* Total Sales Card */}
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <h3 className="text-gray-700 mb-2">Total Sales</h3>
+            <p className="text-gray-900">₹{customer.totalSales.toLocaleString()}</p>
+          </div>
+
+          {/* Unpaid Amount Card */}
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <h3 className="text-gray-700 mb-2">Unpaid Amount</h3>
+            <p className={`${customer.unpaidAmount > 0 ? 'text-red-600' : 'text-green-600'}`}>
+              {customer.unpaidAmount > 0 ? `₹${customer.unpaidAmount.toLocaleString()}` : '₹0'}
+            </p>
+          </div>
+        </div>
+
+        {/* Tabs and Content */}
+        <div className="bg-white rounded-lg shadow-lg">
+          {/* Tabs */}
+          <div className="border-b border-gray-200">
+            <div className="flex">
+              <button
+                onClick={() => {
+                  setActiveTab('Orders');
+                  setDisplayCount(10);
+                }}
+                className={`px-6 py-4 whitespace-nowrap transition-colors ${
+                  activeTab === 'Orders'
+                    ? 'border-b-2 border-blue-600 text-blue-600'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Orders
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab('Payments');
+                  setDisplayCount(10);
+                }}
+                className={`px-6 py-4 whitespace-nowrap transition-colors ${
+                  activeTab === 'Payments'
+                    ? 'border-b-2 border-blue-600 text-blue-600'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Payments
+              </button>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="p-6">
+            {/* Orders Tab */}
+            {activeTab === 'Orders' && (
+              <div className="space-y-4">
+                {/* Desktop View - Table */}
+                <div className="hidden lg:block overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-gray-700">Order ID</th>
+                        <th className="px-4 py-3 text-left text-gray-700">Date</th>
+                        <th className="px-4 py-3 text-left text-gray-700">Delivery Date</th>
+                        <th className="px-4 py-3 text-left text-gray-700">Customer Name</th>
+                        <th className="px-4 py-3 text-left text-gray-700">Customer Number</th>
+                        <th className="px-4 py-3 text-left text-gray-700">Quantity</th>
+                        <th className="px-4 py-3 text-left text-gray-700">Final Price</th>
+                        <th className="px-4 py-3 text-left text-gray-700">GST Number</th>
+                        <th className="px-4 py-3 text-left text-gray-700">Delivery Challan Number</th>
+                        <th className="px-4 py-3 text-left text-gray-700">Payment Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {displayedOrders.map((order) => (
+                        <tr
+                          key={order.id}
+                          onClick={() => onOrderSelect(order)}
+                          className="cursor-pointer hover:bg-gray-50 transition-colors"
+                        >
+                          <td className="px-4 py-4 text-gray-900">{order.id}</td>
+                          <td className="px-4 py-4 text-gray-600">{new Date(order.date).toLocaleDateString()}</td>
+                          <td className="px-4 py-4 text-gray-600">{new Date(order.deliveryDate).toLocaleDateString()}</td>
+                          <td className="px-4 py-4 text-gray-900">{order.customerName}</td>
+                          <td className="px-4 py-4 text-gray-600">{order.customerNumber}</td>
+                          <td className="px-4 py-4 text-gray-900">{order.quantity.toLocaleString()}</td>
+                          <td className="px-4 py-4 text-gray-900">₹{order.finalPrice.toLocaleString()}</td>
+                          <td className="px-4 py-4 text-gray-600">{order.gstNumber || '-'}</td>
+                          <td className="px-4 py-4 text-gray-600">{order.deliveryChallanNumber || '-'}</td>
+                          <td className="px-4 py-4">
+                            <span className={`px-2 py-1 rounded-full text-sm ${
+                              order.paymentStatus === 'Fully Paid'
+                                ? 'bg-green-100 text-green-800'
+                                : order.paymentStatus === 'Partially Paid'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-red-100 text-red-800'
+                            }`}>
+                              {order.paymentStatus}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile View - Cards */}
+                <div className="lg:hidden space-y-4">
+                  {displayedOrders.map((order) => (
+                    <div
+                      key={order.id}
+                      onClick={() => onOrderSelect(order)}
+                      className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer"
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <p className="text-gray-900">{order.id}</p>
+                          <p className="text-gray-600 text-sm">{new Date(order.date).toLocaleDateString()}</p>
+                        </div>
+                        <span className={`px-2 py-1 rounded-full text-sm ${
+                          order.paymentStatus === 'Fully Paid'
+                            ? 'bg-green-100 text-green-800'
+                            : order.paymentStatus === 'Partially Paid'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {order.paymentStatus}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <p className="text-gray-500">Quantity</p>
+                          <p className="text-gray-900">{order.quantity.toLocaleString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500">Final Price</p>
+                          <p className="text-gray-900">₹{order.finalPrice.toLocaleString()}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Load More Button */}
+                {hasMoreOrders && (
+                  <div className="flex justify-center pt-4">
+                    <button
+                      onClick={() => setDisplayCount(displayCount + 10)}
+                      className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                    >
+                      Load More
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Payments Tab */}
+            {activeTab === 'Payments' && (
+              <div className="space-y-4">
+                {/* Desktop View - Table */}
+                <div className="hidden lg:block overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-gray-700">Date</th>
+                        <th className="px-4 py-3 text-left text-gray-700">Amount</th>
+                        <th className="px-4 py-3 text-left text-gray-700">Mode of Payment</th>
+                        <th className="px-4 py-3 text-left text-gray-700">SAI</th>
+                        <th className="px-4 py-3 text-left text-gray-700">RAI</th>
+                        <th className="px-4 py-3 text-left text-gray-700">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {displayedPayments.map((payment) => (
+                        <tr key={payment.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-4 text-gray-900">{new Date(payment.date).toLocaleDateString()}</td>
+                          <td className="px-4 py-4 text-gray-900">₹{payment.amount.toLocaleString()}</td>
+                          <td className="px-4 py-4 text-gray-600">{payment.modeOfPayment}</td>
+                          <td className="px-4 py-4 text-gray-600">{payment.senderAccountInfo}</td>
+                          <td className="px-4 py-4 text-gray-600">{payment.receiverAccountInfo}</td>
+                          <td className="px-4 py-4">
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleEditPayment(payment)}
+                                className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                aria-label="Edit payment"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeletePayment(payment.id)}
+                                className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
+                                aria-label="Delete payment"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile View - Cards */}
+                <div className="lg:hidden space-y-4">
+                  {displayedPayments.map((payment) => (
+                    <div key={payment.id} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <p className="text-gray-900">₹{payment.amount.toLocaleString()}</p>
+                          <p className="text-gray-600 text-sm">{new Date(payment.date).toLocaleDateString()}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleEditPayment(payment)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                            aria-label="Edit payment"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeletePayment(payment.id)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
+                            aria-label="Delete payment"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <p className="text-gray-500">Mode of Payment</p>
+                          <p className="text-gray-900">{payment.modeOfPayment}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500">SAI</p>
+                          <p className="text-gray-900">{payment.senderAccountInfo}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Load More Button */}
+                {hasMorePayments && (
+                  <div className="flex justify-center pt-4">
+                    <button
+                      onClick={() => setDisplayCount(displayCount + 10)}
+                      className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                    >
+                      Load More
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Payment Modal */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 relative">
+            {/* Close Icon */}
+            <button
+              onClick={handleCancelPaymentModal}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+              aria-label="Close modal"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <h2 className="text-gray-900 mb-6">{editingPayment ? 'Edit Payment' : 'Add Payment'}</h2>
+
+            <div className="space-y-4">
+              {/* Date */}
+              <div>
+                <label htmlFor="paymentDate" className="block text-gray-700 mb-2">
+                  Date <span className="text-red-600">*</span>
+                </label>
+                <input
+                  id="paymentDate"
+                  type="date"
+                  value={paymentDate}
+                  onChange={(e) => setPaymentDate(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                />
+              </div>
+
+              {/* Amount */}
+              <div>
+                <label htmlFor="paymentAmount" className="block text-gray-700 mb-2">
+                  Amount <span className="text-red-600">*</span>
+                </label>
+                <input
+                  id="paymentAmount"
+                  type="number"
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  placeholder="Enter amount"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                />
+              </div>
+
+              {/* Mode of Payment */}
+              <div>
+                <label htmlFor="paymentMode" className="block text-gray-700 mb-2">
+                  Mode of Payment <span className="text-red-600">*</span>
+                </label>
+                <select
+                  id="paymentMode"
+                  value={paymentMode}
+                  onChange={(e) => setPaymentMode(e.target.value as 'Cash' | 'UPI' | 'Bank Transfer' | 'Cheque')}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                >
+                  <option value="Cash">Cash</option>
+                  <option value="UPI">UPI</option>
+                  <option value="Bank Transfer">Bank Transfer</option>
+                  <option value="Cheque">Cheque</option>
+                </select>
+              </div>
+
+              {/* Sender Account Info */}
+              {paymentMode !== 'Cash' && (
+                <div>
+                  <label htmlFor="senderAccount" className="block text-gray-700 mb-2">
+                    Sender Account Info <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    id="senderAccount"
+                    type="text"
+                    value={senderAccount}
+                    onChange={(e) => setSenderAccount(e.target.value)}
+                    placeholder="Enter sender account info"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  />
+                </div>
+              )}
+
+              {/* Receiver Account Info */}
+              {paymentMode !== 'Cash' && (
+                <div>
+                  <label htmlFor="receiverAccount" className="block text-gray-700 mb-2">
+                    Receiver Account Info <span className="text-red-600">*</span>
+                  </label>
+                  <select
+                    id="receiverAccount"
+                    value={receiverAccount}
+                    onChange={(e) => setReceiverAccount(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  >
+                    <option value="">Select account</option>
+                    {RECEIVER_ACCOUNTS.map((account) => (
+                      <option key={account.id} value={account.value}>
+                        {account.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Buttons */}
+              <div className="flex gap-3 pt-4 justify-end">
+                <button
+                  onClick={handleCancelPaymentModal}
+                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmPayment}
+                  disabled={!paymentDate || !paymentAmount || (paymentMode !== 'Cash' && (!senderAccount || !receiverAccount))}
+                  className={`px-6 py-2 rounded-lg transition-colors ${
+                    paymentDate && paymentAmount && (paymentMode === 'Cash' || (senderAccount && receiverAccount))
+                      ? 'bg-blue-600 text-white hover:bg-blue-700'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Customer Modal */}
+      {showEditCustomerModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 relative">
+            {/* Close Icon */}
+            <button
+              onClick={handleCloseEditCustomer}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+              aria-label="Close modal"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <h2 className="text-gray-900 mb-6">Edit Customer Details</h2>
+
+            <div className="space-y-4">
+              {/* Name */}
+              <div>
+                <label htmlFor="editCustomerName" className="block text-gray-700 mb-2">
+                  Name <span className="text-red-600">*</span>
+                </label>
+                <input
+                  id="editCustomerName"
+                  type="text"
+                  value={editCustomerName}
+                  onChange={(e) => setEditCustomerName(e.target.value)}
+                  placeholder="Enter customer name"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                />
+                {customerNameError && <p className="text-red-600 text-sm mt-1">{customerNameError}</p>}
+              </div>
+
+              {/* Phone Number */}
+              <div>
+                <label htmlFor="editCustomerPhone" className="block text-gray-700 mb-2">
+                  Phone Number <span className="text-red-600">*</span>
+                </label>
+                <input
+                  id="editCustomerPhone"
+                  type="text"
+                  value={editCustomerPhone}
+                  onChange={(e) => setEditCustomerPhone(e.target.value)}
+                  placeholder="Enter phone number"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                />
+                {customerPhoneError && <p className="text-red-600 text-sm mt-1">{customerPhoneError}</p>}
+              </div>
+
+              {/* GST Number */}
+              <div>
+                <label htmlFor="editCustomerGst" className="block text-gray-700 mb-2">
+                  GST Number
+                </label>
+                <input
+                  id="editCustomerGst"
+                  type="text"
+                  value={editCustomerGst}
+                  onChange={(e) => setEditCustomerGst(e.target.value)}
+                  placeholder="Enter GST Number"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                />
+                {customerGstError && <p className="text-red-600 text-sm mt-1">{customerGstError}</p>}
+              </div>
+
+              {/* Address */}
+              <div>
+                <label htmlFor="editCustomerAddress" className="block text-gray-700 mb-2">
+                  Address <span className="text-red-600">*</span>
+                </label>
+                <textarea
+                  id="editCustomerAddress"
+                  value={editCustomerAddress}
+                  onChange={(e) => setEditCustomerAddress(e.target.value)}
+                  placeholder="Enter address"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                />
+                {customerAddressError && <p className="text-red-600 text-sm mt-1">{customerAddressError}</p>}
+              </div>
+
+              {/* Buttons */}
+              <div className="flex gap-3 pt-4 justify-end">
+                <button
+                  onClick={handleCloseEditCustomer}
+                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmEditCustomer}
+                  className={`px-6 py-2 rounded-lg transition-colors ${
+                    editCustomerName && editCustomerPhone && editCustomerAddress
+                      ? 'bg-blue-600 text-white hover:bg-blue-700'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Popup */}
+      {showSuccessPopup && (
+        <Popup
+          title="Success"
+          message={successMessage}
+          onClose={() => setShowSuccessPopup(false)}
+          type="success"
+        />
+      )}
+      
+      {/* Export Modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 relative">
+            {/* Close Icon */}
+            <button
+              onClick={handleCloseExportModal}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+              aria-label="Close modal"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <h2 className="text-gray-900 mb-6">Export Customer Ledger</h2>
+
+            <div className="space-y-4">
+              {/* From Date */}
+              <div>
+                <label htmlFor="exportFromDate" className="block text-gray-700 mb-2">
+                  From Date <span className="text-red-600">*</span>
+                </label>
+                <input
+                  id="exportFromDate"
+                  type="date"
+                  value={exportFromDate}
+                  onChange={(e) => setExportFromDate(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                />
+              </div>
+
+              {/* To Date */}
+              <div>
+                <label htmlFor="exportToDate" className="block text-gray-700 mb-2">
+                  To Date <span className="text-red-600">*</span>
+                </label>
+                <input
+                  id="exportToDate"
+                  type="date"
+                  value={exportToDate}
+                  onChange={(e) => setExportToDate(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                />
+              </div>
+              
+              {/* Date Range Error */}
+              {dateRangeError && (
+                <p className="text-red-600 text-sm">{dateRangeError}</p>
+              )}
+
+              {/* Export Format */}
+              <div>
+                <label htmlFor="exportFormat" className="block text-gray-700 mb-2">
+                  Export Format <span className="text-red-600">*</span>
+                </label>
+                <select
+                  id="exportFormat"
+                  value={exportFormat}
+                  onChange={(e) => setExportFormat(e.target.value as 'PDF' | 'Image')}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                >
+                  <option value="PDF">PDF</option>
+                  <option value="Image">Image</option>
+                </select>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex gap-3 pt-4 justify-end">
+                <button
+                  onClick={handleCloseExportModal}
+                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDownloadExport}
+                  disabled={!exportFromDate || !exportToDate}
+                  className={`px-6 py-2 rounded-lg transition-colors ${
+                    exportFromDate && exportToDate
+                      ? 'bg-green-600 text-white hover:bg-green-700'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
+                >
+                  Download
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* No Transactions Popup */}
+      {showNoTransactionsPopup && (
+        <Popup
+          title="No Transactions Found"
+          message="No transactions found for the selected date range."
+          onClose={() => setShowNoTransactionsPopup(false)}
+        />
+      )}
+      
+      {/* Export Error Popup */}
+      {showExportErrorPopup && (
+        <Popup
+          title="Export Failed"
+          message="Unable to generate export. Please try again."
+          onClose={() => setShowExportErrorPopup(false)}
+        />
+      )}
+    </div>
+  );
+}
