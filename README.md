@@ -1,7 +1,7 @@
 
-  # Employee App Development
+  # Arka App Development
 
-  This is a code bundle for Employee App Development. The original project is available at https://www.figma.com/design/JpxJCuthmj2PyQIs4lLDGa/Employee-App-Development.
+  This is a code bundle for Arka App Development. The original project is available at https://www.figma.com/design/JpxJCuthmj2PyQIs4lLDGa/Employee-App-Development.
 
   ## Running the code
 
