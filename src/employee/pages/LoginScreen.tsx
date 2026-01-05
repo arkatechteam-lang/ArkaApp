@@ -1,39 +1,36 @@
-import React, { useState, useEffect } from 'react';
-import { LogIn, ArrowLeft } from 'lucide-react';
-
-interface LoginScreenProps {
-  onLogin: () => void;
-  onBack?: () => void;
-}
+import React, { useState, useEffect } from "react";
+import { LogIn, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 // Mock employee database
 const MOCK_EMPLOYEES = [
-  { phone: '9876543210', password: 'password123' },
-  { phone: '9876543211', password: 'emp12345' },
+  { phone: "9876543210", password: "password123" },
+  { phone: "9876543211", password: "emp12345" },
 ];
 
-export function LoginScreen({ onLogin, onBack }: LoginScreenProps) {
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+export function LoginScreen() {
+  const navigate = useNavigate();
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [isValid, setIsValid] = useState(false);
 
   useEffect(() => {
     // Validate phone number
     if (phoneNumber.length > 0 && phoneNumber.length !== 10) {
-      setError('Phone number must be exactly 10 digits');
+      setError("Phone number must be exactly 10 digits");
       setIsValid(false);
     } else if (phoneNumber.length > 0 && !/^\d+$/.test(phoneNumber)) {
-      setError('Phone number must contain only digits');
+      setError("Phone number must contain only digits");
       setIsValid(false);
     } else {
-      setError('');
+      setError("");
       setIsValid(phoneNumber.length === 10 && password.length > 0);
     }
   }, [phoneNumber, password]);
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+    const value = e.target.value.replace(/\D/g, "").slice(0, 10);
     setPhoneNumber(value);
   };
 
@@ -44,32 +41,35 @@ export function LoginScreen({ onLogin, onBack }: LoginScreenProps) {
     );
 
     if (!employee) {
-      setError('Incorrect credentials. Please check your phone number and password.');
+      setError(
+        "Incorrect credentials. Please check your phone number and password."
+      );
       setIsValid(false);
-    } else {
-      onLogin();
+      return;
     }
+    navigate("/employee/home");
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {onBack && (
-          <button
-            onClick={onBack}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            Back to App Selection
-          </button>
-        )}
+        <button
+          onClick={() => navigate("/")}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          Back to App Selection
+        </button>
+
         <div className="bg-white rounded-lg shadow-lg p-8">
           <div className="flex flex-col items-center mb-8">
             <div className="bg-blue-600 p-4 rounded-full mb-4">
               <LogIn className="w-8 h-8 text-white" />
             </div>
             <h1 className="text-gray-900">Employee Login</h1>
-            <p className="text-gray-600 mt-2">Enter your credentials to continue</p>
+            <p className="text-gray-600 mt-2">
+              Enter your credentials to continue
+            </p>
           </div>
 
           <div className="space-y-6">

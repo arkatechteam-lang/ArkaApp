@@ -1,25 +1,26 @@
-import React, { useState } from 'react';
-import { ArrowLeft, CalendarIcon } from 'lucide-react';
-import { Screen } from '../App';
-import { Popup } from './Popup';
-import { Calendar } from './ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { format } from 'date-fns';
-import { cn } from './ui/utils';
+import React, { useState } from "react";
+import { ArrowLeft, CalendarIcon } from "lucide-react";
+import { Popup } from "../../components/Popup";
+import { Calendar } from "../../components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "../../components/ui/popover";
+import { format } from "date-fns";
+import { cn } from "../../components/ui/utils";
+import { useNavigate } from "react-router-dom";
 
-interface ProductionEntryProps {
-  onNavigate: (screen: Screen) => void;
-}
-
-export function ProductionEntry({ onNavigate }: ProductionEntryProps) {
+export function ProductionEntry() {
+  const navigate = useNavigate();
   const [date, setDate] = useState<Date | undefined>(new Date());
-  const [round, setRound] = useState('');
-  const [bricks, setBricks] = useState('');
-  const [wetAsh, setWetAsh] = useState('');
-  const [marblePowder, setMarblePowder] = useState('');
-  const [crusherPowder, setCrusherPowder] = useState('');
-  const [flyAsh, setFlyAsh] = useState('');
-  const [cement, setCement] = useState('');
+  const [round, setRound] = useState("");
+  const [bricks, setBricks] = useState("");
+  const [wetAsh, setWetAsh] = useState("");
+  const [marblePowder, setMarblePowder] = useState("");
+  const [crusherPowder, setCrusherPowder] = useState("");
+  const [flyAsh, setFlyAsh] = useState("");
+  const [cement, setCement] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
 
@@ -27,20 +28,20 @@ export function ProductionEntry({ onNavigate }: ProductionEntryProps) {
     const newErrors: Record<string, string> = {};
 
     if (!round) {
-      newErrors.round = 'Round is required';
+      newErrors.round = "Round is required";
     } else if (parseInt(round) > 99) {
-      newErrors.round = 'Round cannot exceed 99';
+      newErrors.round = "Round cannot exceed 99";
     }
 
     if (!bricks) {
-      newErrors.bricks = 'Bricks is required';
+      newErrors.bricks = "Bricks is required";
     }
 
-    if (!wetAsh) newErrors.wetAsh = 'Wet Ash is required';
-    if (!marblePowder) newErrors.marblePowder = 'Marble Powder is required';
-    if (!crusherPowder) newErrors.crusherPowder = 'Crusher Powder is required';
-    if (!flyAsh) newErrors.flyAsh = 'Fly Ash is required';
-    if (!cement) newErrors.cement = 'Cement is required';
+    if (!wetAsh) newErrors.wetAsh = "Wet Ash is required";
+    if (!marblePowder) newErrors.marblePowder = "Marble Powder is required";
+    if (!crusherPowder) newErrors.crusherPowder = "Crusher Powder is required";
+    if (!flyAsh) newErrors.flyAsh = "Fly Ash is required";
+    if (!cement) newErrors.cement = "Cement is required";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -54,7 +55,7 @@ export function ProductionEntry({ onNavigate }: ProductionEntryProps) {
 
   const handlePopupClose = () => {
     setShowSuccessPopup(false);
-    onNavigate('home');
+    navigate("/employee/home");
   };
 
   return (
@@ -63,14 +64,16 @@ export function ProductionEntry({ onNavigate }: ProductionEntryProps) {
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => onNavigate('home')}
+            onClick={() => navigate("/employee/home")}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />
             Back to Home
           </button>
           <h1 className="text-gray-900">Production Entry</h1>
-          <p className="text-gray-600 mt-1">Enter the production details for today</p>
+          <p className="text-gray-600 mt-1">
+            Enter the production details for today
+          </p>
         </div>
 
         {/* Form */}
@@ -92,7 +95,7 @@ export function ProductionEntry({ onNavigate }: ProductionEntryProps) {
                   >
                     <div className="flex items-center justify-between">
                       <span>
-                        {date ? format(date, 'PPP') : 'Select a date'}
+                        {date ? format(date, "PPP") : "Select a date"}
                       </span>
                       <CalendarIcon className="w-5 h-5 text-gray-400" />
                     </div>
@@ -174,7 +177,10 @@ export function ProductionEntry({ onNavigate }: ProductionEntryProps) {
 
             {/* Marble Powder */}
             <div>
-              <label htmlFor="marblePowder" className="block text-gray-700 mb-2">
+              <label
+                htmlFor="marblePowder"
+                className="block text-gray-700 mb-2"
+              >
                 Marble Powder (Kg) <span className="text-red-600">*</span>
               </label>
               <input
@@ -189,13 +195,18 @@ export function ProductionEntry({ onNavigate }: ProductionEntryProps) {
                 step="0.01"
               />
               {errors.marblePowder && (
-                <p className="text-red-600 text-sm mt-1">{errors.marblePowder}</p>
+                <p className="text-red-600 text-sm mt-1">
+                  {errors.marblePowder}
+                </p>
               )}
             </div>
 
             {/* Crusher Powder */}
             <div>
-              <label htmlFor="crusherPowder" className="block text-gray-700 mb-2">
+              <label
+                htmlFor="crusherPowder"
+                className="block text-gray-700 mb-2"
+              >
                 Crusher Powder (Kg) <span className="text-red-600">*</span>
               </label>
               <input
@@ -210,7 +221,9 @@ export function ProductionEntry({ onNavigate }: ProductionEntryProps) {
                 step="0.01"
               />
               {errors.crusherPowder && (
-                <p className="text-red-600 text-sm mt-1">{errors.crusherPowder}</p>
+                <p className="text-red-600 text-sm mt-1">
+                  {errors.crusherPowder}
+                </p>
               )}
             </div>
 

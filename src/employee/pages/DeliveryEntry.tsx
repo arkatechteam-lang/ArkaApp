@@ -1,51 +1,52 @@
-import React, { useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
-import { Order, Screen } from '../App';
-import { Popup } from './Popup';
+import React, { useState } from "react";
+import { ArrowLeft } from "lucide-react";
+import { Order } from "./EmployeeApp";
+import { Popup } from "../../components/Popup";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
-interface DeliveryEntryProps {
-  order: Order;
-  onNavigate: (screen: Screen) => void;
-}
-
-type PaymentStatus = 'Pending' | 'Partially paid' | 'Fully paid';
+type PaymentStatus = "Pending" | "Partially paid" | "Fully paid";
 
 const TIME_SLOTS = [
-  '08:00 AM',
-  '09:00 AM',
-  '10:00 AM',
-  '11:00 AM',
-  '12:00 PM',
-  '01:00 PM',
-  '02:00 PM',
-  '03:00 PM',
-  '04:00 PM',
-  '05:00 PM',
-  '06:00 PM',
+  "08:00 AM",
+  "09:00 AM",
+  "10:00 AM",
+  "11:00 AM",
+  "12:00 PM",
+  "01:00 PM",
+  "02:00 PM",
+  "03:00 PM",
+  "04:00 PM",
+  "05:00 PM",
+  "06:00 PM",
 ];
 
 const LOAD_MEN = [
-  'Raju Kumar',
-  'Suresh Yadav',
-  'Mohan Singh',
-  'Ramesh Patel',
-  'Gopal Reddy',
+  "Raju Kumar",
+  "Suresh Yadav",
+  "Mohan Singh",
+  "Ramesh Patel",
+  "Gopal Reddy",
 ];
 
-export function DeliveryEntry({ order, onNavigate }: DeliveryEntryProps) {
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [time, setTime] = useState('');
-  const [quantity, setQuantity] = useState(order.quantity.toString());
-  const [payment, setPayment] = useState<PaymentStatus>('Pending');
-  const [paidAmount, setPaidAmount] = useState('');
-  const [gstNumber, setGstNumber] = useState('');
-  const [deliveryChallanNumber, setDeliveryChallanNumber] = useState('');
+export function DeliveryEntry() {
+  const navigate = useNavigate();
+  const { state } = useLocation();
+  const { orderId } = useParams();
+
+  const order = state as Order | null;
+  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [time, setTime] = useState("");
+  const [quantity, setQuantity] = useState(order?.quantity.toString());
+  const [payment, setPayment] = useState<PaymentStatus>("Pending");
+  const [paidAmount, setPaidAmount] = useState("");
+  const [gstNumber, setGstNumber] = useState("");
+  const [deliveryChallanNumber, setDeliveryChallanNumber] = useState("");
   const [selectedLoadMen, setSelectedLoadMen] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
 
   // Get today's date in YYYY-MM-DD format for max attribute
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toISOString().split("T")[0];
 
   const handleLoadManToggle = (loadMan: string) => {
     setSelectedLoadMen((prev) =>
@@ -58,28 +59,28 @@ export function DeliveryEntry({ order, onNavigate }: DeliveryEntryProps) {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!time) newErrors.time = 'Time is required';
-    if (!quantity) newErrors.quantity = 'Quantity is required';
-    
-    if (payment === 'Partially paid') {
+    if (!time) newErrors.time = "Time is required";
+    if (!quantity) newErrors.quantity = "Quantity is required";
+
+    if (payment === "Partially paid") {
       if (!paidAmount) {
-        newErrors.paidAmount = 'Paid amount is required';
+        newErrors.paidAmount = "Paid amount is required";
       } else {
         const paidAmountValue = parseFloat(paidAmount);
         if (paidAmountValue <= 0) {
-          newErrors.paidAmount = 'Paid amount must be greater than 0';
+          newErrors.paidAmount = "Paid amount must be greater than 0";
         } else if (paidAmountValue >= order.amount) {
-          newErrors.paidAmount = 'Paid amount must be less than order amount';
+          newErrors.paidAmount = "Paid amount must be less than order amount";
         }
       }
     }
 
     if (!deliveryChallanNumber.trim()) {
-      newErrors.deliveryChallanNumber = 'Delivery Challan Number is required';
+      newErrors.deliveryChallanNumber = "Delivery Challan Number is required";
     }
 
     if (selectedLoadMen.length === 0) {
-      newErrors.loadMen = 'At least one load man must be selected';
+      newErrors.loadMen = "At least one load man must be selected";
     }
 
     setErrors(newErrors);
@@ -94,7 +95,7 @@ export function DeliveryEntry({ order, onNavigate }: DeliveryEntryProps) {
 
   const handlePopupClose = () => {
     setShowSuccessPopup(false);
-    onNavigate('home');
+    navigate("/employee/home");
   };
 
   return (
@@ -103,7 +104,7 @@ export function DeliveryEntry({ order, onNavigate }: DeliveryEntryProps) {
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => onNavigate('orders')}
+            onClick={() => navigate("/employee/orders")}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -124,7 +125,7 @@ export function DeliveryEntry({ order, onNavigate }: DeliveryEntryProps) {
               <input
                 id="orderId"
                 type="text"
-                value={order.id}
+                value={order?.id}
                 disabled
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
               />
@@ -132,13 +133,16 @@ export function DeliveryEntry({ order, onNavigate }: DeliveryEntryProps) {
 
             {/* Customer Number */}
             <div>
-              <label htmlFor="customerNumber" className="block text-gray-700 mb-2">
+              <label
+                htmlFor="customerNumber"
+                className="block text-gray-700 mb-2"
+              >
                 Customer Number
               </label>
               <input
                 id="customerNumber"
                 type="text"
-                value={order.customerNumber}
+                value={order?.customerNumber}
                 disabled
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
               />
@@ -146,13 +150,16 @@ export function DeliveryEntry({ order, onNavigate }: DeliveryEntryProps) {
 
             {/* Customer Name */}
             <div>
-              <label htmlFor="customerName" className="block text-gray-700 mb-2">
+              <label
+                htmlFor="customerName"
+                className="block text-gray-700 mb-2"
+              >
                 Customer Name
               </label>
               <input
                 id="customerName"
                 type="text"
-                value={order.customerName}
+                value={order?.customerName}
                 disabled
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
               />
@@ -223,7 +230,7 @@ export function DeliveryEntry({ order, onNavigate }: DeliveryEntryProps) {
               <input
                 id="location"
                 type="text"
-                value={order.location}
+                value={order?.location}
                 disabled
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
               />
@@ -231,13 +238,16 @@ export function DeliveryEntry({ order, onNavigate }: DeliveryEntryProps) {
 
             {/* Actual Amount */}
             <div>
-              <label htmlFor="actualAmount" className="block text-gray-700 mb-2">
+              <label
+                htmlFor="actualAmount"
+                className="block text-gray-700 mb-2"
+              >
                 Actual Amount
               </label>
               <input
                 id="actualAmount"
                 type="text"
-                value={`₹${order.amount.toLocaleString()}`}
+                value={`₹${order?.amount.toLocaleString()}`}
                 disabled
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
               />
@@ -261,9 +271,12 @@ export function DeliveryEntry({ order, onNavigate }: DeliveryEntryProps) {
             </div>
 
             {/* Paid Amount - Conditional */}
-            {payment === 'Partially paid' && (
+            {payment === "Partially paid" && (
               <div>
-                <label htmlFor="paidAmount" className="block text-gray-700 mb-2">
+                <label
+                  htmlFor="paidAmount"
+                  className="block text-gray-700 mb-2"
+                >
                   Paid Amount <span className="text-red-600">*</span>
                 </label>
                 <input
@@ -278,7 +291,9 @@ export function DeliveryEntry({ order, onNavigate }: DeliveryEntryProps) {
                   step="0.01"
                 />
                 {errors.paidAmount && (
-                  <p className="text-red-600 text-sm mt-1">{errors.paidAmount}</p>
+                  <p className="text-red-600 text-sm mt-1">
+                    {errors.paidAmount}
+                  </p>
                 )}
               </div>
             )}
@@ -307,7 +322,10 @@ export function DeliveryEntry({ order, onNavigate }: DeliveryEntryProps) {
 
             {/* Delivery Challan Number */}
             <div>
-              <label htmlFor="deliveryChallanNumber" className="block text-gray-700 mb-2">
+              <label
+                htmlFor="deliveryChallanNumber"
+                className="block text-gray-700 mb-2"
+              >
                 Delivery Challan Number <span className="text-red-600">*</span>
               </label>
               <input
@@ -318,11 +336,15 @@ export function DeliveryEntry({ order, onNavigate }: DeliveryEntryProps) {
                 onWheel={(e) => e.currentTarget.blur()}
                 placeholder="Enter delivery challan number"
                 className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none ${
-                  errors.deliveryChallanNumber ? 'border-red-500' : 'border-gray-300'
+                  errors.deliveryChallanNumber
+                    ? "border-red-500"
+                    : "border-gray-300"
                 }`}
               />
               {errors.deliveryChallanNumber && (
-                <p className="text-red-600 text-sm mt-1">{errors.deliveryChallanNumber}</p>
+                <p className="text-red-600 text-sm mt-1">
+                  {errors.deliveryChallanNumber}
+                </p>
               )}
             </div>
 
@@ -354,7 +376,7 @@ export function DeliveryEntry({ order, onNavigate }: DeliveryEntryProps) {
               )}
               {selectedLoadMen.length > 0 && (
                 <p className="text-gray-600 text-sm mt-2">
-                  Selected: {selectedLoadMen.join(', ')}
+                  Selected: {selectedLoadMen.join(", ")}
                 </p>
               )}
             </div>
