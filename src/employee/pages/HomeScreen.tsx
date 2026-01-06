@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { Package, Factory, Truck, LogOut } from "lucide-react";
-import { Screen } from "./EmployeeApp";
 import { Popup } from "../../components/Popup";
 import { useNavigate } from "react-router-dom";
 

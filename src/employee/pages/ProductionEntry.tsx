@@ -10,9 +10,14 @@ import {
 import { format } from "date-fns";
 import { cn } from "../../components/ui/utils";
 import { useNavigate } from "react-router-dom";
+import { useProduction } from "../hooks/useProduction";
+import { ProductionInput } from "../types";
+import { validateProduction } from "../validators/production.validator";
 
 export function ProductionEntry() {
   const navigate = useNavigate();
+  const { submitProduction, loading, error } = useProduction();
+
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [round, setRound] = useState("");
   const [bricks, setBricks] = useState("");
@@ -23,33 +28,32 @@ export function ProductionEntry() {
   const [cement, setCement] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [showErrorPopup, setShowErrorPopup] = useState(false);
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
+  const handleSubmit = async () => {
+    if (!date) return;
 
-    if (!round) {
-      newErrors.round = "Round is required";
-    } else if (parseInt(round) > 99) {
-      newErrors.round = "Round cannot exceed 99";
-    }
+    const payload: ProductionInput = {
+      date: date.toISOString(),
+      round: Number(round),
+      bricks: Number(bricks),
+      wetAsh: Number(wetAsh),
+      marblePowder: Number(marblePowder),
+      crusherPowder: Number(crusherPowder),
+      flyAsh: Number(flyAsh),
+      cement: Number(cement),
+    };
 
-    if (!bricks) {
-      newErrors.bricks = "Bricks is required";
-    }
+    const validationErrors = validateProduction(payload);
+    setErrors(validationErrors);
 
-    if (!wetAsh) newErrors.wetAsh = "Wet Ash is required";
-    if (!marblePowder) newErrors.marblePowder = "Marble Powder is required";
-    if (!crusherPowder) newErrors.crusherPowder = "Crusher Powder is required";
-    if (!flyAsh) newErrors.flyAsh = "Fly Ash is required";
-    if (!cement) newErrors.cement = "Cement is required";
+    if (Object.keys(validationErrors).length > 0) return;
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = () => {
-    if (validateForm()) {
+    try {
+      await submitProduction(payload);
       setShowSuccessPopup(true);
+    } catch {
+      setShowErrorPopup(true);
     }
   };
 
@@ -272,9 +276,10 @@ export function ProductionEntry() {
             {/* Submit Button */}
             <button
               onClick={handleSubmit}
-              className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors"
+              disabled={loading}
+              className="w-full bg-blue-600 disabled:bg-gray-400 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors"
             >
-              Submit
+              {loading ? "Submitting..." : "Submit"}
             </button>
           </div>
         </div>
@@ -287,6 +292,16 @@ export function ProductionEntry() {
           message="Production details have been entered successfully."
           onClose={handlePopupClose}
           type="production"
+        />
+      )}
+
+      {/* Failure Popup */}
+      {showErrorPopup && (
+        <Popup
+          title="Submission Failed"
+          message={error ?? "Something went wrong"}
+          onClose={() => setShowErrorPopup(false)}
+          type="error"
         />
       )}
     </div>

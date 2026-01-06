@@ -1,42 +1,29 @@
 import React, { useState } from "react";
 import { ArrowLeft } from "lucide-react";
-import { Order } from "./EmployeeApp";
+import { Order } from "../types";
 import { Popup } from "../../components/Popup";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-
-type PaymentStatus = "Pending" | "Partially paid" | "Fully paid";
-
-const TIME_SLOTS = [
-  "08:00 AM",
-  "09:00 AM",
-  "10:00 AM",
-  "11:00 AM",
-  "12:00 PM",
-  "01:00 PM",
-  "02:00 PM",
-  "03:00 PM",
-  "04:00 PM",
-  "05:00 PM",
-  "06:00 PM",
-];
-
-const LOAD_MEN = [
-  "Raju Kumar",
-  "Suresh Yadav",
-  "Mohan Singh",
-  "Ramesh Patel",
-  "Gopal Reddy",
-];
+import { useDelivery } from "../hooks/useDelivery";
+import { useLoadMen } from "../hooks/useLoadMen";
+import { validateDelivery } from "../validators/delivery.validator";
+import { DeliveryInput, PaymentStatus } from "../types";
+import { TIME_SLOTS } from "../constants/timeSlots";
 
 export function DeliveryEntry() {
   const navigate = useNavigate();
   const { state } = useLocation();
-  const { orderId } = useParams();
-
+  const { orderId } = useParams(); // used later for API fetching
+  const { submitDelivery, loading, error } = useDelivery();
+  const {
+    loadMen,
+    loading: loadMenLoading,
+    error: loadMenError,
+  } = useLoadMen();
   const order = state as Order | null;
+
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [time, setTime] = useState("");
-  const [quantity, setQuantity] = useState(order?.quantity.toString());
+  const [quantity, setQuantity] = useState(order ? String(order.quantity) : "");
   const [payment, setPayment] = useState<PaymentStatus>("Pending");
   const [paidAmount, setPaidAmount] = useState("");
   const [gstNumber, setGstNumber] = useState("");
@@ -44,6 +31,7 @@ export function DeliveryEntry() {
   const [selectedLoadMen, setSelectedLoadMen] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [showFailurePopup, setShowFailurePopup] = useState(false);
 
   // Get today's date in YYYY-MM-DD format for max attribute
   const today = new Date().toISOString().split("T")[0];
@@ -55,41 +43,35 @@ export function DeliveryEntry() {
         : [...prev, loadMan]
     );
   };
+  if (!order) {
+    return <div>Order not found</div>;
+  }
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
+  const safeOrder = order;
 
-    if (!time) newErrors.time = "Time is required";
-    if (!quantity) newErrors.quantity = "Quantity is required";
+  const handleSubmit = async () => {
+    const payload: DeliveryInput = {
+      orderId: safeOrder.id,
+      date,
+      time,
+      quantity: Number(quantity),
+      paymentStatus: payment,
+      paidAmount: paidAmount ? Number(paidAmount) : undefined,
+      gstNumber,
+      deliveryChallanNumber,
+      loadMen: selectedLoadMen,
+    };
 
-    if (payment === "Partially paid") {
-      if (!paidAmount) {
-        newErrors.paidAmount = "Paid amount is required";
-      } else {
-        const paidAmountValue = parseFloat(paidAmount);
-        if (paidAmountValue <= 0) {
-          newErrors.paidAmount = "Paid amount must be greater than 0";
-        } else if (paidAmountValue >= order.amount) {
-          newErrors.paidAmount = "Paid amount must be less than order amount";
-        }
-      }
-    }
+    const validationErrors = validateDelivery(payload);
+    setErrors(validationErrors);
 
-    if (!deliveryChallanNumber.trim()) {
-      newErrors.deliveryChallanNumber = "Delivery Challan Number is required";
-    }
+    if (Object.keys(validationErrors).length > 0) return;
 
-    if (selectedLoadMen.length === 0) {
-      newErrors.loadMen = "At least one load man must be selected";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = () => {
-    if (validateForm()) {
+    try {
+      await submitDelivery(payload);
       setShowSuccessPopup(true);
+    } catch {
+      setShowFailurePopup(true);
     }
   };
 
@@ -355,18 +337,18 @@ export function DeliveryEntry() {
               </label>
               <div className="border border-gray-300 rounded-lg p-4">
                 <div className="space-y-2">
-                  {LOAD_MEN.map((loadMan) => (
+                  {loadMen.map((loadMan) => (
                     <label
-                      key={loadMan}
+                      key={loadMan.id}
                       className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded"
                     >
                       <input
                         type="checkbox"
-                        checked={selectedLoadMen.includes(loadMan)}
-                        onChange={() => handleLoadManToggle(loadMan)}
+                        checked={selectedLoadMen.includes(loadMan.id)}
+                        onChange={() => handleLoadManToggle(loadMan.id)}
                         className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                       />
-                      <span className="text-gray-900">{loadMan}</span>
+                      <span className="text-gray-900">{loadMan.name}</span>
                     </label>
                   ))}
                 </div>
@@ -384,9 +366,12 @@ export function DeliveryEntry() {
             {/* Submit Button */}
             <button
               onClick={handleSubmit}
-              className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors"
+              disabled={loading}
+              className="w-full bg-blue-600 text-white py-3 rounded-lg transition-colors
+             hover:bg-blue-700 disabled:bg-gray-400 disabled:hover:bg-gray-400
+             disabled:cursor-not-allowed"
             >
-              Submit
+              {loading ? "Submitting..." : "Submit"}
             </button>
           </div>
         </div>
@@ -399,6 +384,15 @@ export function DeliveryEntry() {
           message="Delivery details have been recorded successfully."
           onClose={handlePopupClose}
           type="success"
+        />
+      )}
+
+      {showFailurePopup && (
+        <Popup
+          title="Delivery Entry Failed"
+          message={error}
+          onClose={() => setShowFailurePopup(false)}
+          type="error"
         />
       )}
     </div>

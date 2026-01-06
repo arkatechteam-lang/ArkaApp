@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { ArrowLeft, CalendarIcon } from "lucide-react";
-import { Screen } from "./EmployeeApp";
 import { Popup } from "../../components/Popup";
 import { Calendar } from "../../components/ui/calendar";
 import {
@@ -11,62 +10,43 @@ import {
 import { format } from "date-fns";
 import { cn } from "../../components/ui/utils";
 import { useNavigate } from "react-router-dom";
-
-type Material =
-  | "Wet Ash"
-  | "Marble Powder"
-  | "Crusher Powder"
-  | "Fly Ash Powder"
-  | "Cement";
-
-const MATERIALS: Material[] = [
-  "Wet Ash",
-  "Marble Powder",
-  "Crusher Powder",
-  "Fly Ash Powder",
-  "Cement",
-];
-
-const MATERIAL_UNITS: Record<Material, string> = {
-  "Wet Ash": "tons",
-  "Marble Powder": "tons",
-  "Crusher Powder": "units",
-  "Fly Ash Powder": "tons",
-  Cement: "bags",
-};
-
-const VENDORS = [
-  "ABC Suppliers",
-  "XYZ Materials",
-  "Prime Vendors",
-  "Best Quality Co.",
-  "Reliable Suppliers",
-];
+import { validateMaterialPurchase } from "../validators/materialPurchase.validator";
+import { Material, MaterialPurchaseInput } from "../types";
+import { useMaterialPurchase } from "../hooks/useMaterialPurchase";
+import { MATERIALS, MATERIAL_UNITS } from "../constants/materials";
 
 export function MaterialPurchaseEntry() {
   const navigate = useNavigate();
+  const { vendors, vendorsLoading, submitMaterialPurchase, loading, error } =
+    useMaterialPurchase();
   const [material, setMaterial] = useState<Material | "">("");
   const [vendor, setVendor] = useState("");
   const [quantity, setQuantity] = useState("");
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [showErrorPopup, setShowErrorPopup] = useState(false);
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
+  const handleSubmit = async () => {
+    if (!date) return;
 
-    if (!material) newErrors.material = "Material is required";
-    if (!vendor) newErrors.vendor = "Vendor is required";
-    if (!quantity) newErrors.quantity = "Quantity is required";
-    if (!date) newErrors.date = "Date is required";
+    const payload: MaterialPurchaseInput = {
+      material,
+      vendorId: vendor,
+      quantity: Number(quantity),
+      date: date.toISOString(),
+    };
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+    const validationErrors = validateMaterialPurchase(payload);
+    setErrors(validationErrors);
 
-  const handleSubmit = () => {
-    if (validateForm()) {
+    if (Object.keys(validationErrors).length > 0) return;
+
+    try {
+      await submitMaterialPurchase(payload);
       setShowSuccessPopup(true);
+    } catch {
+      setShowErrorPopup(true);
     }
   };
 
@@ -125,15 +105,15 @@ export function MaterialPurchaseEntry() {
                 Vendor <span className="text-red-600">*</span>
               </label>
               <select
-                id="vendor"
                 value={vendor}
                 onChange={(e) => setVendor(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg"
+                disabled={vendorsLoading}
               >
                 <option value="">Select Vendor</option>
-                {VENDORS.map((v) => (
-                  <option key={v} value={v}>
-                    {v}
+                {vendors.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.name}
                   </option>
                 ))}
               </select>
@@ -206,9 +186,10 @@ export function MaterialPurchaseEntry() {
             {/* Submit Button */}
             <button
               onClick={handleSubmit}
-              className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors"
+              disabled={loading}
+              className="w-full bg-blue-600 text-white py-3 disabled:bg-gray-400 rounded-lg hover:bg-blue-700 transition-colors"
             >
-              Submit
+              {loading ? "Submitting..." : "Submit"}
             </button>
           </div>
         </div>
@@ -221,6 +202,16 @@ export function MaterialPurchaseEntry() {
           message="Material purchase entry has been recorded successfully."
           onClose={handlePopupClose}
           type="purchase"
+        />
+      )}
+
+      {/* Failure Popup */}
+      {showErrorPopup && (
+        <Popup
+          title="Submission Failed"
+          message={error}
+          onClose={() => setShowErrorPopup(false)}
+          type="error"
         />
       )}
     </div>
