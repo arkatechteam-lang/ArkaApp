@@ -255,7 +255,7 @@ export function ProductionEntry() {
             {/* Cement */}
             <div>
               <label htmlFor="cement" className="block text-gray-700 mb-2">
-                Cement (Kg) <span className="text-red-600">*</span>
+                Cement (Bags) <span className="text-red-600">*</span>
               </label>
               <input
                 id="cement"
@@ -263,7 +263,7 @@ export function ProductionEntry() {
                 value={cement}
                 onChange={(e) => setCement(e.target.value)}
                 onWheel={(e) => e.currentTarget.blur()}
-                placeholder="Enter cement in Kg"
+                placeholder="Enter cement in Bags"
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 min="0"
                 step="0.01"

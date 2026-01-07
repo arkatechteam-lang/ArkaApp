@@ -12,9 +12,9 @@ export function useProduction() {
 
     try {
       await createProductionEntry(payload);
-    } catch {
+    } catch (err:any) {
       setError("Failed to submit production entry");
-      throw new Error();
+      throw err;
     } finally {
       setLoading(false);
     }
