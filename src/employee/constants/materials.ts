@@ -13,5 +13,5 @@ export const MATERIAL_UNITS: Record<Material, string> = {
   "Marble Powder": "tons",
   "Crusher Powder": "units",
   "Fly Ash Powder": "tons",
-  Cement: "bags",
+  "Cement": "bags",
 };
