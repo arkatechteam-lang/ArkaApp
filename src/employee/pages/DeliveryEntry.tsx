@@ -1,51 +1,40 @@
-import React, { useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
-import { Order, Screen } from '../App';
-import { Popup } from './Popup';
+import React, { useState } from "react";
+import { ArrowLeft } from "lucide-react";
+import { Order } from "../types";
+import { Popup } from "../../components/Popup";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useDelivery } from "../hooks/useDelivery";
+import { useLoadMen } from "../hooks/useLoadMen";
+import { validateDelivery } from "../validators/delivery.validator";
+import { DeliveryInput, PaymentStatus } from "../types";
+import { TIME_SLOTS } from "../constants/timeSlots";
 
-interface DeliveryEntryProps {
-  order: Order;
-  onNavigate: (screen: Screen) => void;
-}
+export function DeliveryEntry() {
+  const navigate = useNavigate();
+  const { state } = useLocation();
+  const { orderId } = useParams(); // used later for API fetching
+  const { submitDelivery, loading, error } = useDelivery();
+  const {
+    loadMen,
+    loading: loadMenLoading,
+    error: loadMenError,
+  } = useLoadMen();
+  const order = state as Order | null;
 
-type PaymentStatus = 'Pending' | 'Partially paid' | 'Fully paid';
-
-const TIME_SLOTS = [
-  '08:00 AM',
-  '09:00 AM',
-  '10:00 AM',
-  '11:00 AM',
-  '12:00 PM',
-  '01:00 PM',
-  '02:00 PM',
-  '03:00 PM',
-  '04:00 PM',
-  '05:00 PM',
-  '06:00 PM',
-];
-
-const LOAD_MEN = [
-  'Raju Kumar',
-  'Suresh Yadav',
-  'Mohan Singh',
-  'Ramesh Patel',
-  'Gopal Reddy',
-];
-
-export function DeliveryEntry({ order, onNavigate }: DeliveryEntryProps) {
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [time, setTime] = useState('');
-  const [quantity, setQuantity] = useState(order.quantity.toString());
-  const [payment, setPayment] = useState<PaymentStatus>('Pending');
-  const [paidAmount, setPaidAmount] = useState('');
-  const [gstNumber, setGstNumber] = useState('');
-  const [deliveryChallanNumber, setDeliveryChallanNumber] = useState('');
+  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [time, setTime] = useState("");
+  const [quantity, setQuantity] = useState(order ? String(order.quantity) : "");
+  const [payment, setPayment] = useState<PaymentStatus>("Pending");
+  const [paidAmount, setPaidAmount] = useState("");
+  const [gstNumber, setGstNumber] = useState("");
+  const [deliveryChallanNumber, setDeliveryChallanNumber] = useState("");
   const [selectedLoadMen, setSelectedLoadMen] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [showFailurePopup, setShowFailurePopup] = useState(false);
 
   // Get today's date in YYYY-MM-DD format for max attribute
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toISOString().split("T")[0];
 
   const handleLoadManToggle = (loadMan: string) => {
     setSelectedLoadMen((prev) =>
@@ -54,47 +43,41 @@ export function DeliveryEntry({ order, onNavigate }: DeliveryEntryProps) {
         : [...prev, loadMan]
     );
   };
+  if (!order) {
+    return <div>Order not found</div>;
+  }
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
+  const safeOrder = order;
 
-    if (!time) newErrors.time = 'Time is required';
-    if (!quantity) newErrors.quantity = 'Quantity is required';
-    
-    if (payment === 'Partially paid') {
-      if (!paidAmount) {
-        newErrors.paidAmount = 'Paid amount is required';
-      } else {
-        const paidAmountValue = parseFloat(paidAmount);
-        if (paidAmountValue <= 0) {
-          newErrors.paidAmount = 'Paid amount must be greater than 0';
-        } else if (paidAmountValue >= order.amount) {
-          newErrors.paidAmount = 'Paid amount must be less than order amount';
-        }
-      }
-    }
+  const handleSubmit = async () => {
+    const payload: DeliveryInput = {
+      orderId: safeOrder.id,
+      date,
+      time,
+      quantity: Number(quantity),
+      paymentStatus: payment,
+      paidAmount: paidAmount ? Number(paidAmount) : undefined,
+      gstNumber,
+      deliveryChallanNumber,
+      loadMen: selectedLoadMen,
+    };
 
-    if (!deliveryChallanNumber.trim()) {
-      newErrors.deliveryChallanNumber = 'Delivery Challan Number is required';
-    }
+    const validationErrors = validateDelivery(payload);
+    setErrors(validationErrors);
 
-    if (selectedLoadMen.length === 0) {
-      newErrors.loadMen = 'At least one load man must be selected';
-    }
+    if (Object.keys(validationErrors).length > 0) return;
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = () => {
-    if (validateForm()) {
+    try {
+      await submitDelivery(payload);
       setShowSuccessPopup(true);
+    } catch {
+      setShowFailurePopup(true);
     }
   };
 
   const handlePopupClose = () => {
     setShowSuccessPopup(false);
-    onNavigate('home');
+    navigate("/employee/home");
   };
 
   return (
@@ -103,7 +86,7 @@ export function DeliveryEntry({ order, onNavigate }: DeliveryEntryProps) {
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => onNavigate('orders')}
+            onClick={() => navigate("/employee/orders")}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -124,7 +107,7 @@ export function DeliveryEntry({ order, onNavigate }: DeliveryEntryProps) {
               <input
                 id="orderId"
                 type="text"
-                value={order.id}
+                value={order?.id}
                 disabled
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
               />
@@ -132,13 +115,16 @@ export function DeliveryEntry({ order, onNavigate }: DeliveryEntryProps) {
 
             {/* Customer Number */}
             <div>
-              <label htmlFor="customerNumber" className="block text-gray-700 mb-2">
+              <label
+                htmlFor="customerNumber"
+                className="block text-gray-700 mb-2"
+              >
                 Customer Number
               </label>
               <input
                 id="customerNumber"
                 type="text"
-                value={order.customerNumber}
+                value={order?.customerNumber}
                 disabled
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
               />
@@ -146,13 +132,16 @@ export function DeliveryEntry({ order, onNavigate }: DeliveryEntryProps) {
 
             {/* Customer Name */}
             <div>
-              <label htmlFor="customerName" className="block text-gray-700 mb-2">
+              <label
+                htmlFor="customerName"
+                className="block text-gray-700 mb-2"
+              >
                 Customer Name
               </label>
               <input
                 id="customerName"
                 type="text"
-                value={order.customerName}
+                value={order?.customerName}
                 disabled
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
               />
@@ -223,7 +212,7 @@ export function DeliveryEntry({ order, onNavigate }: DeliveryEntryProps) {
               <input
                 id="location"
                 type="text"
-                value={order.location}
+                value={order?.location}
                 disabled
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
               />
@@ -231,13 +220,16 @@ export function DeliveryEntry({ order, onNavigate }: DeliveryEntryProps) {
 
             {/* Actual Amount */}
             <div>
-              <label htmlFor="actualAmount" className="block text-gray-700 mb-2">
+              <label
+                htmlFor="actualAmount"
+                className="block text-gray-700 mb-2"
+              >
                 Actual Amount
               </label>
               <input
                 id="actualAmount"
                 type="text"
-                value={`₹${order.amount.toLocaleString()}`}
+                value={`₹${order?.amount.toLocaleString()}`}
                 disabled
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
               />
@@ -261,9 +253,12 @@ export function DeliveryEntry({ order, onNavigate }: DeliveryEntryProps) {
             </div>
 
             {/* Paid Amount - Conditional */}
-            {payment === 'Partially paid' && (
+            {payment === "Partially paid" && (
               <div>
-                <label htmlFor="paidAmount" className="block text-gray-700 mb-2">
+                <label
+                  htmlFor="paidAmount"
+                  className="block text-gray-700 mb-2"
+                >
                   Paid Amount <span className="text-red-600">*</span>
                 </label>
                 <input
@@ -278,7 +273,9 @@ export function DeliveryEntry({ order, onNavigate }: DeliveryEntryProps) {
                   step="0.01"
                 />
                 {errors.paidAmount && (
-                  <p className="text-red-600 text-sm mt-1">{errors.paidAmount}</p>
+                  <p className="text-red-600 text-sm mt-1">
+                    {errors.paidAmount}
+                  </p>
                 )}
               </div>
             )}
@@ -307,7 +304,10 @@ export function DeliveryEntry({ order, onNavigate }: DeliveryEntryProps) {
 
             {/* Delivery Challan Number */}
             <div>
-              <label htmlFor="deliveryChallanNumber" className="block text-gray-700 mb-2">
+              <label
+                htmlFor="deliveryChallanNumber"
+                className="block text-gray-700 mb-2"
+              >
                 Delivery Challan Number <span className="text-red-600">*</span>
               </label>
               <input
@@ -318,11 +318,15 @@ export function DeliveryEntry({ order, onNavigate }: DeliveryEntryProps) {
                 onWheel={(e) => e.currentTarget.blur()}
                 placeholder="Enter delivery challan number"
                 className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none ${
-                  errors.deliveryChallanNumber ? 'border-red-500' : 'border-gray-300'
+                  errors.deliveryChallanNumber
+                    ? "border-red-500"
+                    : "border-gray-300"
                 }`}
               />
               {errors.deliveryChallanNumber && (
-                <p className="text-red-600 text-sm mt-1">{errors.deliveryChallanNumber}</p>
+                <p className="text-red-600 text-sm mt-1">
+                  {errors.deliveryChallanNumber}
+                </p>
               )}
             </div>
 
@@ -333,18 +337,18 @@ export function DeliveryEntry({ order, onNavigate }: DeliveryEntryProps) {
               </label>
               <div className="border border-gray-300 rounded-lg p-4">
                 <div className="space-y-2">
-                  {LOAD_MEN.map((loadMan) => (
+                  {loadMen.map((loadMan) => (
                     <label
-                      key={loadMan}
+                      key={loadMan.id}
                       className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded"
                     >
                       <input
                         type="checkbox"
-                        checked={selectedLoadMen.includes(loadMan)}
-                        onChange={() => handleLoadManToggle(loadMan)}
+                        checked={selectedLoadMen.includes(loadMan.id)}
+                        onChange={() => handleLoadManToggle(loadMan.id)}
                         className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                       />
-                      <span className="text-gray-900">{loadMan}</span>
+                      <span className="text-gray-900">{loadMan.name}</span>
                     </label>
                   ))}
                 </div>
@@ -354,7 +358,7 @@ export function DeliveryEntry({ order, onNavigate }: DeliveryEntryProps) {
               )}
               {selectedLoadMen.length > 0 && (
                 <p className="text-gray-600 text-sm mt-2">
-                  Selected: {selectedLoadMen.join(', ')}
+                  Selected: {selectedLoadMen.join(", ")}
                 </p>
               )}
             </div>
@@ -362,9 +366,12 @@ export function DeliveryEntry({ order, onNavigate }: DeliveryEntryProps) {
             {/* Submit Button */}
             <button
               onClick={handleSubmit}
-              className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors"
+              disabled={loading}
+              className="w-full bg-blue-600 text-white py-3 rounded-lg transition-colors
+             hover:bg-blue-700 disabled:bg-gray-400 disabled:hover:bg-gray-400
+             disabled:cursor-not-allowed"
             >
-              Submit
+              {loading ? "Submitting..." : "Submit"}
             </button>
           </div>
         </div>
@@ -377,6 +384,15 @@ export function DeliveryEntry({ order, onNavigate }: DeliveryEntryProps) {
           message="Delivery details have been recorded successfully."
           onClose={handlePopupClose}
           type="success"
+        />
+      )}
+
+      {showFailurePopup && (
+        <Popup
+          title="Delivery Entry Failed"
+          message={error}
+          onClose={() => setShowFailurePopup(false)}
+          type="error"
         />
       )}
     </div>

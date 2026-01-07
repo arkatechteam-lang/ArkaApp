@@ -1,16 +1,14 @@
-import React, { useState } from 'react';
-import { Package, Factory, Truck, LogOut } from 'lucide-react';
-import { Screen } from '../App';
-import { Popup } from './Popup';
+import React, { useState } from "react";
+import { Package, Factory, Truck, LogOut } from "lucide-react";
+import { Popup } from "../../components/Popup";
+import { useNavigate } from "react-router-dom";
 
-interface HomeScreenProps {
-  onNavigate: (screen: Screen) => void;
-  onLogout: () => void;
-}
-
-export function HomeScreen({ onNavigate, onLogout }: HomeScreenProps) {
+export function HomeScreen() {
+  const navigate = useNavigate();
   const [showLogoutPopup, setShowLogoutPopup] = useState(false);
-  const [logoutStatus, setLogoutStatus] = useState<'success' | 'error' | null>(null);
+  const [logoutStatus, setLogoutStatus] = useState<"success" | "error" | null>(
+    null
+  );
   const [showSessionExpiredPopup, setShowSessionExpiredPopup] = useState(false);
 
   // Simulate session expiration check (for demo purposes)
@@ -29,13 +27,17 @@ export function HomeScreen({ onNavigate, onLogout }: HomeScreenProps) {
   const handleLogoutClick = () => {
     // Simulate logout
     const success = Math.random() > 0.1; // 90% success rate
-    setLogoutStatus(success ? 'success' : 'error');
+    setLogoutStatus(success ? "success" : "error");
     setShowLogoutPopup(true);
+  };
+
+  const onLogout = () => {
+    navigate("/employee");
   };
 
   const handlePopupClose = () => {
     setShowLogoutPopup(false);
-    if (logoutStatus === 'success') {
+    if (logoutStatus === "success") {
       onLogout();
     }
     setLogoutStatus(null);
@@ -48,22 +50,22 @@ export function HomeScreen({ onNavigate, onLogout }: HomeScreenProps) {
 
   const cards = [
     {
-      title: 'Material Purchase Entry',
+      title: "Material Purchase Entry",
       icon: Package,
-      color: 'bg-blue-600',
-      screen: 'material' as Screen,
+      color: "bg-blue-600",
+      path: "/employee/material-entry",
     },
     {
-      title: 'Production Entry',
+      title: "Production Entry",
       icon: Factory,
-      color: 'bg-green-600',
-      screen: 'production' as Screen,
+      color: "bg-green-600",
+      path: "/employee/production-entry",
     },
     {
-      title: 'Delivery Entry',
+      title: "Delivery Entry",
       icon: Truck,
-      color: 'bg-orange-600',
-      screen: 'orders' as Screen,
+      color: "bg-orange-600",
+      path: "/employee/orders",
     },
   ];
 
@@ -74,7 +76,9 @@ export function HomeScreen({ onNavigate, onLogout }: HomeScreenProps) {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-gray-900">Dashboard</h1>
-            <p className="text-gray-600 mt-1">Welcome back! Select an option to continue</p>
+            <p className="text-gray-600 mt-1">
+              Welcome back! Select an option to continue
+            </p>
           </div>
           <button
             onClick={handleLogoutClick}
@@ -91,11 +95,13 @@ export function HomeScreen({ onNavigate, onLogout }: HomeScreenProps) {
             const Icon = card.icon;
             return (
               <button
-                key={card.screen}
-                onClick={() => onNavigate(card.screen)}
+                key={card.path}
+                onClick={() => navigate(card.path)}
                 className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow text-left group"
               >
-                <div className={`${card.color} p-4 rounded-lg inline-block mb-4 group-hover:scale-110 transition-transform`}>
+                <div
+                  className={`${card.color} p-4 rounded-lg inline-block mb-4 group-hover:scale-110 transition-transform`}
+                >
                   <Icon className="w-8 h-8 text-white" />
                 </div>
                 <h3 className="text-gray-900 mb-2">{card.title}</h3>
@@ -111,14 +117,18 @@ export function HomeScreen({ onNavigate, onLogout }: HomeScreenProps) {
       {/* Logout Popup */}
       {showLogoutPopup && (
         <Popup
-          title={logoutStatus === 'success' ? 'Logout Successful' : 'Something Went Wrong'}
+          title={
+            logoutStatus === "success"
+              ? "Logout Successful"
+              : "Something Went Wrong"
+          }
           message={
-            logoutStatus === 'success'
-              ? 'You have been logged out successfully.'
-              : 'Unable to logout. Please try again.'
+            logoutStatus === "success"
+              ? "You have been logged out successfully."
+              : "Unable to logout. Please try again."
           }
           onClose={handlePopupClose}
-          type={logoutStatus === 'success' ? 'success' : 'error'}
+          type={logoutStatus === "success" ? "success" : "error"}
         />
       )}
 
