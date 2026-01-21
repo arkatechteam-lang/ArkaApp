@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AdminScreen } from '../../AdminApp';
 import { ArrowLeft, Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface LoanManagementScreenProps {
   onNavigate: (screen: AdminScreen) => void;
@@ -44,6 +45,7 @@ const MOCK_LOANS: Loan[] = [
 ];
 
 export function LoanManagementScreen({ onNavigate }: LoanManagementScreenProps) {
+  const navigate = useNavigate();
   const [loans] = useState<Loan[]>(MOCK_LOANS);
 
   const getStatusColor = (status: string) => {
@@ -69,7 +71,7 @@ export function LoanManagementScreen({ onNavigate }: LoanManagementScreenProps) 
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => onNavigate('home')}
+            onClick={() => navigate('/admin/home')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />

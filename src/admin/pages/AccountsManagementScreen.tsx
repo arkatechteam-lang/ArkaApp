@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AdminScreen, Expense, AdminOrder } from '../../AdminApp';
 import { ArrowLeft, Plus, Wallet, X } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import { useNavigate } from 'react-router-dom';
 
 interface AccountsManagementScreenProps {
   onNavigate: (screen: AdminScreen) => void;
@@ -80,6 +81,7 @@ const MOCK_ORDERS: AdminOrder[] = [
 type FilterType = 'Last month' | 'Last year' | 'Custom range';
 
 export function AccountsManagementScreen({ onNavigate, onExpenseEdit, onOrderSelect }: AccountsManagementScreenProps) {
+  const navigate = useNavigate();
   const [filterType, setFilterType] = useState<FilterType>('Last month');
   const [showCustomRangeModal, setShowCustomRangeModal] = useState(false);
   const [customStartDate, setCustomStartDate] = useState('');
@@ -154,7 +156,7 @@ export function AccountsManagementScreen({ onNavigate, onExpenseEdit, onOrderSel
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => onNavigate('home')}
+            onClick={() => navigate('/admin/home')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />

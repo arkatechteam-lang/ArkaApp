@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { AdminScreen } from '../../AdminApp';
 import { ArrowLeft, Droplets, Mountain, Sparkles, Hammer, Wind, Boxes } from 'lucide-react';
-import { Popup } from '../Popup';
+import { Popup } from '../../components/Popup';
+import { useNavigate } from 'react-router-dom';
 
 interface InventoryManagementScreenProps {
   onNavigate: (screen: AdminScreen) => void;
@@ -116,6 +117,7 @@ const INVENTORY_METRICS = {
 };
 
 export function InventoryManagementScreen({ onNavigate }: InventoryManagementScreenProps) {
+  const navigate = useNavigate();
   const [filterType, setFilterType] = useState<FilterType>('Last month');
   const [showCustomRangeModal, setShowCustomRangeModal] = useState(false);
   const [customStartDate, setCustomStartDate] = useState('');
@@ -228,7 +230,7 @@ export function InventoryManagementScreen({ onNavigate }: InventoryManagementScr
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => onNavigate('home')}
+            onClick={() => navigate('/admin/home')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />

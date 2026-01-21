@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Plus, AlertCircle } from 'lucide-react';
 import { AdminScreen, AdminOrder } from '../../AdminApp';
+import { useNavigate } from 'react-router-dom';
 
 interface OrderManagementScreenProps {
   onNavigate: (screen: AdminScreen) => void;
@@ -231,6 +232,7 @@ const MOCK_ORDERS: AdminOrder[] = [
 ];
 
 export function OrderManagementScreen({ onNavigate, onOrderSelect }: OrderManagementScreenProps) {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<OrderTab>('Today');
   const [displayCount, setDisplayCount] = useState(10);
 
@@ -273,7 +275,7 @@ export function OrderManagementScreen({ onNavigate, onOrderSelect }: OrderManage
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => onNavigate('home')}
+            onClick={() => navigate('/admin/home')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />

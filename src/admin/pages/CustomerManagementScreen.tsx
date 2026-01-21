@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { AdminScreen, Customer } from '../../AdminApp';
 import { ArrowLeft, Plus, Search, Phone, MapPin, DollarSign, X } from 'lucide-react';
-import { Popup } from '../Popup';
+import { Popup } from '../../components/Popup';
+import { useNavigate } from 'react-router-dom';
 
 interface CustomerManagementScreenProps {
   onNavigate: (screen: AdminScreen) => void;
@@ -20,6 +21,7 @@ const MOCK_CUSTOMERS: Customer[] = [
 ];
 
 export function CustomerManagementScreen({ onNavigate, onCustomerSelect }: CustomerManagementScreenProps) {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [displayCount, setDisplayCount] = useState(10);
   const [activeTab, setActiveTab] = useState<'All' | 'Unpaid'>('All');
@@ -130,7 +132,7 @@ export function CustomerManagementScreen({ onNavigate, onCustomerSelect }: Custo
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => onNavigate('home')}
+            onClick={() => navigate('/admin/home')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />

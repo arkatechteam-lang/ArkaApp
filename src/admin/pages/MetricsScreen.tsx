@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AdminScreen } from '../../AdminApp';
 import { ArrowLeft, Wallet, X, Droplets, Mountain, Sparkles, Hammer, Wind, Package, Square } from 'lucide-react';
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { useNavigate } from 'react-router-dom';
 
 interface MetricsScreenProps {
   onNavigate: (screen: AdminScreen) => void;
@@ -55,6 +56,7 @@ const INVENTORY_METRICS = {
 };
 
 export function MetricsScreen({ onNavigate }: MetricsScreenProps) {
+  const navigate = useNavigate();
   const [filterType, setFilterType] = useState<FilterType>('Last month');
   const [showCustomRangeModal, setShowCustomRangeModal] = useState(false);
   const [customStartDate, setCustomStartDate] = useState('');
@@ -141,7 +143,7 @@ export function MetricsScreen({ onNavigate }: MetricsScreenProps) {
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => onNavigate('home')}
+            onClick={() => navigate('/admin/home')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />

@@ -14,18 +14,15 @@ import {
   Coins,
   CreditCard,
 } from 'lucide-react';
-import { AdminScreen } from '../../AdminApp';
-import { Popup } from '../Popup';
+import { Popup } from '../../components/Popup';
+import { useNavigate } from 'react-router-dom';
 
-interface AdminHomeScreenProps {
-  onNavigate: (screen: AdminScreen) => void;
-  onLogout: () => void;
-}
 
-export function AdminHomeScreen({ onNavigate, onLogout }: AdminHomeScreenProps) {
+export function AdminHomeScreen() {
   const [showLogoutPopup, setShowLogoutPopup] = useState(false);
   const [logoutStatus, setLogoutStatus] = useState<'success' | 'error' | null>(null);
   const [showSessionExpiredPopup, setShowSessionExpiredPopup] = useState(false);
+  const navigate = useNavigate();
 
   // Simulate session expiration check (for demo purposes)
   React.useEffect(() => {
@@ -39,6 +36,10 @@ export function AdminHomeScreen({ onNavigate, onLogout }: AdminHomeScreenProps) 
 
     return () => clearTimeout(sessionCheck);
   }, []);
+
+  const onLogout = () => {
+    navigate('/admin/login');
+  };
 
   const handleLogoutClick = () => {
     // Simulate logout
@@ -65,77 +66,77 @@ export function AdminHomeScreen({ onNavigate, onLogout }: AdminHomeScreenProps) 
       title: 'Order Management',
       icon: ShoppingCart,
       color: 'from-blue-500 to-blue-600',
-      screen: 'orders' as AdminScreen,
+      path: '/admin/orders',
       description: 'Manage all orders and deliveries',
     },
     {
       title: 'Production Statistics',
       icon: BarChart3,
       color: 'from-green-500 to-green-600',
-      screen: 'production' as AdminScreen,
+      path: '/admin/production',
       description: 'View production metrics and data',
     },
     {
       title: 'Inventory Management',
       icon: Package,
       color: 'from-purple-500 to-purple-600',
-      screen: 'inventory' as AdminScreen,
+      path: '/admin/inventory',
       description: 'Track stock and materials',
     },
     {
       title: 'Customer Management',
       icon: Users,
       color: 'from-orange-500 to-orange-600',
-      screen: 'customers' as AdminScreen,
+      path: '/admin/customers',
       description: 'Manage customer information',
     },
     {
       title: 'Accounts Management',
       icon: DollarSign,
       color: 'from-emerald-500 to-emerald-600',
-      screen: 'accounts' as AdminScreen,
+      path: '/admin/accounts',
       description: 'Track income and expenses',
     },
     {
       title: 'Metrics',
       icon: TrendingUp,
       color: 'from-cyan-500 to-cyan-600',
-      screen: 'metrics' as AdminScreen,
+      path: '/admin/metrics',
       description: 'Business performance metrics',
     },
     {
       title: 'Employee Management',
       icon: UserCog,
       color: 'from-indigo-500 to-indigo-600',
-      screen: 'employees' as AdminScreen,
+      path: '/admin/employees',
       description: 'Manage employee records',
     },
     {
       title: 'Salary Ledger',
       icon: Wallet,
       color: 'from-amber-500 to-amber-600',
-      screen: 'salary-ledger' as AdminScreen,
+      path: '/admin/salarys',
       description: 'Employee salary records',
     },
     {
       title: 'Vendor Management',
       icon: Store,
       color: 'from-rose-500 to-rose-600',
-      screen: 'vendors' as AdminScreen,
+      path: '/admin/vendors',
       description: 'Manage vendor information',
     },
     {
       title: 'Cash Flow',
       icon: Coins,
       color: 'from-teal-500 to-teal-600',
-      screen: 'cash-flow' as AdminScreen,
+      path: '/admin/cashFlow',
       description: 'Track cash and account balances',
     },
     {
       title: 'Loan Management',
       icon: CreditCard,
       color: 'from-pink-500 to-pink-600',
-      screen: 'loan-management' as AdminScreen,
+      path: '/admin/loans',
       description: 'Manage borrowed funds',
     },
   ];
@@ -164,8 +165,8 @@ export function AdminHomeScreen({ onNavigate, onLogout }: AdminHomeScreenProps) 
             const Icon = card.icon;
             return (
               <button
-                key={card.screen}
-                onClick={() => onNavigate(card.screen)}
+                key={card.path}
+                onClick={() => navigate(card.path)}
                 className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all transform hover:-translate-y-1 text-left group"
               >
                 <div className={`bg-gradient-to-br ${card.color} p-4 rounded-lg inline-block mb-4 group-hover:scale-110 transition-transform shadow-md`}>

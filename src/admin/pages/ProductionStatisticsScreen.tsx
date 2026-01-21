@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { AdminScreen } from '../../AdminApp';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { useNavigate } from 'react-router-dom';
 
 interface ProductionStatisticsScreenProps {
   onNavigate: (screen: AdminScreen) => void;
@@ -92,6 +93,7 @@ const PRODUCTION_ENTRIES: ProductionEntry[] = [
 ];
 
 export function ProductionStatisticsScreen({ onNavigate }: ProductionStatisticsScreenProps) {
+  const navigate = useNavigate();
   const [displayCount, setDisplayCount] = useState(10);
 
   const displayedEntries = PRODUCTION_ENTRIES.slice(0, displayCount);
@@ -120,7 +122,7 @@ export function ProductionStatisticsScreen({ onNavigate }: ProductionStatisticsS
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => onNavigate('home')}
+            onClick={() => navigate('/admin/home')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />
