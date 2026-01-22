@@ -1,26 +1,253 @@
 import React, { useState } from 'react';
 import { ArrowLeft, CalendarIcon } from 'lucide-react';
-import { AdminScreen, AdminOrder } from '../../AdminApp';
-import { Popup } from '../Popup';
-import { Calendar } from '../ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { format } from 'date-fns@4.1.0';
-import { cn } from '../ui/utils';
+import {  AdminOrder } from '../../../AdminApp';
+import { Popup } from '../../../components/Popup';
+import { Calendar } from '../../../components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '../../../components/ui/popover';
+import { format } from 'date-fns';
+import { cn } from '../../../components/ui/utils';
+import { useParams,useNavigate,useLocation } from 'react-router-dom';
 
-interface OrderDetailsScreenProps {
-  order: AdminOrder;
-  onNavigate: (screen: AdminScreen) => void;
-}
 
 type PaymentStatus = 'Not Paid' | 'Partially Paid' | 'Fully Paid';
 
 const LOAD_MEN = ['Raju Kumar', 'Suresh Yadav', 'Mohan Singh', 'Ramesh Patel', 'Gopal Reddy'];
 
-export function OrderDetailsScreen({ order, onNavigate }: OrderDetailsScreenProps) {
+const MOCK_ORDERS: AdminOrder[] = [
+  {
+    id: 'ORD-001',
+    date: '2025-12-08',
+    deliveryDate: '2025-12-08',
+    customerName: 'Rajesh Kumar',
+    customerNumber: '9876543210',
+    customerId: 'CUST-001',
+    quantity: 5000,
+    pricePerBrick: 10,
+    paperPrice: 50000,
+    location: '123 MG Road, Bangalore',
+    finalPrice: 50000,
+    paymentStatus: 'Not Paid',
+    loadMen: ['Raju Kumar', 'Suresh Yadav'],
+    deliveryToday: true,
+    isDelivered: false,
+  },
+  {
+    id: 'ORD-002',
+    date: '2025-12-07',
+    deliveryDate: '2025-12-05',
+    customerName: 'Priya Sharma',
+    customerNumber: '9876543211',
+    customerId: 'CUST-002',
+    quantity: 3000,
+    pricePerBrick: 10.5,
+    paperPrice: 31500,
+    location: '456 Brigade Road, Bangalore',
+    finalPrice: 31500,
+    paymentStatus: 'Partially Paid',
+    amountPaid: 15000,
+    loadMen: [],
+    deliveryToday: false,
+    isDelivered: false,
+  },
+  {
+    id: 'ORD-003',
+    date: '2025-12-06',
+    deliveryDate: '2025-12-07',
+    customerName: 'Amit Patel',
+    customerNumber: '9876543212',
+    customerId: 'CUST-003',
+    quantity: 7500,
+    pricePerBrick: 9.8,
+    paperPrice: 73500,
+    location: '789 Koramangala, Bangalore',
+    finalPrice: 73500,
+    paymentStatus: 'Fully Paid',
+    amountPaid: 73500,
+    loadMen: ['Mohan Singh'],
+    deliveryToday: false,
+    isDelivered: true,
+    deliveryChallanNumber: 'DC20251207001',
+    gstNumber: '29ABCDE1234F1Z5',
+  },
+  {
+    id: 'ORD-004',
+    date: '2025-12-05',
+    deliveryDate: '2025-12-09',
+    customerName: 'Sunita Reddy',
+    customerNumber: '9876543213',
+    customerId: 'CUST-004',
+    quantity: 4000,
+    pricePerBrick: 10.2,
+    paperPrice: 40800,
+    location: '321 Indiranagar, Bangalore',
+    finalPrice: 40800,
+    paymentStatus: 'Partially Paid',
+    amountPaid: 20000,
+    loadMen: [],
+    deliveryToday: false,
+    isDelivered: true,
+    deliveryChallanNumber: 'DC20251209001',
+  },
+  {
+    id: 'ORD-005',
+    date: '2025-12-04',
+    deliveryDate: '2025-12-10',
+    customerName: 'Vijay Singh',
+    customerNumber: '9876543214',
+    customerId: 'CUST-005',
+    quantity: 6000,
+    pricePerBrick: 10,
+    paperPrice: 60000,
+    location: '654 Whitefield, Bangalore',
+    finalPrice: 60000,
+    paymentStatus: 'Not Paid',
+    loadMen: [],
+    deliveryToday: false,
+    isDelivered: false,
+  },
+  {
+    id: 'ORD-006',
+    date: '2025-12-03',
+    deliveryDate: '2025-12-11',
+    customerName: 'Lakshmi Rao',
+    customerNumber: '9876543215',
+    customerId: 'CUST-006',
+    quantity: 8000,
+    pricePerBrick: 9.5,
+    paperPrice: 76000,
+    location: '789 Electronic City, Bangalore',
+    finalPrice: 76000,
+    paymentStatus: 'Partially Paid',
+    amountPaid: 40000,
+    loadMen: [],
+    deliveryToday: false,
+    isDelivered: false,
+  },
+  {
+    id: 'ORD-007',
+    date: '2025-12-02',
+    deliveryDate: '2025-12-08',
+    customerName: 'Karthik Menon',
+    customerNumber: '9876543216',
+    customerId: 'CUST-007',
+    quantity: 4500,
+    pricePerBrick: 10.3,
+    paperPrice: 46350,
+    location: '123 Jayanagar, Bangalore',
+    finalPrice: 46350,
+    paymentStatus: 'Fully Paid',
+    amountPaid: 46350,
+    loadMen: ['Ramesh Patel'],
+    deliveryToday: false,
+    isDelivered: true,
+    deliveryChallanNumber: 'DC20251208002',
+  },
+  {
+    id: 'ORD-008',
+    date: '2025-12-01',
+    deliveryDate: '2025-12-12',
+    customerName: 'Anita Desai',
+    customerNumber: '9876543217',
+    customerId: 'CUST-008',
+    quantity: 5500,
+    pricePerBrick: 9.9,
+    paperPrice: 54450,
+    location: '456 HSR Layout, Bangalore',
+    finalPrice: 54450,
+    paymentStatus: 'Not Paid',
+    loadMen: [],
+    deliveryToday: false,
+    isDelivered: false,
+  },
+  {
+    id: 'ORD-009',
+    date: '2025-11-30',
+    deliveryDate: '2025-12-13',
+    customerName: 'Ramesh Iyer',
+    customerNumber: '9876543218',
+    customerId: 'CUST-009',
+    quantity: 7000,
+    pricePerBrick: 10.1,
+    paperPrice: 70700,
+    location: '789 BTM Layout, Bangalore',
+    finalPrice: 70700,
+    paymentStatus: 'Partially Paid',
+    amountPaid: 35000,
+    loadMen: [],
+    deliveryToday: false,
+    isDelivered: false,
+  },
+  {
+    id: 'ORD-010',
+    date: '2025-11-29',
+    deliveryDate: '2025-12-14',
+    customerName: 'Deepa Nair',
+    customerNumber: '9876543219',
+    customerId: 'CUST-010',
+    quantity: 6500,
+    pricePerBrick: 9.7,
+    paperPrice: 63050,
+    location: '321 Marathahalli, Bangalore',
+    finalPrice: 63050,
+    paymentStatus: 'Fully Paid',
+    amountPaid: 63050,
+    loadMen: ['Gopal Reddy'],
+    deliveryToday: false,
+    isDelivered: true,
+    deliveryChallanNumber: 'DC20251214001',
+  },
+  {
+    id: 'ORD-011',
+    date: '2025-11-28',
+    deliveryDate: '2025-12-15',
+    customerName: 'Arun Kumar',
+    customerNumber: '9876543220',
+    customerId: 'CUST-011',
+    quantity: 5200,
+    pricePerBrick: 10.4,
+    paperPrice: 54080,
+    location: '654 Rajajinagar, Bangalore',
+    finalPrice: 54080,
+    paymentStatus: 'Not Paid',
+    loadMen: [],
+    deliveryToday: false,
+    isDelivered: false,
+  },
+  {
+    id: 'ORD-012',
+    date: '2025-11-27',
+    deliveryDate: '2025-12-16',
+    customerName: 'Meena Krishnan',
+    customerNumber: '9876543221',
+    customerId: 'CUST-012',
+    quantity: 4800,
+    pricePerBrick: 9.6,
+    paperPrice: 46080,
+    location: '789 Malleshwaram, Bangalore',
+    finalPrice: 46080,
+    paymentStatus: 'Partially Paid',
+    amountPaid: 25000,
+    loadMen: [],
+    deliveryToday: false,
+    isDelivered: false,
+  },
+];
+
+export function OrderDetailsScreen() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const {orderId} = useParams<{ orderId: string }>();
+  console.log('Order ID:', orderId);
+  const order = MOCK_ORDERS.find((o) => o.id == orderId);
+
+  if (!order) {
+    return <div>Order not found</div>;
+  }
+
   const [brickQuantity, setBrickQuantity] = useState(order.quantity.toString());
   const [deliveryDate, setDeliveryDate] = useState<Date | undefined>(new Date(order.deliveryDate));
   const [pricePerBrick, setPricePerBrick] = useState(order.pricePerBrick.toString());
-  const [location, setLocation] = useState(order.location);
+  const [deliveryLocation, setDeliveryLocation] = useState(order.location);
   const [finalPrice, setFinalPrice] = useState(order.finalPrice.toString());
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(order.paymentStatus);
   const [amountPaid, setAmountPaid] = useState(order.amountPaid?.toString() || '');
@@ -58,7 +285,7 @@ export function OrderDetailsScreen({ order, onNavigate }: OrderDetailsScreenProp
       newErrors.pricePerBrick = 'Price per brick must be greater than 0';
     }
 
-    if (!location) newErrors.location = 'Location is required';
+    if (!deliveryLocation) newErrors.deliveryLocation = 'Delivery location is required';
     if (!finalPrice) newErrors.finalPrice = 'Final price is required';
 
     if (paymentStatus === 'Partially Paid') {
@@ -92,8 +319,16 @@ export function OrderDetailsScreen({ order, onNavigate }: OrderDetailsScreenProp
 
   const handlePopupClose = () => {
     setShowSuccessPopup(false);
-    onNavigate('orders');
+    navigate('/admin/orders', { replace: true });
   };
+
+  const handleBack = () => {
+  if (location.state?.from) {
+    navigate(location.state.from);
+  } else {
+    navigate('/admin/orders', { replace: true });
+  }
+};
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -101,7 +336,7 @@ export function OrderDetailsScreen({ order, onNavigate }: OrderDetailsScreenProp
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => onNavigate('orders')}
+            onClick={handleBack}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -222,11 +457,11 @@ export function OrderDetailsScreen({ order, onNavigate }: OrderDetailsScreenProp
               <input
                 id="location"
                 type="text"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
+                value={deliveryLocation}
+                onChange={(e) => setDeliveryLocation(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
               />
-              {errors.location && <p className="text-red-600 text-sm mt-1">{errors.location}</p>}
+              {errors.deliveryLocation && <p className="text-red-600 text-sm mt-1">{errors.deliveryLocation}</p>}
             </div>
 
             {/* Final Price */}

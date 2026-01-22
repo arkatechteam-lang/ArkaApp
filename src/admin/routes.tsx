@@ -1,7 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AdminLoginScreen } from "./pages/AdminLoginScreen";
 import { AdminHomeScreen } from "./pages/AdminHomeScreen";
-import { OrderManagementScreen } from "./pages/OrderManagementScreen";
 import { ProductionStatisticsScreen } from "./pages/ProductionStatisticsScreen";
 import { InventoryManagementScreen } from "./pages/InventoryManagementScreen";
 import { CustomerManagementScreen } from "./pages/CustomerManagementScreen";
@@ -12,6 +11,7 @@ import { SalaryLedgerScreen } from "./pages/SalaryLedgerScreen";
 import { VendorManagementScreen } from "./pages/VendorManagementScreen";
 import { CashFlowScreen } from "./pages/CashFlowScreen";
 import { LoanManagementScreen } from "./pages/LoanManagementScreen";
+import { OrdersRoutes } from "./orders/routes";
 
 export function AdminRoutes() {
   return (
@@ -26,7 +26,7 @@ export function AdminRoutes() {
       <Route path="home" element={<AdminHomeScreen />} />
 
       {/* Other Admin Routes */}
-      <Route path="orders" element={<OrderManagementScreen />} />
+      <Route path="orders/*" element={<OrdersRoutes />} />
       <Route path="production" element={<ProductionStatisticsScreen />} />
        <Route path="inventory" element={<InventoryManagementScreen />} />
      <Route path="customers" element={<CustomerManagementScreen />} />

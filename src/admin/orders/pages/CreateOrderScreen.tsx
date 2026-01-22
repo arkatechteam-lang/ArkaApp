@@ -1,16 +1,12 @@
 import React, { useState } from 'react';
 import { ArrowLeft, CalendarIcon } from 'lucide-react';
-import { AdminScreen } from '../../AdminApp';
-import { Popup } from '../Popup';
-import { CustomerCreationModal } from './CustomerCreationModal';
-import { Calendar } from '../ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
-import { format } from 'date-fns@4.1.0';
-import { cn } from '../ui/utils';
-
-interface CreateOrderScreenProps {
-  onNavigate: (screen: AdminScreen) => void;
-}
+import { Popup } from '../../../components/Popup';
+import { CustomerCreationModal } from '../../../components/admin/CustomerCreationModal';
+import { Calendar } from '../../../components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '../../../components/ui/popover';
+import { format } from 'date-fns';
+import { cn } from '../../../components/ui/utils';
+import { useNavigate,useLocation } from 'react-router-dom';
 
 type PaymentStatus = 'Not Paid' | 'Partially Paid' | 'Fully Paid';
 
@@ -22,7 +18,10 @@ const MOCK_CUSTOMERS = [
   { id: 'CUST-003', name: 'Amit Patel', phone: '9876543212', gstNumber: '27WXYZ56789A1B2' },
 ];
 
-export function CreateOrderScreen({ onNavigate }: CreateOrderScreenProps) {
+export function CreateOrderScreen() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const [customerSearch, setCustomerSearch] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<typeof MOCK_CUSTOMERS[0] | null>(null);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
@@ -30,7 +29,7 @@ export function CreateOrderScreen({ onNavigate }: CreateOrderScreenProps) {
   const [brickQuantity, setBrickQuantity] = useState('');
   const [deliveryDate, setDeliveryDate] = useState<Date | undefined>(undefined);
   const [pricePerBrick, setPricePerBrick] = useState('');
-  const [location, setLocation] = useState('');
+  const [deliveryLocation, setDeliveryLocation] = useState('');
   const [finalPrice, setFinalPrice] = useState('');
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('Not Paid');
   const [amountPaid, setAmountPaid] = useState('');
@@ -65,8 +64,8 @@ export function CreateOrderScreen({ onNavigate }: CreateOrderScreenProps) {
     } else if (parseFloat(pricePerBrick) <= 0) {
       newErrors.pricePerBrick = 'Price per brick must be greater than 0';
     }
-    
-    if (!location) newErrors.location = 'Location is required';
+
+    if (!deliveryLocation) newErrors.deliveryLocation = 'Delivery location is required';
     if (!finalPrice) newErrors.finalPrice = 'Final price is required';
 
     if (paymentStatus === 'Partially Paid') {
@@ -100,7 +99,7 @@ export function CreateOrderScreen({ onNavigate }: CreateOrderScreenProps) {
 
   const handlePopupClose = () => {
     setShowSuccessPopup(false);
-    onNavigate('orders');
+    navigate('/admin/orders', { replace: true });
   };
 
   const filteredCustomers = MOCK_CUSTOMERS.filter(
@@ -109,13 +108,21 @@ export function CreateOrderScreen({ onNavigate }: CreateOrderScreenProps) {
       c.name.toLowerCase().includes(customerSearch.toLowerCase())
   );
 
+  const handleBack = () => {
+  if (location.state?.from) {
+    navigate(location.state.from);
+  } else {
+    navigate('/admin/orders', { replace: true });
+  }
+};
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => onNavigate('orders')}
+            onClick={handleBack}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -288,12 +295,12 @@ export function CreateOrderScreen({ onNavigate }: CreateOrderScreenProps) {
               <input
                 id="location"
                 type="text"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
+                value={deliveryLocation}
+                onChange={(e) => setDeliveryLocation(e.target.value)}
                 placeholder="Enter delivery location"
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
               />
-              {errors.location && <p className="text-red-600 text-sm mt-1">{errors.location}</p>}
+              {errors.deliveryLocation && <p className="text-red-600 text-sm mt-1">{errors.deliveryLocation}</p>}
             </div>
 
             {/* Final Price */}
