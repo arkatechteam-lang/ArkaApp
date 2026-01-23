@@ -319,14 +319,18 @@ export function OrderDetailsScreen() {
 
   const handlePopupClose = () => {
     setShowSuccessPopup(false);
-    navigate('/admin/orders', { replace: true });
+    if (location.state?.from) {
+    navigate(location.state.from, { replace: true });
+  } else {
+    navigate("/admin/orders", { replace: true });
+  }
   };
 
   const handleBack = () => {
   if (location.state?.from) {
     navigate(location.state.from);
   } else {
-    navigate('/admin/orders', { replace: true });
+    navigate('/admin/orders');
   }
 };
 
@@ -340,7 +344,7 @@ export function OrderDetailsScreen() {
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />
-            Back to Orders
+            Back 
           </button>
           <h1 className="text-gray-900">Order Details</h1>
           <p className="text-gray-600 mt-1">Edit order information - {order.id}</p>
