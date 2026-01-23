@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { ArrowLeft, CalendarIcon } from 'lucide-react';
-import {  AdminOrder } from '../../../AdminApp';
-import { Popup } from '../../../components/Popup';
-import { Calendar } from '../../../components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '../../../components/ui/popover';
+import {  AdminOrder } from '../../../../AdminApp';
+import { Popup } from '../../../../components/Popup';
+import { Calendar } from '../../../../components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '../../../../components/ui/popover';
 import { format } from 'date-fns';
-import { cn } from '../../../components/ui/utils';
-import { useParams,useNavigate,useLocation } from 'react-router-dom';
+import { cn } from '../../../../components/ui/utils';
+import { useParams } from 'react-router-dom';
+import { useAdminNavigation } from '../../../hooks/useAdminNavigation';
 
 
 type PaymentStatus = 'Not Paid' | 'Partially Paid' | 'Fully Paid';
@@ -234,8 +235,7 @@ const MOCK_ORDERS: AdminOrder[] = [
 ];
 
 export function OrderDetailsScreen() {
-  const navigate = useNavigate();
-  const location = useLocation();
+  const { goBack } = useAdminNavigation();
   const {orderId} = useParams<{ orderId: string }>();
   console.log('Order ID:', orderId);
   const order = MOCK_ORDERS.find((o) => o.id == orderId);
@@ -319,20 +319,8 @@ export function OrderDetailsScreen() {
 
   const handlePopupClose = () => {
     setShowSuccessPopup(false);
-    if (location.state?.from) {
-    navigate(location.state.from, { replace: true });
-  } else {
-    navigate("/admin/orders", { replace: true });
-  }
+    goBack('/admin/orders');
   };
-
-  const handleBack = () => {
-  if (location.state?.from) {
-    navigate(location.state.from);
-  } else {
-    navigate('/admin/orders');
-  }
-};
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -340,7 +328,7 @@ export function OrderDetailsScreen() {
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={handleBack}
+            onClick={() => goBack('/admin/orders')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />

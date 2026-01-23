@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { ArrowLeft, CalendarIcon } from 'lucide-react';
-import { Popup } from '../../../components/Popup';
-import { CustomerCreationModal } from '../../../components/admin/CustomerCreationModal';
-import { Calendar } from '../../../components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '../../../components/ui/popover';
+import { Popup } from '../../../../components/Popup';
+import { CustomerCreationModal } from '../../../../components/admin/CustomerCreationModal';
+import { Calendar } from '../../../../components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '../../../../components/ui/popover';
 import { format } from 'date-fns';
-import { cn } from '../../../components/ui/utils';
-import { useNavigate,useLocation } from 'react-router-dom';
+import { cn } from '../../../../components/ui/utils';
+import { useAdminNavigation } from '../../../hooks/useAdminNavigation';
 
 type PaymentStatus = 'Not Paid' | 'Partially Paid' | 'Fully Paid';
 
@@ -19,9 +19,7 @@ const MOCK_CUSTOMERS = [
 ];
 
 export function CreateOrderScreen() {
-  const navigate = useNavigate();
-  const location = useLocation();
-
+  const { goBack } = useAdminNavigation();
   const [customerSearch, setCustomerSearch] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<typeof MOCK_CUSTOMERS[0] | null>(null);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
@@ -99,7 +97,7 @@ export function CreateOrderScreen() {
 
   const handlePopupClose = () => {
     setShowSuccessPopup(false);
-    navigate('/admin/orders', { replace: true });
+    goBack('/admin/orders');
   };
 
   const filteredCustomers = MOCK_CUSTOMERS.filter(
@@ -108,13 +106,7 @@ export function CreateOrderScreen() {
       c.name.toLowerCase().includes(customerSearch.toLowerCase())
   );
 
-  const handleBack = () => {
-  if (location.state?.from) {
-    navigate(location.state.from);
-  } else {
-    navigate('/admin/orders', { replace: true });
-  }
-};
+  
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -122,7 +114,7 @@ export function CreateOrderScreen() {
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={handleBack}
+            onClick={() => goBack('/admin/orders')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />

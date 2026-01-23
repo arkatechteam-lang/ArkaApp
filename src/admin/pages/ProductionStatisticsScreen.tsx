@@ -3,10 +3,8 @@ import { ArrowLeft } from 'lucide-react';
 import { AdminScreen } from '../../AdminApp';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useNavigate } from 'react-router-dom';
+import { useAdminNavigation } from '../hooks/useAdminNavigation';
 
-interface ProductionStatisticsScreenProps {
-  onNavigate: (screen: AdminScreen) => void;
-}
 
 interface ProductionEntry {
   date: string;
@@ -92,8 +90,8 @@ const PRODUCTION_ENTRIES: ProductionEntry[] = [
   { date: '2025-12-01', bricks: 15000, round: 4, wetAshKg: 2050, marblePowderKg: 1250, crusherPowderKg: 1500, flyAshKg: 1850, cementKg: 620 },
 ];
 
-export function ProductionStatisticsScreen({ onNavigate }: ProductionStatisticsScreenProps) {
-  const navigate = useNavigate();
+export function ProductionStatisticsScreen() {
+  const { goBack } = useAdminNavigation();
   const [displayCount, setDisplayCount] = useState(10);
 
   const displayedEntries = PRODUCTION_ENTRIES.slice(0, displayCount);
@@ -122,7 +120,7 @@ export function ProductionStatisticsScreen({ onNavigate }: ProductionStatisticsS
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => navigate('/admin/home')}
+            onClick={() => goBack('/admin/home')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />

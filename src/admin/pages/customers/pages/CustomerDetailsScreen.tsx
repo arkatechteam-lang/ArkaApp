@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { AdminScreen, Customer, AdminOrder } from "../../../AdminApp";
+import { AdminScreen, Customer, AdminOrder } from "../../../../AdminApp";
 import { ArrowLeft, Plus, Edit2, Trash2, X } from "lucide-react";
-import { Popup } from "../../../components/Popup";
+import { Popup } from "../../../../components/Popup";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useAdminNavigation } from "../../../hooks/useAdminNavigation";
 
 interface Payment {
   id: string;
@@ -178,8 +179,7 @@ const RECEIVER_ACCOUNTS = [
 
 export function CustomerDetailsScreen() {
   const { customerId } = useParams<{ customerId: string }>();
-  const navigate = useNavigate();
-  const location = useLocation();
+  const { goBack, goTo } = useAdminNavigation();
   const customer = MOCK_CUSTOMERS.find((c) => c.id === customerId);
 
   const [activeTab, setActiveTab] = useState<"Orders" | "Payments">("Orders");
@@ -439,13 +439,7 @@ export function CustomerDetailsScreen() {
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => {
-              if (location.state?.from) {
-                navigate(location.state.from);
-              } else {
-                navigate("/admin/customers", { replace: true });
-              }
-            }}
+            onClick={() => goBack('/admin/customers')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -612,11 +606,7 @@ export function CustomerDetailsScreen() {
                       {displayedOrders.map((order) => (
                         <tr
                           key={order.id}
-                          onClick={() =>
-                            navigate(`/admin/orders/${order.id}`, {
-                              state: { from: location.pathname },
-                            })
-                          }
+                          onClick={() => goTo(`/admin/orders/${order.id}`)}
                           className="cursor-pointer hover:bg-gray-50 transition-colors"
                         >
                           <td className="px-4 py-4 text-gray-900">
@@ -670,11 +660,7 @@ export function CustomerDetailsScreen() {
                   {displayedOrders.map((order) => (
                     <div
                       key={order.id}
-                      onClick={() =>
-                        navigate(`/admin/orders/${order.id}`, {
-                          state: { from: location.pathname },
-                        })
-                      }
+                      onClick={() => goTo(`/admin/orders/${order.id}`)}
                       className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer"
                     >
                       <div className="flex justify-between items-start mb-3">

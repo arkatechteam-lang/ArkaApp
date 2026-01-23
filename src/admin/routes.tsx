@@ -10,8 +10,8 @@ import { SalaryLedgerScreen } from "./pages/SalaryLedgerScreen";
 import { VendorManagementScreen } from "./pages/VendorManagementScreen";
 import { CashFlowScreen } from "./pages/CashFlowScreen";
 import { LoanManagementScreen } from "./pages/LoanManagementScreen";
-import { OrdersRoutes } from "./orders/routes";
-import { CustomersRoutes } from "./customers/routes";
+import { OrdersRoutes } from "./pages/orders/routes";
+import { CustomersRoutes } from "./pages/customers/routes";
 
 export function AdminRoutes() {
   return (

@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { ArrowLeft, Plus, AlertCircle } from "lucide-react";
-import { AdminOrder } from "../../../AdminApp";
-import { useNavigate, useLocation } from "react-router-dom";
+import { AdminOrder } from "../../../../AdminApp";
+import { useAdminNavigation } from "../../../hooks/useAdminNavigation";
+
 
 type OrderTab = "Today" | "Undelivered" | "Delivered" | "Unpaid";
 
@@ -227,8 +228,7 @@ const MOCK_ORDERS: AdminOrder[] = [
 ];
 
 export function OrderManagementScreen() {
-  const navigate = useNavigate();
-  const location = useLocation();
+  const { goTo,goBack } = useAdminNavigation();
   const [activeTab, setActiveTab] = useState<OrderTab>("Today");
   const [displayCount, setDisplayCount] = useState(10);
 
@@ -276,7 +276,7 @@ export function OrderManagementScreen() {
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => navigate("/admin/home", { replace: true })}
+            onClick={() => goBack("/admin/home")}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -290,9 +290,7 @@ export function OrderManagementScreen() {
             </div>
             <button
               onClick={() =>
-                navigate("create", {
-                  state: { from: location.pathname },
-                })
+                goTo("create")
               }
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
@@ -382,9 +380,7 @@ export function OrderManagementScreen() {
                         <tr
                           key={order.id}
                           onClick={() =>
-                            navigate(`${order.id}`, {
-                              state: { from: location.pathname },
-                            })
+                            goTo(`${order.id}`)
                           }
                           className={`cursor-pointer hover:bg-gray-50 transition-colors ${
                             isOrderOverdue(order) ? "text-red-600" : ""
@@ -450,11 +446,7 @@ export function OrderManagementScreen() {
                   {displayedOrders.map((order) => (
                     <div
                       key={order.id}
-                      onClick={() =>
-                        navigate(`${order.id}`, {
-                          state: { from: location.pathname },
-                        })
-                      }
+                      onClick={() => goTo(`${order.id}`)}
                       className={`bg-white border rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow ${
                         isOrderOverdue(order)
                           ? "border-red-300 bg-red-50"
