@@ -1,16 +1,9 @@
 import React, { useState } from 'react';
-import { AdminScreen } from '../../AdminApp';
+import { AdminScreen } from '../../../../AdminApp';
 import { ArrowLeft, Save } from 'lucide-react';
-import { Popup } from '../Popup';
+import { Popup } from '../../../../components/Popup';
 import { CreateExpenseTypePopup } from './CreateExpenseTypePopup';
-
-interface CreateExpenseScreenProps {
-  onNavigate: (screen: AdminScreen) => void;
-  expenseTypes: string[];
-  expenseSubtypes: Record<string, string[]>;
-  onTypeCreated: (typeName: string) => void;
-  onSubtypeCreated: (type: string, subtype: string) => void;
-}
+import { useAdminNavigation } from '../../../hooks/useAdminNavigation';
 
 // Mock account numbers from Cash Flow Management
 const MOCK_ACCOUNTS = [
@@ -18,13 +11,8 @@ const MOCK_ACCOUNTS = [
   { id: 'ACC-002', accountNumber: '7894561' },
 ];
 
-export function CreateExpenseScreen({ 
-  onNavigate, 
-  expenseTypes, 
-  expenseSubtypes, 
-  onTypeCreated,
-  onSubtypeCreated 
-}: CreateExpenseScreenProps) {
+export function CreateExpenseScreen() {
+  const { goBack, exitTo , goTo } = useAdminNavigation();
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     type: '',
@@ -40,6 +28,23 @@ export function CreateExpenseScreen({
   const [showPopup, setShowPopup] = useState(false);
   const [popupStatus, setPopupStatus] = useState<'success' | 'error'>('success');
   const [showCreateTypePopup, setShowCreateTypePopup] = useState(false);
+
+  const expenseTypes = [
+  'Procurement',
+  'Salary',
+  'Fuel',
+  'Equipment Service',
+  'Others',
+];
+
+const expenseSubtypes: Record<string, string[]> = {
+  Procurement: ['Fly Ash', 'Crusher Powder'],
+  Salary: ['Production Workers', 'Office Staff'],
+  Fuel: ['Diesel', 'Petrol'],
+  'Equipment Service': ['Machine Maintenance'],
+  Others: ['Office Supplies'],
+};
+
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -81,7 +86,7 @@ export function CreateExpenseScreen({
   const handlePopupClose = () => {
     setShowPopup(false);
     if (popupStatus === 'success') {
-      onNavigate('accounts');
+      exitTo('/admin/accounts');
     }
   };
 
@@ -91,7 +96,7 @@ export function CreateExpenseScreen({
   };
 
   const handleTypeCreatedFromPopup = (typeName: string) => {
-    onTypeCreated(typeName);
+    // onTypeCreated(typeName);
     setFormData({ ...formData, type: typeName, subtype: '' });
   };
 
@@ -104,7 +109,7 @@ export function CreateExpenseScreen({
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => onNavigate('accounts')}
+            onClick={() => goBack('/admin/accounts')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -173,7 +178,7 @@ export function CreateExpenseScreen({
                 </label>
                 <button
                   type="button"
-                  onClick={() => onNavigate('create-expense-subtype')}
+                  onClick={() => goTo('/admin/accounts/expense-subtype')}
                   className="text-blue-600 hover:text-blue-700 text-sm underline"
                 >
                   Create Subtype
@@ -310,7 +315,7 @@ export function CreateExpenseScreen({
             <div className="flex justify-end gap-4">
               <button
                 type="button"
-                onClick={() => onNavigate('accounts')}
+                onClick={() => exitTo('/admin/accounts')}
                 className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
               >
                 Cancel

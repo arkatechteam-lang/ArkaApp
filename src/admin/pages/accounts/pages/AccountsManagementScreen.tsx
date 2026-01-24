@@ -1,14 +1,9 @@
 import React, { useState } from 'react';
-import { AdminScreen, Expense, AdminOrder } from '../../AdminApp';
+import { AdminScreen, Expense, AdminOrder } from '../../../../AdminApp';
 import { ArrowLeft, Plus, Wallet, X } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
-import { useNavigate } from 'react-router-dom';
+import { useAdminNavigation } from '../../../hooks/useAdminNavigation';
 
-interface AccountsManagementScreenProps {
-  onNavigate: (screen: AdminScreen) => void;
-  onExpenseEdit: (expense: Expense) => void;
-  onOrderSelect: (order: AdminOrder) => void;
-}
 
 const MOCK_EXPENSES: Expense[] = [
   { id: 'EXP-001', date: '2025-12-08', type: 'Procurement', subtype: 'Fly Ash', amount: 50000, comments: 'Fly Ash purchase from ABC Suppliers', status: 'Paid', modeOfPayment: 'Bank Transfer', sai: '3455332', rai: 'ABC Suppliers - 9876543210' },
@@ -80,8 +75,8 @@ const MOCK_ORDERS: AdminOrder[] = [
 
 type FilterType = 'Last month' | 'Last year' | 'Custom range';
 
-export function AccountsManagementScreen({ onNavigate, onExpenseEdit, onOrderSelect }: AccountsManagementScreenProps) {
-  const navigate = useNavigate();
+export function AccountsManagementScreen() {
+  const { goBack, goTo } = useAdminNavigation();
   const [filterType, setFilterType] = useState<FilterType>('Last month');
   const [showCustomRangeModal, setShowCustomRangeModal] = useState(false);
   const [customStartDate, setCustomStartDate] = useState('');
@@ -156,7 +151,7 @@ export function AccountsManagementScreen({ onNavigate, onExpenseEdit, onOrderSel
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => navigate('/admin/home')}
+            onClick={() => goBack('/admin/home')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -182,7 +177,7 @@ export function AccountsManagementScreen({ onNavigate, onExpenseEdit, onOrderSel
               
               {/* Add Expense Button */}
               <button
-                onClick={() => onNavigate('create-expense')}
+                onClick={() => goTo('/admin/accounts/expense')}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
               >
                 <Plus className="w-5 h-5" />
@@ -229,7 +224,7 @@ export function AccountsManagementScreen({ onNavigate, onExpenseEdit, onOrderSel
                 {MOCK_ORDERS.map((order) => (
                   <div
                     key={order.id}
-                    onClick={() => onOrderSelect(order)}
+                    onClick={() => goTo(`/admin/orders/${order.id}`)}
                     className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors"
                   >
                     <div className="grid grid-cols-4 gap-4 text-sm">
@@ -321,7 +316,7 @@ export function AccountsManagementScreen({ onNavigate, onExpenseEdit, onOrderSel
                 {filteredExpenses.map((expense) => (
                   <div
                     key={expense.id}
-                    onClick={() => onExpenseEdit(expense)}
+                    onClick={() => goTo(`/admin/accounts/expense/${expense.id}`)}
                     className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors"
                   >
                     <div className="grid grid-cols-5 gap-3 text-sm">

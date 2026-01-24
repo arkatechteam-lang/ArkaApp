@@ -1,17 +1,27 @@
 import React, { useState } from 'react';
-import { AdminScreen, Expense } from '../../AdminApp';
+import { AdminScreen, Expense } from '../../../../AdminApp';
 import { ArrowLeft, Save, Trash2 } from 'lucide-react';
-import { Popup } from '../Popup';
+import { Popup } from '../../../../components/Popup';
 import { CreateExpenseTypePopup } from './CreateExpenseTypePopup';
+import { useParams } from 'react-router-dom';
+import { useAdminNavigation } from '../../../hooks/useAdminNavigation';
 
-interface EditExpenseScreenProps {
-  expense: Expense;
-  onNavigate: (screen: AdminScreen) => void;
-  expenseTypes: string[];
-  expenseSubtypes: Record<string, string[]>;
-  onTypeCreated: (typeName: string) => void;
-  onSubtypeCreated: (type: string, subtype: string) => void;
-}
+const expenseTypes = [
+  'Procurement',
+  'Salary',
+  'Fuel',
+  'Equipment Service',
+  'Others',
+];
+
+const expenseSubtypes: Record<string, string[]> = {
+  Procurement: ['Fly Ash', 'Crusher Powder'],
+  Salary: ['Production Workers', 'Office Staff'],
+  Fuel: ['Diesel', 'Petrol'],
+  'Equipment Service': ['Machine Maintenance'],
+  Others: ['Office Supplies'],
+};
+
 
 // Mock account numbers from Cash Flow Management
 const MOCK_ACCOUNTS = [
@@ -19,14 +29,31 @@ const MOCK_ACCOUNTS = [
   { id: 'ACC-002', accountNumber: '7894561' },
 ];
 
-export function EditExpenseScreen({ 
-  expense, 
-  onNavigate, 
-  expenseTypes, 
-  expenseSubtypes, 
-  onTypeCreated,
-  onSubtypeCreated 
-}: EditExpenseScreenProps) {
+export function EditExpenseScreen() {
+  const params = useParams();
+const expenseId = params.expenseId;
+const { goBack, exitTo ,goTo } = useAdminNavigation();
+
+const MOCK_EXPENSES: Expense[] = [
+  { id: 'EXP-001', date: '2025-12-08', type: 'Procurement', subtype: 'Fly Ash', amount: 50000, comments: 'Fly Ash purchase from ABC Suppliers', status: 'Paid', modeOfPayment: 'Bank Transfer', sai: '3455332', rai: 'ABC Suppliers - 9876543210' },
+  { id: 'EXP-002', date: '2025-12-08', type: 'Salary', subtype: 'Production Workers', amount: 35000, comments: 'Weekly salary for production workers', status: 'Paid', modeOfPayment: 'UPI', sai: '7894561', rai: 'Employees Salary Fund' },
+  { id: 'EXP-003', date: '2025-12-07', type: 'Equipment Service', subtype: 'Machine Maintenance', amount: 15000, comments: 'Brick making machine maintenance', status: 'Pending', modeOfPayment: 'Cheque', sai: '3455332', rai: 'Service Center - 1234567890' },
+  { id: 'EXP-004', date: '2025-12-07', type: 'Fuel', subtype: 'Diesel', amount: 8000, comments: 'Diesel for generator and vehicles', status: 'Paid', modeOfPayment: 'Cash' },
+  { id: 'EXP-005', date: '2025-12-06', type: 'Procurement', subtype: 'Crusher Powder', amount: 80000, comments: 'Crusher Powder from XYZ Materials', status: 'Paid', modeOfPayment: 'Bank Transfer', sai: '7894561', rai: 'XYZ Materials - 8765432109' },
+  { id: 'EXP-006', date: '2025-12-06', type: 'Others', subtype: 'Office Supplies', amount: 5000, comments: 'Office supplies and miscellaneous', status: 'Paid', modeOfPayment: 'Cash' },
+  { id: 'EXP-007', date: '2025-12-05', type: 'Salary', subtype: 'Production Workers', amount: 35000, comments: 'Weekly salary for production workers', status: 'Paid', modeOfPayment: 'UPI', sai: '3455332', rai: 'Employees Salary Fund' },
+  { id: 'EXP-008', date: '2025-12-05', type: 'Fuel', subtype: 'Diesel', amount: 7500, comments: 'Diesel and petrol for vehicles', status: 'Paid', modeOfPayment: 'Cash' },
+];
+
+const expense = MOCK_EXPENSES.find(e => e.id === expenseId);
+
+if (!expense) {
+  return (
+    <div className="p-6 text-center text-red-600">
+      Expense not found
+    </div>
+  );
+}
   const [formData, setFormData] = useState({
     date: expense.date,
     type: expense.type,
@@ -94,7 +121,7 @@ export function EditExpenseScreen({
   const handlePopupClose = () => {
     setShowPopup(false);
     if (popupStatus === 'success') {
-      onNavigate('accounts');
+      exitTo('/admin/accounts');
     }
   };
 
@@ -104,7 +131,7 @@ export function EditExpenseScreen({
   };
 
   const handleTypeCreatedFromPopup = (typeName: string) => {
-    onTypeCreated(typeName);
+    // onTypeCreated(typeName);
     setFormData({ ...formData, type: typeName, subtype: '' });
   };
 
@@ -117,7 +144,7 @@ export function EditExpenseScreen({
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => onNavigate('accounts')}
+            onClick={() => goBack('/admin/accounts')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -186,7 +213,7 @@ export function EditExpenseScreen({
                 </label>
                 <button
                   type="button"
-                  onClick={() => onNavigate('create-expense-subtype')}
+                  onClick={() => goTo('/admin/accounts/expense-subtype')}
                   className="text-blue-600 hover:text-blue-700 text-sm underline"
                 >
                   Create Subtype

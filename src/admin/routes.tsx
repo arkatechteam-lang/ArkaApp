@@ -12,6 +12,8 @@ import { CashFlowScreen } from "./pages/CashFlowScreen";
 import { LoanManagementScreen } from "./pages/LoanManagementScreen";
 import { OrdersRoutes } from "./pages/orders/routes";
 import { CustomersRoutes } from "./pages/customers/routes";
+import { InventoryRoutes } from "./pages/Inventory/routes";
+import { AccountsRoutes } from "./pages/accounts/routes";
 
 export function AdminRoutes() {
   return (
@@ -28,9 +30,9 @@ export function AdminRoutes() {
       {/* Other Admin Routes */}
       <Route path="orders/*" element={<OrdersRoutes />} />
       <Route path="production" element={<ProductionStatisticsScreen />} />
-       <Route path="inventory" element={<InventoryManagementScreen />} />
-     <Route path="customers/*" element={<CustomersRoutes />} />
-      <Route path="accounts" element={<AccountsManagementScreen />} />
+      <Route path="inventory/*" element={<InventoryRoutes />} />
+      <Route path="customers/*" element={<CustomersRoutes />} />
+      <Route path="accounts/*" element={<AccountsRoutes />} />
       <Route path="metrics" element={<MetricsScreen />} />
       <Route path="employees" element={<EmployeeManagementScreen />} />
       <Route path="salarys" element={<SalaryLedgerScreen />} />

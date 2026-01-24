@@ -8,8 +8,8 @@ import { CustomerManagementScreen } from './admin/pages/CustomerManagementScreen
 import { CustomerDetailsScreen } from './components/admin/CustomerDetailsScreen';
 import { AccountsManagementScreen } from './admin/pages/AccountsManagementScreen';
 import { CreateExpenseScreen } from './components/admin/CreateExpenseScreen';
-import { CreateExpenseSubtypeScreen } from './components/admin/CreateExpenseSubtypeScreen';
-import { EditExpenseScreen } from './components/admin/EditExpenseScreen';
+import { CreateExpenseSubtypeScreen } from './admin/pages/accounts/pages/CreateExpenseSubtypeScreen';
+import { EditExpenseScreen } from './admin/pages/accounts/pages/EditExpenseScreen';
 import { MetricsScreen } from './admin/pages/MetricsScreen';
 import { EmployeeManagementScreen } from './admin/pages/EmployeeManagementScreen';
 import { CreateEmployeeScreen } from './components/admin/CreateEmployeeScreen';
