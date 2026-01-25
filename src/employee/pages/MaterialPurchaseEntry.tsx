@@ -11,15 +11,21 @@ import { format } from "date-fns";
 import { cn } from "../../components/ui/utils";
 import { useNavigate } from "react-router-dom";
 import { validateMaterialPurchase } from "../validators/materialPurchase.validator";
-import { Material, MaterialPurchaseInput } from "../types";
+import { MaterialPurchaseInput } from "../types";
 import { useMaterialPurchase } from "../hooks/useMaterialPurchase";
-import { MATERIALS, MATERIAL_UNITS } from "../constants/materials";
 
 export function MaterialPurchaseEntry() {
   const navigate = useNavigate();
-  const { vendors, vendorsLoading, submitMaterialPurchase, loading, error } =
-    useMaterialPurchase();
-  const [material, setMaterial] = useState<Material | "">("");
+  const { 
+    vendors,
+    vendorsLoading,
+    submitMaterialPurchase,
+    loading,
+    error,
+    materials,
+    materialsLoading
+  } = useMaterialPurchase();
+  const [material, setMaterial] = useState<string>("");
   const [vendor, setVendor] = useState("");
   const [quantity, setQuantity] = useState("");
   const [date, setDate] = useState<Date | undefined>(new Date());
@@ -27,12 +33,14 @@ export function MaterialPurchaseEntry() {
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [showErrorPopup, setShowErrorPopup] = useState(false);
 
+  const selectedMaterialUnit = materials.find(m => m.id === material)?.unit;
+
   const handleSubmit = async () => {
-    if (!date) return;
+    if (!date || !material || !vendor || !quantity) return;
 
     const payload: MaterialPurchaseInput = {
-      material,
-      vendorId: vendor,
+      material_id: material,
+      vendor_id: vendor,
       quantity: Number(quantity),
       date: date.toISOString(),
     };
@@ -84,13 +92,14 @@ export function MaterialPurchaseEntry() {
               <select
                 id="material"
                 value={material}
-                onChange={(e) => setMaterial(e.target.value as Material)}
+                onChange={(e) => setMaterial(e.target.value)}
+                disabled={materialsLoading}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
               >
                 <option value="">Select Material</option>
-                {MATERIALS.map((mat) => (
-                  <option key={mat} value={mat}>
-                    {mat}
+                {materials.map((material) => (
+                  <option key={material.id} value={material.id}>
+                    {material.name}
                   </option>
                 ))}
               </select>
@@ -111,9 +120,9 @@ export function MaterialPurchaseEntry() {
                 disabled={vendorsLoading}
               >
                 <option value="">Select Vendor</option>
-                {vendors.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.name}
+                {vendors.map((vendor) => (
+                  <option key={vendor.id} value={vendor.id}>
+                    {vendor.name}
                   </option>
                 ))}
               </select>
@@ -125,7 +134,7 @@ export function MaterialPurchaseEntry() {
             {/* Quantity */}
             <div>
               <label htmlFor="quantity" className="block text-gray-700 mb-2">
-                Quantity {material && `(${MATERIAL_UNITS[material]})`}{" "}
+                Quantity {material && `(${selectedMaterialUnit})`}{" "}
                 <span className="text-red-600">*</span>
               </label>
               <input
@@ -135,7 +144,7 @@ export function MaterialPurchaseEntry() {
                 onChange={(e) => setQuantity(e.target.value)}
                 onWheel={(e) => e.currentTarget.blur()}
                 placeholder={`Enter quantity${
-                  material ? ` in ${MATERIAL_UNITS[material]}` : ""
+                  material ? ` in ${selectedMaterialUnit}` : ""
                 }`}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 min="0"
@@ -173,7 +182,7 @@ export function MaterialPurchaseEntry() {
                     mode="single"
                     selected={date}
                     onSelect={setDate}
-                    disabled={(date) => date > new Date()}
+                    disabled={(date: Date) => date > new Date()}
                     initialFocus
                   />
                 </PopoverContent>
@@ -206,7 +215,7 @@ export function MaterialPurchaseEntry() {
       )}
 
       {/* Failure Popup */}
-      {showErrorPopup && (
+      {showErrorPopup && error && (
         <Popup
           title="Submission Failed"
           message={error}

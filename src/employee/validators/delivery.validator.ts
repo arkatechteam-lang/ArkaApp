@@ -7,7 +7,7 @@ export function validateDelivery(input: DeliveryInput) {
   if (!input.quantity || input.quantity <= 0)
     errors.quantity = "Quantity must be greater than 0";
 
-  if (input.paymentStatus === "Partially paid") {
+  if (input.paymentStatus === "PARTIALLY_PAID") {
     if (!input.paidAmount || input.paidAmount <= 0) {
       errors.paidAmount = "Paid amount is required";
     }
