@@ -110,7 +110,7 @@ export function ProductionEntry() {
                     mode="single"
                     selected={date}
                     onSelect={setDate}
-                    disabled={(date) => date > new Date()}
+                    disabled={(date: Date) => date > new Date()}
                     initialFocus
                   />
                 </PopoverContent>

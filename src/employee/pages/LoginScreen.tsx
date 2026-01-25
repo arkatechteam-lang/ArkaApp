@@ -1,53 +1,66 @@
 import React, { useState, useEffect } from "react";
 import { LogIn, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-
-// Mock employee database
-const MOCK_EMPLOYEES = [
-  { phone: "9876543210", password: "password123" },
-  { phone: "9876543211", password: "emp12345" },
-];
+import { login, validateSession } from "../../services/middleware.service";
 
 export function LoginScreen() {
   const navigate = useNavigate();
-  const [phoneNumber, setPhoneNumber] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isValid, setIsValid] = useState(false);
 
   useEffect(() => {
-    // Validate phone number
-    if (phoneNumber.length > 0 && phoneNumber.length !== 10) {
-      setError("Phone number must be exactly 10 digits");
-      setIsValid(false);
-    } else if (phoneNumber.length > 0 && !/^\d+$/.test(phoneNumber)) {
-      setError("Phone number must contain only digits");
+    // Check if user is already logged in
+    async function checkSession() {
+      try {
+        const user = await validateSession();
+        if (user) {
+          navigate("/employee/home");
+        }
+      } catch (error) {
+        console.log("Session validation failed:", error);
+      }
+    }
+
+    checkSession();
+  }, [])
+
+  useEffect(() => {
+    // Validate email address
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (email.length > 0 && !emailRegex.test(email)) {
+      setError("Please enter a valid email address");
       setIsValid(false);
     } else {
       setError("");
-      setIsValid(phoneNumber.length === 10 && password.length > 0);
+      setIsValid(email.length > 0 && password.length > 0 && emailRegex.test(email));
     }
-  }, [phoneNumber, password]);
+  }, [email, password]);
 
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, "").slice(0, 10);
-    setPhoneNumber(value);
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEmail(e.target.value);
   };
 
-  const handleLogin = () => {
-    // Check if credentials match
-    const employee = MOCK_EMPLOYEES.find(
-      (emp) => emp.phone === phoneNumber && emp.password === password
-    );
+  const handleLogin = async () => {
+    try {
+      const result = await login(
+        email,
+        password
+      );
 
-    if (!employee) {
+      console.log("Login successful:", result);
+      navigate("/employee/home");
+    } catch (error) {
       setError(
-        "Incorrect credentials. Please check your phone number and password."
+        "Incorrect credentials. Please check your email and password."
       );
       setIsValid(false);
+      console.log("Login failed:", error);
+
       return;
     }
-    navigate("/employee/home");
   };
 
   return (
@@ -74,17 +87,16 @@ export function LoginScreen() {
 
           <div className="space-y-6">
             <div>
-              <label htmlFor="phone" className="block text-gray-700 mb-2">
-                Phone Number
+              <label htmlFor="email" className="block text-gray-700 mb-2">
+                Email Address
               </label>
               <input
-                id="phone"
-                type="tel"
-                value={phoneNumber}
-                onChange={handlePhoneChange}
-                placeholder="Enter 10-digit phone number"
+                id="email"
+                type="email"
+                value={email}
+                onChange={handleEmailChange}
+                placeholder="Enter your email address"
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                maxLength={10}
               />
             </div>
 
@@ -115,12 +127,6 @@ export function LoginScreen() {
             >
               Login
             </button>
-          </div>
-
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-            <p className="text-gray-600 text-sm mb-2">Demo Credentials:</p>
-            <p className="text-gray-700 text-sm">Phone: 9876543210</p>
-            <p className="text-gray-700 text-sm">Password: password123</p>
           </div>
         </div>
       </div>

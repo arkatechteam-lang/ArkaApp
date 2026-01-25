@@ -4,31 +4,32 @@ import { Order } from "../types";
 import { Popup } from "../../components/Popup";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useDelivery } from "../hooks/useDelivery";
-import { useLoadMen } from "../hooks/useLoadMen";
 import { validateDelivery } from "../validators/delivery.validator";
 import { DeliveryInput, PaymentStatus } from "../types";
 import { TIME_SLOTS } from "../constants/timeSlots";
 
 export function DeliveryEntry() {
   const navigate = useNavigate();
-  const { state } = useLocation();
   const { orderId } = useParams(); // used later for API fetching
-  const { submitDelivery, loading, error } = useDelivery();
-  const {
-    loadMen,
-    loading: loadMenLoading,
-    error: loadMenError,
-  } = useLoadMen();
-  const order = state as Order | null;
 
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
-  const [time, setTime] = useState("");
-  const [quantity, setQuantity] = useState(order ? String(order.quantity) : "");
-  const [payment, setPayment] = useState<PaymentStatus>("Pending");
-  const [paidAmount, setPaidAmount] = useState("");
-  const [gstNumber, setGstNumber] = useState("");
-  const [deliveryChallanNumber, setDeliveryChallanNumber] = useState("");
-  const [selectedLoadMen, setSelectedLoadMen] = useState<string[]>([]);
+  if (!orderId) {
+    return <div>Order not found</div>;
+  }
+
+  const { 
+    updateDelivery, 
+    loading, 
+    error, 
+    loadmen, 
+    order,
+    deliveryInput,
+    selectedLoadmen,
+    updateDeliveryInput,
+    selectLoadman,
+    deselectLoadman,
+    handleLoadManToggle
+  } = useDelivery(orderId);
+
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [showFailurePopup, setShowFailurePopup] = useState(false);
@@ -36,39 +37,15 @@ export function DeliveryEntry() {
   // Get today's date in YYYY-MM-DD format for max attribute
   const today = new Date().toISOString().split("T")[0];
 
-  const handleLoadManToggle = (loadMan: string) => {
-    setSelectedLoadMen((prev) =>
-      prev.includes(loadMan)
-        ? prev.filter((m) => m !== loadMan)
-        : [...prev, loadMan]
-    );
-  };
-  if (!order) {
-    return <div>Order not found</div>;
-  }
-
-  const safeOrder = order;
-
   const handleSubmit = async () => {
-    const payload: DeliveryInput = {
-      orderId: safeOrder.id,
-      date,
-      time,
-      quantity: Number(quantity),
-      paymentStatus: payment,
-      paidAmount: paidAmount ? Number(paidAmount) : undefined,
-      gstNumber,
-      deliveryChallanNumber,
-      loadMen: selectedLoadMen,
-    };
-
-    const validationErrors = validateDelivery(payload);
+    console.log("Submitting delivery:", deliveryInput);
+    const validationErrors = validateDelivery(deliveryInput);
     setErrors(validationErrors);
 
     if (Object.keys(validationErrors).length > 0) return;
 
     try {
-      await submitDelivery(payload);
+      await updateDelivery();
       setShowSuccessPopup(true);
     } catch {
       setShowFailurePopup(true);
@@ -124,7 +101,7 @@ export function DeliveryEntry() {
               <input
                 id="customerNumber"
                 type="text"
-                value={order?.customerNumber}
+                value={order?.customers?.phone || ""}
                 disabled
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
               />
@@ -141,7 +118,7 @@ export function DeliveryEntry() {
               <input
                 id="customerName"
                 type="text"
-                value={order?.customerName}
+                value={order?.customers?.name || ""}
                 disabled
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
               />
@@ -155,7 +132,7 @@ export function DeliveryEntry() {
               <input
                 id="date"
                 type="date"
-                value={date}
+                value={order?.delivery_date || ""}
                 disabled
                 max={today}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
@@ -169,8 +146,8 @@ export function DeliveryEntry() {
               </label>
               <select
                 id="time"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
+                value={deliveryInput?.time || ""}
+                onChange={(e) => updateDeliveryInput("time", e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
               >
                 <option value="">Select Time</option>
@@ -193,8 +170,8 @@ export function DeliveryEntry() {
               <input
                 id="quantity"
                 type="number"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
+                value={deliveryInput?.quantity || ""}
+                onChange={(e) => updateDeliveryInput("quantity", parseInt(e.target.value) || 0)}
                 onWheel={(e) => e.currentTarget.blur()}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 min="0"
@@ -229,7 +206,7 @@ export function DeliveryEntry() {
               <input
                 id="actualAmount"
                 type="text"
-                value={`₹${order?.amount.toLocaleString()}`}
+                value={`₹${order?.final_price}`}
                 disabled
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
               />
@@ -242,18 +219,18 @@ export function DeliveryEntry() {
               </label>
               <select
                 id="payment"
-                value={payment}
-                onChange={(e) => setPayment(e.target.value as PaymentStatus)}
+                value={deliveryInput?.paymentStatus || "NOT_PAID"}
+                onChange={(e) => updateDeliveryInput("paymentStatus", e.target.value as PaymentStatus)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
               >
-                <option value="Pending">Pending</option>
-                <option value="Partially paid">Partially paid</option>
-                <option value="Fully paid">Fully paid</option>
+                <option value="NOT_PAID">Pending</option>
+                <option value="PARTIALLY_PAID">Partially paid</option>
+                <option value="FULLY_PAID">Fully paid</option>
               </select>
             </div>
 
             {/* Paid Amount - Conditional */}
-            {payment === "Partially paid" && (
+            {order && (deliveryInput?.paymentStatus === "PARTIALLY_PAID") && (
               <div>
                 <label
                   htmlFor="paidAmount"
@@ -264,8 +241,8 @@ export function DeliveryEntry() {
                 <input
                   id="paidAmount"
                   type="number"
-                  value={paidAmount}
-                  onChange={(e) => setPaidAmount(e.target.value)}
+                  value={deliveryInput?.paidAmount || ""}
+                  onChange={(e) => updateDeliveryInput("paidAmount", parseFloat(e.target.value) || 0)}
                   onWheel={(e) => e.currentTarget.blur()}
                   placeholder="Enter paid amount"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
@@ -288,12 +265,12 @@ export function DeliveryEntry() {
               <input
                 id="gstNumber"
                 type="text"
-                value={gstNumber}
+                value={deliveryInput?.gstNumber || ""}
                 onChange={(e) => {
                   const value = e.target.value;
                   // Only allow alphanumeric characters (GST format)
                   if (/^[A-Za-z0-9]*$/.test(value)) {
-                    setGstNumber(value.toUpperCase());
+                    updateDeliveryInput("gstNumber", value.toUpperCase());
                   }
                 }}
                 placeholder="Enter GST number (optional)"
@@ -313,8 +290,8 @@ export function DeliveryEntry() {
               <input
                 id="deliveryChallanNumber"
                 type="number"
-                value={deliveryChallanNumber}
-                onChange={(e) => setDeliveryChallanNumber(e.target.value)}
+                value={deliveryInput?.deliveryChallanNumber || ""}
+                onChange={(e) => updateDeliveryInput("deliveryChallanNumber", e.target.value)}
                 onWheel={(e) => e.currentTarget.blur()}
                 placeholder="Enter delivery challan number"
                 className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none ${
@@ -337,14 +314,14 @@ export function DeliveryEntry() {
               </label>
               <div className="border border-gray-300 rounded-lg p-4">
                 <div className="space-y-2">
-                  {loadMen.map((loadMan) => (
+                  {loadmen.map((loadMan) => (
                     <label
                       key={loadMan.id}
                       className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded"
                     >
                       <input
                         type="checkbox"
-                        checked={selectedLoadMen.includes(loadMan.id)}
+                        checked={selectedLoadmen.some(loadman => loadman.id === loadMan.id)}
                         onChange={() => handleLoadManToggle(loadMan.id)}
                         className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                       />
@@ -356,9 +333,9 @@ export function DeliveryEntry() {
               {errors.loadMen && (
                 <p className="text-red-600 text-sm mt-1">{errors.loadMen}</p>
               )}
-              {selectedLoadMen.length > 0 && (
+              {selectedLoadmen.length > 0 && (
                 <p className="text-gray-600 text-sm mt-2">
-                  Selected: {selectedLoadMen.join(", ")}
+                  Selected: {selectedLoadmen.map(l => l.name).join(", ")}
                 </p>
               )}
             </div>
@@ -390,7 +367,7 @@ export function DeliveryEntry() {
       {showFailurePopup && (
         <Popup
           title="Delivery Entry Failed"
-          message={error}
+          message={error ?? ""}
           onClose={() => setShowFailurePopup(false)}
           type="error"
         />
