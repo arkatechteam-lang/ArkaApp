@@ -2,8 +2,6 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { AdminLoginScreen } from "./pages/AdminLoginScreen";
 import { AdminHomeScreen } from "./pages/AdminHomeScreen";
 import { ProductionStatisticsScreen } from "./pages/ProductionStatisticsScreen";
-import { InventoryManagementScreen } from "./pages/InventoryManagementScreen";
-import { AccountsManagementScreen } from "./pages/AccountsManagementScreen";
 import { MetricsScreen } from "./pages/MetricsScreen";
 import { EmployeeManagementScreen } from "./pages/EmployeeManagementScreen";
 import { SalaryLedgerScreen } from "./pages/SalaryLedgerScreen";
