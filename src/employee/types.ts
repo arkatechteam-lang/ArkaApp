@@ -7,11 +7,9 @@ export interface Order {
   amount: number;
 }
 
-export type PaymentStatus = "Pending" | "Partially paid" | "Fully paid";
+export type PaymentStatus = "FULLY_PAID" | "PARTIALLY_PAID" | "NOT_PAID";
 
 export interface DeliveryInput {
-  orderId: string;
-  date: string;
   time: string;
   quantity: number;
   paymentStatus: PaymentStatus;
@@ -44,8 +42,8 @@ export interface Vendor {
 }
 
 export interface MaterialPurchaseInput {
-  material: Material;
-  vendorId: string;
+  material_id: string;
+  vendor_id: string;
   quantity: number;
   date: string;
 }

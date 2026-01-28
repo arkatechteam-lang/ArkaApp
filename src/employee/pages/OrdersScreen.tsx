@@ -1,6 +1,5 @@
 import React from "react";
 import { ArrowLeft, MapPin, Phone, Package } from "lucide-react";
-import { Order } from "../types";
 import { useNavigate } from "react-router-dom";
 import { useOrders } from "../hooks/useOrders";
 
@@ -14,6 +13,10 @@ export function OrdersScreen() {
 
   if (error) {
     return <div className="p-6 text-red-600">{error}</div>;
+  }
+
+  const navigateToDeliveryEntryScreen = (orderId: string) => {
+    navigate(`/employee/orders/${orderId}/delivery`);
   }
 
   return (
@@ -41,15 +44,13 @@ export function OrdersScreen() {
             <button
               key={order.id}
               onClick={() =>
-                navigate(`/employee/orders/${order.id}/delivery`, {
-                  state: order,
-                })
+                navigateToDeliveryEntryScreen(order.id)
               }
               className="w-full bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow text-left group"
             >
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
                 <div>
-                  <h3 className="text-gray-900 mb-1">{order.customerName}</h3>
+                  <h3 className="text-gray-900 mb-1">{order.customers?.name}</h3>
                   <p className="text-gray-500 text-sm">Order ID: {order.id}</p>
                 </div>
                 <div className="mt-2 sm:mt-0">
@@ -64,7 +65,7 @@ export function OrdersScreen() {
                   <Phone className="w-5 h-5 text-gray-400 mt-0.5" />
                   <div>
                     <p className="text-gray-500 text-sm">Phone Number</p>
-                    <p className="text-gray-900">{order.customerNumber}</p>
+                    <p className="text-gray-900">{order.customers?.phone}</p>
                   </div>
                 </div>
 
@@ -73,7 +74,7 @@ export function OrdersScreen() {
                   <div>
                     <p className="text-gray-500 text-sm">Quantity</p>
                     <p className="text-gray-900">
-                      {order.quantity.toLocaleString()} bricks
+                      {order.brick_quantity} bricks
                     </p>
                   </div>
                 </div>
@@ -91,10 +92,12 @@ export function OrdersScreen() {
                 <div>
                   <p className="text-gray-500 text-sm">Order Amount</p>
                   <p className="text-gray-900">
-                    ₹{order.amount.toLocaleString()}
+                    ₹{order.final_price}
                   </p>
                 </div>
-                <div className="text-blue-600 group-hover:translate-x-1 transition-transform">
+                <div 
+                  className="text-blue-600 group-hover:translate-x-1 transition-transform" 
+                  onClick={() => navigateToDeliveryEntryScreen(order.id)}>
                   Select Order →
                 </div>
               </div>
