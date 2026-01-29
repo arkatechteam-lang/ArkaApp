@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { LogIn, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { login, validateSession } from "../../services/middleware.service";
+import {
+  getUserProfile,
+  login,
+  logout,
+  validateSession,
+} from "../../services/middleware.service";
 
 export function LoginScreen() {
   const navigate = useNavigate();
@@ -11,20 +16,25 @@ export function LoginScreen() {
   const [isValid, setIsValid] = useState(false);
 
   useEffect(() => {
-    // Check if user is already logged in
     async function checkSession() {
+      const user = await validateSession();
+      if (!user) return;
+
       try {
-        const user = await validateSession();
-        if (user) {
-          navigate("/employee/home");
+        const profile = await getUserProfile(user.id);
+
+        if (profile.role === "EMPLOYEE") {
+          navigate("/employee/home", { replace: true });
+        } else {
+          await logout();
         }
-      } catch (error) {
-        console.log("Session validation failed:", error);
+      } catch {
+        await logout();
       }
     }
 
     checkSession();
-  }, [])
+  }, []);
 
   useEffect(() => {
     // Validate email address
@@ -35,7 +45,9 @@ export function LoginScreen() {
       setIsValid(false);
     } else {
       setError("");
-      setIsValid(email.length > 0 && password.length > 0 && emailRegex.test(email));
+      setIsValid(
+        email.length > 0 && password.length > 0 && emailRegex.test(email),
+      );
     }
   }, [email, password]);
 
@@ -45,21 +57,22 @@ export function LoginScreen() {
 
   const handleLogin = async () => {
     try {
-      const result = await login(
-        email,
-        password
-      );
+      const session = await login(email, password);
 
-      console.log("Login successful:", result);
-      navigate("/employee/home");
+      const userId = session.user.id;
+      const profile = await getUserProfile(userId);
+
+      if (profile.role !== "EMPLOYEE") {
+        await logout();
+        setError("You are not authorized to access the Employee App.");
+        setIsValid(false);
+        return;
+      }
+
+      navigate("/employee/home", { replace: true });
     } catch (error) {
-      setError(
-        "Incorrect credentials. Please check your email and password."
-      );
+      setError("Incorrect credentials. Please check your email and password.");
       setIsValid(false);
-      console.log("Login failed:", error);
-
-      return;
     }
   };
 

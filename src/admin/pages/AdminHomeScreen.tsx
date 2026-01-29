@@ -15,51 +15,66 @@ import {
   CreditCard,
 } from 'lucide-react';
 import { Popup } from '../../components/Popup';
+import { useEffect, useRef } from "react";
+import { logout } from "../../services/middleware.service";
+import supabase from "../../lib/supabaseClient";
 import { useNavigate } from 'react-router-dom';
 
 
 export function AdminHomeScreen() {
   const [showLogoutPopup, setShowLogoutPopup] = useState(false);
+  const isManualLogout = useRef(false);
   const [logoutStatus, setLogoutStatus] = useState<'success' | 'error' | null>(null);
   const [showSessionExpiredPopup, setShowSessionExpiredPopup] = useState(false);
   const navigate = useNavigate();
 
   // Simulate session expiration check (for demo purposes)
-  React.useEffect(() => {
-    // Simulate random session expiration after some time (for demo)
-    const sessionCheck = setTimeout(() => {
-      const isSessionExpired = Math.random() > 0.95; // 5% chance
-      if (isSessionExpired) {
-        setShowSessionExpiredPopup(true);
-      }
-    }, 10000); // Check after 10 seconds
+  useEffect(() => {
+  const { data: listener } = supabase.auth.onAuthStateChange((event) => {
+    if (event === "SIGNED_OUT" && !isManualLogout.current) {
+      setShowSessionExpiredPopup(true);
+    }
+  });
 
-    return () => clearTimeout(sessionCheck);
-  }, []);
+  return () => {
+    listener.subscription.unsubscribe();
+  };
+}, []);
 
+const redirectToLogin = () => {
+  isManualLogout.current = false;
+  navigate("/admin/login", { replace: true });
+};
   const onLogout = () => {
     navigate('/admin/login');
   };
 
-  const handleLogoutClick = () => {
-    // Simulate logout
-    const success = Math.random() > 0.1; // 90% success rate
-    setLogoutStatus(success ? 'success' : 'error');
+  const handleLogoutClick = async () => {
+  try {
+    isManualLogout.current = true;
+    await logout();
+    setLogoutStatus("success");
+  } catch {
+    setLogoutStatus("error");
+  } finally {
     setShowLogoutPopup(true);
-  };
+  }
+};
 
   const handlePopupClose = () => {
-    setShowLogoutPopup(false);
-    if (logoutStatus === 'success') {
-      onLogout();
-    }
-    setLogoutStatus(null);
-  };
+  setShowLogoutPopup(false);
 
-  const handleSessionExpiredClose = () => {
-    setShowSessionExpiredPopup(false);
-    onLogout();
-  };
+  if (logoutStatus === "success") {
+    redirectToLogin();
+  }
+
+  setLogoutStatus(null);
+};
+
+const handleSessionExpiredClose = () => {
+  setShowSessionExpiredPopup(false);
+  redirectToLogin();
+};
 
   const menuCards = [
     {
