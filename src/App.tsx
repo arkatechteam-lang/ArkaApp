@@ -15,7 +15,7 @@ export default function App() {
         <Route path="/employee/*" element={<EmployeeApp />} />
 
         {/* Admin module (state-driven for now, untouched) */}
-        <Route path="/admin" element={<AdminApp />} />
+        <Route path="/admin/*" element={<AdminApp />} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Shield, ArrowLeft } from 'lucide-react';
+import { useNavigate } from "react-router-dom";
 
-interface AdminLoginScreenProps {
-  onLogin: () => void;
-  onBack?: () => void;
-}
 
 // Mock admin credentials
 const MOCK_ADMINS = [
@@ -12,7 +9,9 @@ const MOCK_ADMINS = [
   { phone: '9999999998', password: 'admin@2024' },
 ];
 
-export function AdminLoginScreen({ onLogin, onBack }: AdminLoginScreenProps) {
+export function AdminLoginScreen() {
+  const navigate = useNavigate();
+
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -45,24 +44,25 @@ export function AdminLoginScreen({ onLogin, onBack }: AdminLoginScreenProps) {
 
     if (!admin) {
       setError('Incorrect credentials. Please check your phone number and password.');
+      console.log("Login failed");
       setIsValid(false);
     } else {
-      onLogin();
+      navigate("/admin/home");
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="w-full max-w-md">
-        {onBack && (
+        
           <button
-            onClick={onBack}
+            onClick={() => navigate("/")}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />
             Back to App Selection
           </button>
-        )}
+      
         <div className="bg-white rounded-lg shadow-xl p-8">
           <div className="flex flex-col items-center mb-8">
             <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-4 rounded-full mb-4">

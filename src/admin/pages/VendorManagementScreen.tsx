@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AdminScreen, Vendor } from '../../AdminApp';
 import { ArrowLeft, Plus, Search, Store, Edit2, Book } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface VendorManagementScreenProps {
   onNavigate: (screen: AdminScreen) => void;
@@ -16,6 +17,7 @@ const MOCK_VENDORS: Vendor[] = [
 ];
 
 export function VendorManagementScreen({ onNavigate, onVendorEdit }: VendorManagementScreenProps) {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [displayCount, setDisplayCount] = useState(10);
 
@@ -37,7 +39,7 @@ export function VendorManagementScreen({ onNavigate, onVendorEdit }: VendorManag
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => onNavigate('home')}
+            onClick={() => navigate('/admin/home')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />

@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import { ArrowLeft, X } from 'lucide-react';
-import { AdminScreen } from '../../AdminApp';
-import { Popup } from '../Popup';
 
-interface UnapprovedProcurementsScreenProps {
-  onNavigate: (screen: AdminScreen) => void;
-}
+import { Popup } from '../../../../components/Popup';
+import { useAdminNavigation } from '../../../hooks/useAdminNavigation';
+
 
 interface UnapprovedProcurement {
   id: string;
@@ -22,7 +20,8 @@ const UNAPPROVED_PROCUREMENTS: UnapprovedProcurement[] = [
   { id: 'UP-003', material: 'Fly Ash', date: '2025-12-08', vendor: 'XYZ Materials', quantityValue: 3.5, quantityUnit: 'tons' },
 ];
 
-export function UnapprovedProcurementsScreen({ onNavigate }: UnapprovedProcurementsScreenProps) {
+export function UnapprovedProcurementsScreen() {
+  const {goBack,goTo} = useAdminNavigation();
   const [selectedProcurement, setSelectedProcurement] = useState<UnapprovedProcurement | null>(null);
   const [rate, setRate] = useState('');
   const [showApprovalPopup, setShowApprovalPopup] = useState(false);
@@ -73,7 +72,7 @@ export function UnapprovedProcurementsScreen({ onNavigate }: UnapprovedProcureme
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => onNavigate('inventory')}
+            onClick={() => goBack('inventory')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { AdminScreen } from '../../AdminApp';
 import { ArrowLeft, Plus, X } from 'lucide-react';
-import { Popup } from '../Popup';
+import { Popup } from '../../components/Popup';
+import { useNavigate } from 'react-router-dom';
 
 interface CashFlowScreenProps {
   onNavigate: (screen: AdminScreen) => void;
@@ -56,6 +57,7 @@ const MOCK_DAY_LEDGERS: DayLedger[] = [
 ];
 
 export function CashFlowScreen({ onNavigate }: CashFlowScreenProps) {
+  const navigate = useNavigate(); 
   const [showCreateAccountModal, setShowCreateAccountModal] = useState(false);
   const [accountNumber, setAccountNumber] = useState('');
   const [openingBalance, setOpeningBalance] = useState('');
@@ -166,7 +168,7 @@ export function CashFlowScreen({ onNavigate }: CashFlowScreenProps) {
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => onNavigate('home')}
+            onClick={() => navigate('/admin/home')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />

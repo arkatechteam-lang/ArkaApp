@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { AdminScreen, Employee } from '../../AdminApp';
 import { ArrowLeft, Calendar, UserCog, Edit2, ToggleLeft, ToggleRight } from 'lucide-react';
-import { Popup } from '../Popup';
+import { Popup } from '../../components/Popup';
+import { useNavigate } from 'react-router-dom';
 
 interface EmployeeManagementScreenProps {
   onNavigate: (screen: AdminScreen) => void;
@@ -24,6 +25,7 @@ const MOCK_EMPLOYEES: Employee[] = [
 ];
 
 export function EmployeeManagementScreen({ onNavigate, onEmployeeEdit }: EmployeeManagementScreenProps) {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>('Active');
   const [displayCount, setDisplayCount] = useState(10);
   const [showTogglePopup, setShowTogglePopup] = useState(false);
@@ -63,7 +65,7 @@ export function EmployeeManagementScreen({ onNavigate, onEmployeeEdit }: Employe
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => onNavigate('home')}
+            onClick={() => navigate('/admin/home')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />

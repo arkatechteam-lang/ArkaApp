@@ -1,11 +1,7 @@
 import React, { useState } from 'react';
-import { AdminScreen } from '../../AdminApp';
 import { ArrowLeft, Droplets, Mountain, Sparkles, Hammer, Wind, Boxes } from 'lucide-react';
-import { Popup } from '../Popup';
-
-interface InventoryManagementScreenProps {
-  onNavigate: (screen: AdminScreen) => void;
-}
+import { Popup } from '../../../../components/Popup';
+import { useAdminNavigation } from '../../../hooks/useAdminNavigation';
 
 type FilterType = 'Last month' | 'Last year' | 'Custom range';
 type TabType = 'Procurement' | 'Usage' | 'Adjustments';
@@ -115,7 +111,8 @@ const INVENTORY_METRICS = {
   cementKg: 4800,
 };
 
-export function InventoryManagementScreen({ onNavigate }: InventoryManagementScreenProps) {
+export function InventoryManagementScreen() {
+  const {goTo,goBack} = useAdminNavigation();
   const [filterType, setFilterType] = useState<FilterType>('Last month');
   const [showCustomRangeModal, setShowCustomRangeModal] = useState(false);
   const [customStartDate, setCustomStartDate] = useState('');
@@ -228,7 +225,7 @@ export function InventoryManagementScreen({ onNavigate }: InventoryManagementScr
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => onNavigate('home')}
+            onClick={() => goBack('/admin/home')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -255,7 +252,7 @@ export function InventoryManagementScreen({ onNavigate }: InventoryManagementScr
 
               {/* Unapproved Procurements Button */}
               <button
-                onClick={() => onNavigate('unapproved-procurements' as AdminScreen)}
+                onClick={() => goTo('unapproved-procurements')}
                 className="relative px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
               >
                 Unapproved procurements

@@ -1,29 +1,27 @@
 import React, { useState } from 'react';
-import { AdminLoginScreen } from './components/admin/AdminLoginScreen';
-import { AdminHomeScreen } from './components/admin/AdminHomeScreen';
-import { OrderManagementScreen } from './components/admin/OrderManagementScreen';
+import { OrderManagementScreen } from './admin/pages/OrderManagementScreen';
 import { CreateOrderScreen } from './components/admin/CreateOrderScreen';
 import { OrderDetailsScreen } from './components/admin/OrderDetailsScreen';
-import { ProductionStatisticsScreen } from './components/admin/ProductionStatisticsScreen';
-import { InventoryManagementScreen } from './components/admin/InventoryManagementScreen';
-import { CustomerManagementScreen } from './components/admin/CustomerManagementScreen';
+import { ProductionStatisticsScreen } from './admin/pages/ProductionStatisticsScreen';
+import { InventoryManagementScreen } from './admin/pages/InventoryManagementScreen';
+import { CustomerManagementScreen } from './admin/pages/CustomerManagementScreen';
 import { CustomerDetailsScreen } from './components/admin/CustomerDetailsScreen';
-import { AccountsManagementScreen } from './components/admin/AccountsManagementScreen';
+import { AccountsManagementScreen } from './admin/pages/AccountsManagementScreen';
 import { CreateExpenseScreen } from './components/admin/CreateExpenseScreen';
-import { CreateExpenseSubtypeScreen } from './components/admin/CreateExpenseSubtypeScreen';
-import { EditExpenseScreen } from './components/admin/EditExpenseScreen';
-import { MetricsScreen } from './components/admin/MetricsScreen';
-import { EmployeeManagementScreen } from './components/admin/EmployeeManagementScreen';
+import { CreateExpenseSubtypeScreen } from './admin/pages/accounts/pages/CreateExpenseSubtypeScreen';
+import { EditExpenseScreen } from './admin/pages/accounts/pages/EditExpenseScreen';
+import { MetricsScreen } from './admin/pages/MetricsScreen';
+import { EmployeeManagementScreen } from './admin/pages/EmployeeManagementScreen';
 import { CreateEmployeeScreen } from './components/admin/CreateEmployeeScreen';
 import { EditEmployeeScreen } from './components/admin/EditEmployeeScreen';
 import { EmployeeAttendanceScreen } from './components/admin/EmployeeAttendanceScreen';
 import { RoleSalarySetupScreen } from './components/admin/RoleSalarySetupScreen';
 import { CreateRoleScreen } from './components/admin/CreateRoleScreen';
 import { EditRoleScreen } from './components/admin/EditRoleScreen';
-import { SalaryLedgerScreen } from './components/admin/SalaryLedgerScreen';
+import { SalaryLedgerScreen } from './admin/pages/SalaryLedgerScreen';
 import { SalaryLedgerDetailScreen } from './components/admin/SalaryLedgerDetailScreen';
 import { AddPaymentScreen } from './components/admin/AddPaymentScreen';
-import { VendorManagementScreen } from './components/admin/VendorManagementScreen';
+import { VendorManagementScreen } from './admin/pages/VendorManagementScreen';
 import { CreateVendorScreen } from './components/admin/CreateVendorScreen';
 import { EditVendorScreen } from './components/admin/EditVendorScreen';
 import { VendorLedgerScreen } from './components/admin/VendorLedgerScreen';
@@ -31,12 +29,13 @@ import { CreateProcurementRequestScreen } from './components/admin/CreateProcure
 import { ProcurementRequestDetailScreen } from './components/admin/ProcurementRequestDetailScreen';
 import { VendorPaymentScreen } from './components/admin/VendorPaymentScreen';
 import { UnapprovedProcurementsScreen } from './components/admin/UnapprovedProcurementsScreen';
-import { CashFlowScreen } from './components/admin/CashFlowScreen';
+import { CashFlowScreen } from './admin/pages/CashFlowScreen';
 import { CashLedgerScreen } from './components/admin/CashLedgerScreen';
-import { LoanManagementScreen } from './components/admin/LoanManagementScreen';
+import { LoanManagementScreen } from './admin/pages/LoanManagementScreen';
 import { CreateLoanScreen } from './components/admin/CreateLoanScreen';
 import { LoanLedgerScreen } from './components/admin/LoanLedgerScreen';
 import { AddLoanTransactionScreen } from './components/admin/AddLoanTransactionScreen';
+import { AdminRoutes } from './admin/routes';
 
 export type AdminScreen = 
   | 'login' 
@@ -246,7 +245,8 @@ export default function AdminApp({ onBack }: AdminAppProps) {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {currentScreen === 'login' && <AdminLoginScreen onLogin={handleLogin} onBack={onBack} />}
+      <AdminRoutes />
+      {/* {currentScreen === 'login' && <AdminLoginScreen onLogin={handleLogin} onBack={onBack} />}
       {currentScreen === 'home' && <AdminHomeScreen onNavigate={handleNavigate} onLogout={handleLogout} />}
       {currentScreen === 'orders' && <OrderManagementScreen onNavigate={handleNavigate} onOrderSelect={handleOrderSelect} />}
       {currentScreen === 'create-order' && <CreateOrderScreen onNavigate={handleNavigate} />}
@@ -283,7 +283,7 @@ export default function AdminApp({ onBack }: AdminAppProps) {
       {currentScreen === 'loan-management' && <LoanManagementScreen onNavigate={handleNavigate} />}
       {currentScreen === 'create-loan' && <CreateLoanScreen onNavigate={handleNavigate} />}
       {currentScreen === 'loan-ledger' && <LoanLedgerScreen onNavigate={handleNavigate} />}
-      {currentScreen === 'add-loan-transaction' && <AddLoanTransactionScreen onNavigate={handleNavigate} />}
+      {currentScreen === 'add-loan-transaction' && <AddLoanTransactionScreen onNavigate={handleNavigate} />} */}
     </div>
   );
 }

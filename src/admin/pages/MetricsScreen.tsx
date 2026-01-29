@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
-import { AdminScreen } from '../../AdminApp';
 import { ArrowLeft, Wallet, X, Droplets, Mountain, Sparkles, Hammer, Wind, Package, Square } from 'lucide-react';
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { useNavigate } from 'react-router-dom';
+import { useAdminNavigation } from '../hooks/useAdminNavigation';
 
-interface MetricsScreenProps {
-  onNavigate: (screen: AdminScreen) => void;
-}
 
 type FilterType = 'Last month' | 'Last year' | 'Custom range';
 
@@ -54,7 +52,8 @@ const INVENTORY_METRICS = {
   cementKg: 4800,
 };
 
-export function MetricsScreen({ onNavigate }: MetricsScreenProps) {
+export function MetricsScreen() {
+  const { goBack } = useAdminNavigation();
   const [filterType, setFilterType] = useState<FilterType>('Last month');
   const [showCustomRangeModal, setShowCustomRangeModal] = useState(false);
   const [customStartDate, setCustomStartDate] = useState('');
@@ -141,7 +140,7 @@ export function MetricsScreen({ onNavigate }: MetricsScreenProps) {
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => onNavigate('home')}
+            onClick={() => goBack('/admin/home')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />

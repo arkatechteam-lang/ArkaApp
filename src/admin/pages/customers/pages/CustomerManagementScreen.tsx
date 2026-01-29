@@ -1,69 +1,130 @@
-import React, { useState } from 'react';
-import { AdminScreen, Customer } from '../../AdminApp';
-import { ArrowLeft, Plus, Search, Phone, MapPin, DollarSign, X } from 'lucide-react';
-import { Popup } from '../Popup';
-
-interface CustomerManagementScreenProps {
-  onNavigate: (screen: AdminScreen) => void;
-  onCustomerSelect: (customer: Customer) => void;
-}
+import React, { useState } from "react";
+import { AdminScreen, Customer } from "../../../../AdminApp";
+import {
+  ArrowLeft,
+  Plus,
+  Search,
+  Phone,
+  MapPin,
+  DollarSign,
+  X,
+} from "lucide-react";
+import { Popup } from "../../../../components/Popup";
+import {useAdminNavigation} from "../../../hooks/useAdminNavigation";
 
 const MOCK_CUSTOMERS: Customer[] = [
-  { id: 'CUST-001', name: 'Rajesh Kumar', phoneNumber: '9876543210', address: '123 MG Road, Bangalore', unpaidAmount: 15000, totalSales: 250000 },
-  { id: 'CUST-002', name: 'Priya Sharma', phoneNumber: '9876543211', address: '456 Brigade Road, Bangalore', unpaidAmount: 0, totalSales: 180000 },
-  { id: 'CUST-003', name: 'Amit Patel', phoneNumber: '9876543212', address: '789 Koramangala, Bangalore', unpaidAmount: 25000, totalSales: 320000 },
-  { id: 'CUST-004', name: 'Sunita Reddy', phoneNumber: '9876543213', address: '321 Indiranagar, Bangalore', unpaidAmount: 8000, totalSales: 145000 },
-  { id: 'CUST-005', name: 'Mohan Singh', phoneNumber: '9876543214', address: '654 Whitefield, Bangalore', unpaidAmount: 0, totalSales: 95000 },
-  { id: 'CUST-006', name: 'Lakshmi Iyer', phoneNumber: '9876543215', address: '987 Jayanagar, Bangalore', unpaidAmount: 12000, totalSales: 210000 },
-  { id: 'CUST-007', name: 'Ramesh Gupta', phoneNumber: '9876543216', address: '147 BTM Layout, Bangalore', unpaidAmount: 0, totalSales: 165000 },
-  { id: 'CUST-008', name: 'Anita Desai', phoneNumber: '9876543217', address: '258 HSR Layout, Bangalore', unpaidAmount: 18000, totalSales: 275000 },
+  {
+    id: "CUST-001",
+    name: "Rajesh Kumar",
+    phoneNumber: "9876543210",
+    address: "123 MG Road, Bangalore",
+    unpaidAmount: 15000,
+    totalSales: 250000,
+  },
+  {
+    id: "CUST-002",
+    name: "Priya Sharma",
+    phoneNumber: "9876543211",
+    address: "456 Brigade Road, Bangalore",
+    unpaidAmount: 0,
+    totalSales: 180000,
+  },
+  {
+    id: "CUST-003",
+    name: "Amit Patel",
+    phoneNumber: "9876543212",
+    address: "789 Koramangala, Bangalore",
+    unpaidAmount: 25000,
+    totalSales: 320000,
+  },
+  {
+    id: "CUST-004",
+    name: "Sunita Reddy",
+    phoneNumber: "9876543213",
+    address: "321 Indiranagar, Bangalore",
+    unpaidAmount: 8000,
+    totalSales: 145000,
+  },
+  {
+    id: "CUST-005",
+    name: "Mohan Singh",
+    phoneNumber: "9876543214",
+    address: "654 Whitefield, Bangalore",
+    unpaidAmount: 0,
+    totalSales: 95000,
+  },
+  {
+    id: "CUST-006",
+    name: "Lakshmi Iyer",
+    phoneNumber: "9876543215",
+    address: "987 Jayanagar, Bangalore",
+    unpaidAmount: 12000,
+    totalSales: 210000,
+  },
+  {
+    id: "CUST-007",
+    name: "Ramesh Gupta",
+    phoneNumber: "9876543216",
+    address: "147 BTM Layout, Bangalore",
+    unpaidAmount: 0,
+    totalSales: 165000,
+  },
+  {
+    id: "CUST-008",
+    name: "Anita Desai",
+    phoneNumber: "9876543217",
+    address: "258 HSR Layout, Bangalore",
+    unpaidAmount: 18000,
+    totalSales: 275000,
+  },
 ];
 
-export function CustomerManagementScreen({ onNavigate, onCustomerSelect }: CustomerManagementScreenProps) {
-  const [searchQuery, setSearchQuery] = useState('');
+export function CustomerManagementScreen() {
+  const { goBack, goTo } = useAdminNavigation();
+  const [searchQuery, setSearchQuery] = useState("");
   const [displayCount, setDisplayCount] = useState(10);
-  const [activeTab, setActiveTab] = useState<'All' | 'Unpaid'>('All');
+  const [activeTab, setActiveTab] = useState<"All" | "Unpaid">("All");
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
 
   // Add Customer Form States
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [customerAddress, setCustomerAddress] = useState('');
-  const [customerGstNumber, setCustomerGstNumber] = useState('');
-  const [nameError, setNameError] = useState('');
-  const [phoneError, setPhoneError] = useState('');
-  const [addressError, setAddressError] = useState('');
-  const [gstError, setGstError] = useState('');
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [customerAddress, setCustomerAddress] = useState("");
+  const [customerGstNumber, setCustomerGstNumber] = useState("");
+  const [nameError, setNameError] = useState("");
+  const [phoneError, setPhoneError] = useState("");
+  const [addressError, setAddressError] = useState("");
+  const [gstError, setGstError] = useState("");
 
   const validateForm = () => {
     let isValid = true;
-    setNameError('');
-    setPhoneError('');
-    setAddressError('');
-    setGstError('');
+    setNameError("");
+    setPhoneError("");
+    setAddressError("");
+    setGstError("");
 
     if (!customerName.trim()) {
-      setNameError('Name is required');
+      setNameError("Name is required");
       isValid = false;
     }
 
     if (!customerPhone.trim()) {
-      setPhoneError('Phone number is required');
+      setPhoneError("Phone number is required");
       isValid = false;
     } else if (!/^[0-9]{10}$/.test(customerPhone.trim())) {
-      setPhoneError('Phone number must be 10 digits');
+      setPhoneError("Phone number must be 10 digits");
       isValid = false;
     }
 
     if (!customerAddress.trim()) {
-      setAddressError('Address is required');
+      setAddressError("Address is required");
       isValid = false;
     }
 
     // Validate GST Number - if entered, must be exactly 15 characters
     if (customerGstNumber.trim() && customerGstNumber.trim().length !== 15) {
-      setGstError('Enter valid GST Number');
+      setGstError("Enter valid GST Number");
       isValid = false;
     }
 
@@ -71,27 +132,27 @@ export function CustomerManagementScreen({ onNavigate, onCustomerSelect }: Custo
   };
 
   const handleOpenAddCustomerModal = () => {
-    setCustomerName('');
-    setCustomerPhone('');
-    setCustomerAddress('');
-    setCustomerGstNumber('');
-    setNameError('');
-    setPhoneError('');
-    setAddressError('');
-    setGstError('');
+    setCustomerName("");
+    setCustomerPhone("");
+    setCustomerAddress("");
+    setCustomerGstNumber("");
+    setNameError("");
+    setPhoneError("");
+    setAddressError("");
+    setGstError("");
     setShowAddCustomerModal(true);
   };
 
   const handleCloseAddCustomerModal = () => {
     setShowAddCustomerModal(false);
-    setCustomerName('');
-    setCustomerPhone('');
-    setCustomerAddress('');
-    setCustomerGstNumber('');
-    setNameError('');
-    setPhoneError('');
-    setAddressError('');
-    setGstError('');
+    setCustomerName("");
+    setCustomerPhone("");
+    setCustomerAddress("");
+    setCustomerGstNumber("");
+    setNameError("");
+    setPhoneError("");
+    setAddressError("");
+    setGstError("");
   };
 
   const handleSubmitCustomer = () => {
@@ -100,24 +161,27 @@ export function CustomerManagementScreen({ onNavigate, onCustomerSelect }: Custo
       setShowAddCustomerModal(false);
       setShowSuccessPopup(true);
       // Reset form
-      setCustomerName('');
-      setCustomerPhone('');
-      setCustomerAddress('');
-      setCustomerGstNumber('');
-      setNameError('');
-      setPhoneError('');
-      setAddressError('');
-      setGstError('');
+      setCustomerName("");
+      setCustomerPhone("");
+      setCustomerAddress("");
+      setCustomerGstNumber("");
+      setNameError("");
+      setPhoneError("");
+      setAddressError("");
+      setGstError("");
     }
   };
 
-  const filteredCustomers = MOCK_CUSTOMERS.filter(customer => {
-    const matchesSearch = customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  const filteredCustomers = MOCK_CUSTOMERS.filter((customer) => {
+    const matchesSearch =
+      customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       customer.phoneNumber.includes(searchQuery) ||
       customer.id.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesTab = activeTab === 'All' || (activeTab === 'Unpaid' && customer.unpaidAmount > 0);
-    
+
+    const matchesTab =
+      activeTab === "All" ||
+      (activeTab === "Unpaid" && customer.unpaidAmount > 0);
+
     return matchesSearch && matchesTab;
   });
 
@@ -130,17 +194,19 @@ export function CustomerManagementScreen({ onNavigate, onCustomerSelect }: Custo
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => onNavigate('home')}
+            onClick={() => goBack('/admin/home')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />
             Back to Home
           </button>
-          
+
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-gray-900">Customer Management</h1>
-              <p className="text-gray-600 mt-1">Manage customer information and history</p>
+              <p className="text-gray-600 mt-1">
+                Manage customer information and history
+              </p>
             </div>
             <button
               onClick={handleOpenAddCustomerModal}
@@ -183,7 +249,13 @@ export function CustomerManagementScreen({ onNavigate, onCustomerSelect }: Custo
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm">Total Sales</p>
-                <p className="text-gray-900 mt-1">₹{MOCK_CUSTOMERS.reduce((sum, c) => sum + c.totalSales, 0).toLocaleString()}</p>
+                <p className="text-gray-900 mt-1">
+                  ₹
+                  {MOCK_CUSTOMERS.reduce(
+                    (sum, c) => sum + c.totalSales,
+                    0,
+                  ).toLocaleString()}
+                </p>
               </div>
               <div className="bg-green-100 p-3 rounded-lg">
                 <DollarSign className="w-6 h-6 text-green-600" />
@@ -194,7 +266,13 @@ export function CustomerManagementScreen({ onNavigate, onCustomerSelect }: Custo
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm">Outstanding Amount</p>
-                <p className="text-gray-900 mt-1">₹{MOCK_CUSTOMERS.reduce((sum, c) => sum + c.unpaidAmount, 0).toLocaleString()}</p>
+                <p className="text-gray-900 mt-1">
+                  ₹
+                  {MOCK_CUSTOMERS.reduce(
+                    (sum, c) => sum + c.unpaidAmount,
+                    0,
+                  ).toLocaleString()}
+                </p>
               </div>
               <div className="bg-red-100 p-3 rounded-lg">
                 <DollarSign className="w-6 h-6 text-red-600" />
@@ -210,26 +288,26 @@ export function CustomerManagementScreen({ onNavigate, onCustomerSelect }: Custo
             <div className="flex">
               <button
                 onClick={() => {
-                  setActiveTab('All');
+                  setActiveTab("All");
                   setDisplayCount(10);
                 }}
                 className={`px-6 py-4 whitespace-nowrap transition-colors ${
-                  activeTab === 'All'
-                    ? 'border-b-2 border-blue-600 text-blue-600'
-                    : 'text-gray-600 hover:text-gray-900'
+                  activeTab === "All"
+                    ? "border-b-2 border-blue-600 text-blue-600"
+                    : "text-gray-600 hover:text-gray-900"
                 }`}
               >
                 All
               </button>
               <button
                 onClick={() => {
-                  setActiveTab('Unpaid');
+                  setActiveTab("Unpaid");
                   setDisplayCount(10);
                 }}
                 className={`px-6 py-4 whitespace-nowrap transition-colors ${
-                  activeTab === 'Unpaid'
-                    ? 'border-b-2 border-blue-600 text-blue-600'
-                    : 'text-gray-600 hover:text-gray-900'
+                  activeTab === "Unpaid"
+                    ? "border-b-2 border-blue-600 text-blue-600"
+                    : "text-gray-600 hover:text-gray-900"
                 }`}
               >
                 Unpaid
@@ -250,31 +328,59 @@ export function CustomerManagementScreen({ onNavigate, onCustomerSelect }: Custo
                   <table className="w-full">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-4 py-3 text-left text-gray-700">Customer ID</th>
-                        <th className="px-4 py-3 text-left text-gray-700">Name</th>
-                        <th className="px-4 py-3 text-left text-gray-700">Phone Number</th>
-                        <th className="px-4 py-3 text-left text-gray-700">Address</th>
-                        <th className="px-4 py-3 text-left text-gray-700">Total Sales</th>
-                        <th className="px-4 py-3 text-left text-gray-700">Unpaid Amount</th>
+                        <th className="px-4 py-3 text-left text-gray-700">
+                          Customer ID
+                        </th>
+                        <th className="px-4 py-3 text-left text-gray-700">
+                          Name
+                        </th>
+                        <th className="px-4 py-3 text-left text-gray-700">
+                          Phone Number
+                        </th>
+                        <th className="px-4 py-3 text-left text-gray-700">
+                          Address
+                        </th>
+                        <th className="px-4 py-3 text-left text-gray-700">
+                          Total Sales
+                        </th>
+                        <th className="px-4 py-3 text-left text-gray-700">
+                          Unpaid Amount
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
                       {displayedCustomers.map((customer) => (
                         <tr
                           key={customer.id}
-                          onClick={() => onCustomerSelect(customer)}
+                          onClick={() => goTo(`/admin/customers/${customer.id}`)}
                           className="cursor-pointer hover:bg-gray-50 transition-colors"
                         >
-                          <td className="px-4 py-4 text-gray-900">{customer.id}</td>
-                          <td className="px-4 py-4 text-gray-900">{customer.name}</td>
-                          <td className="px-4 py-4 text-gray-600">{customer.phoneNumber}</td>
-                          <td className="px-4 py-4 text-gray-600">{customer.address}</td>
-                          <td className="px-4 py-4 text-gray-900">₹{customer.totalSales.toLocaleString()}</td>
+                          <td className="px-4 py-4 text-gray-900">
+                            {customer.id}
+                          </td>
+                          <td className="px-4 py-4 text-gray-900">
+                            {customer.name}
+                          </td>
+                          <td className="px-4 py-4 text-gray-600">
+                            {customer.phoneNumber}
+                          </td>
+                          <td className="px-4 py-4 text-gray-600">
+                            {customer.address}
+                          </td>
+                          <td className="px-4 py-4 text-gray-900">
+                            ₹{customer.totalSales.toLocaleString()}
+                          </td>
                           <td className="px-4 py-4">
-                            <span className={`px-2 py-1 rounded-full text-sm ${
-                              customer.unpaidAmount > 0 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
-                            }`}>
-                              {customer.unpaidAmount > 0 ? `₹${customer.unpaidAmount.toLocaleString()}` : 'Paid'}
+                            <span
+                              className={`px-2 py-1 rounded-full text-sm ${
+                                customer.unpaidAmount > 0
+                                  ? "bg-red-100 text-red-800"
+                                  : "bg-green-100 text-green-800"
+                              }`}
+                            >
+                              {customer.unpaidAmount > 0
+                                ? `₹${customer.unpaidAmount.toLocaleString()}`
+                                : "Paid"}
                             </span>
                           </td>
                         </tr>
@@ -288,7 +394,7 @@ export function CustomerManagementScreen({ onNavigate, onCustomerSelect }: Custo
                   {displayedCustomers.map((customer) => (
                     <div
                       key={customer.id}
-                      onClick={() => onCustomerSelect(customer)}
+                      onClick={() => goTo(`/admin/customers/${customer.id}`)}
                       className="bg-white border border-gray-200 rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow"
                     >
                       <div className="flex justify-between items-start mb-3">
@@ -296,10 +402,16 @@ export function CustomerManagementScreen({ onNavigate, onCustomerSelect }: Custo
                           <p className="text-gray-900">{customer.name}</p>
                           <p className="text-gray-600 text-sm">{customer.id}</p>
                         </div>
-                        <span className={`px-2 py-1 rounded-full text-sm ${
-                          customer.unpaidAmount > 0 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
-                        }`}>
-                          {customer.unpaidAmount > 0 ? `₹${customer.unpaidAmount.toLocaleString()}` : 'Paid'}
+                        <span
+                          className={`px-2 py-1 rounded-full text-sm ${
+                            customer.unpaidAmount > 0
+                              ? "bg-red-100 text-red-800"
+                              : "bg-green-100 text-green-800"
+                          }`}
+                        >
+                          {customer.unpaidAmount > 0
+                            ? `₹${customer.unpaidAmount.toLocaleString()}`
+                            : "Paid"}
                         </span>
                       </div>
                       <div className="space-y-2 text-sm">
@@ -353,43 +465,57 @@ export function CustomerManagementScreen({ onNavigate, onCustomerSelect }: Custo
             <form>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-gray-700 text-sm font-bold mb-2">Name</label>
+                  <label className="block text-gray-700 text-sm font-bold mb-2">
+                    Name
+                  </label>
                   <input
                     type="text"
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
                     className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      nameError ? 'border-red-500' : ''
+                      nameError ? "border-red-500" : ""
                     }`}
                   />
-                  {nameError && <p className="text-red-500 text-sm mt-1">{nameError}</p>}
+                  {nameError && (
+                    <p className="text-red-500 text-sm mt-1">{nameError}</p>
+                  )}
                 </div>
                 <div>
-                  <label className="block text-gray-700 text-sm font-bold mb-2">Phone Number</label>
+                  <label className="block text-gray-700 text-sm font-bold mb-2">
+                    Phone Number
+                  </label>
                   <input
                     type="text"
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value)}
                     className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      phoneError ? 'border-red-500' : ''
+                      phoneError ? "border-red-500" : ""
                     }`}
                   />
-                  {phoneError && <p className="text-red-500 text-sm mt-1">{phoneError}</p>}
+                  {phoneError && (
+                    <p className="text-red-500 text-sm mt-1">{phoneError}</p>
+                  )}
                 </div>
                 <div>
-                  <label className="block text-gray-700 text-sm font-bold mb-2">Address</label>
+                  <label className="block text-gray-700 text-sm font-bold mb-2">
+                    Address
+                  </label>
                   <input
                     type="text"
                     value={customerAddress}
                     onChange={(e) => setCustomerAddress(e.target.value)}
                     className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      addressError ? 'border-red-500' : ''
+                      addressError ? "border-red-500" : ""
                     }`}
                   />
-                  {addressError && <p className="text-red-500 text-sm mt-1">{addressError}</p>}
+                  {addressError && (
+                    <p className="text-red-500 text-sm mt-1">{addressError}</p>
+                  )}
                 </div>
                 <div>
-                  <label className="block text-gray-700 text-sm font-bold mb-2">GST Number (Optional)</label>
+                  <label className="block text-gray-700 text-sm font-bold mb-2">
+                    GST Number (Optional)
+                  </label>
                   <input
                     type="text"
                     value={customerGstNumber}
@@ -402,10 +528,12 @@ export function CustomerManagementScreen({ onNavigate, onCustomerSelect }: Custo
                     placeholder="Enter 15-character GST Number"
                     maxLength={15}
                     className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      gstError ? 'border-red-500' : ''
+                      gstError ? "border-red-500" : ""
                     }`}
                   />
-                  {gstError && <p className="text-red-500 text-sm mt-1">{gstError}</p>}
+                  {gstError && (
+                    <p className="text-red-500 text-sm mt-1">{gstError}</p>
+                  )}
                 </div>
               </div>
               <div className="flex justify-end mt-6">

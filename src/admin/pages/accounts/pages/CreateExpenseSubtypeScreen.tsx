@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { AdminScreen } from '../../AdminApp';
+import { AdminScreen } from '../../../../AdminApp';
 import { ArrowLeft, Save } from 'lucide-react';
-import { Popup } from '../Popup';
+import { Popup } from '../../../../components/Popup';
 import { CreateExpenseTypePopup } from './CreateExpenseTypePopup';
 
 interface CreateExpenseSubtypeScreenProps {

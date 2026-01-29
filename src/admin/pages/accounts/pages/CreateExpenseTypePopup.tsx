@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
-import { Popup } from '../Popup';
+import { Popup } from '../../../../components/Popup';
 
 interface CreateExpenseTypePopupProps {
   onClose: () => void;
