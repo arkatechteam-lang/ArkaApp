@@ -1,51 +1,66 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Package, Factory, Truck, LogOut } from "lucide-react";
 import { Popup } from "../../components/Popup";
 import { useNavigate } from "react-router-dom";
+import { logout } from "../../services/middleware.service";
+import supabase from "../../lib/supabaseClient";
 
 export function HomeScreen() {
   const navigate = useNavigate();
+  const isManualLogout = useRef(false);
   const [showLogoutPopup, setShowLogoutPopup] = useState(false);
   const [logoutStatus, setLogoutStatus] = useState<"success" | "error" | null>(
-    null
+    null,
   );
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showSessionExpiredPopup, setShowSessionExpiredPopup] = useState(false);
 
   // Simulate session expiration check (for demo purposes)
-  React.useEffect(() => {
-    // Simulate random session expiration after some time (for demo)
-    const sessionCheck = setTimeout(() => {
-      const isSessionExpired = Math.random() > 0.95; // 5% chance
-      if (isSessionExpired) {
+  useEffect(() => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT" && !isManualLogout.current) {
         setShowSessionExpiredPopup(true);
       }
-    }, 10000); // Check after 10 seconds
+    });
 
-    return () => clearTimeout(sessionCheck);
+    return () => {
+      listener.subscription.unsubscribe();
+    };
   }, []);
 
-  const handleLogoutClick = () => {
-    // Simulate logout
-    const success = Math.random() > 0.1; // 90% success rate
-    setLogoutStatus(success ? "success" : "error");
-    setShowLogoutPopup(true);
+  const redirectToLogin = () => {
+    isManualLogout.current = false;
+    navigate("/employee", { replace: true });
   };
 
-  const onLogout = () => {
-    navigate("/employee");
+  const handleLogoutClick = async () => {
+    if (isLoggingOut) return;
+    try {
+      setIsLoggingOut(true);
+      isManualLogout.current = true;
+      await logout();
+      setLogoutStatus("success");
+    } catch {
+      setLogoutStatus("error");
+    } finally {
+      setIsLoggingOut(false);
+      setShowLogoutPopup(true);
+    }
   };
 
   const handlePopupClose = () => {
     setShowLogoutPopup(false);
+
     if (logoutStatus === "success") {
-      onLogout();
+      redirectToLogin();
     }
+
     setLogoutStatus(null);
   };
 
   const handleSessionExpiredClose = () => {
     setShowSessionExpiredPopup(false);
-    onLogout();
+    redirectToLogin();
   };
 
   const cards = [
