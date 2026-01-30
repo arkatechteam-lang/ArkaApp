@@ -91,3 +91,9 @@ export interface EmployeeWithCategory extends Employee {
     category: EmployeeCategory;
   };
 }
+
+export interface PaginatedResult<T> {
+  data: T[];
+  total: number;      // total matching rows
+  hasMore: boolean;   // for "Load more" visibility
+}

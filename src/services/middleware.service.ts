@@ -10,9 +10,11 @@ import {
   Order,
   Employee,
   OrderWithLoadmen,
-  EmployeeWithCategory
+  EmployeeWithCategory,
+  PaginatedResult
 } from './types'
 import { MaterialPurchaseInput, ProductionInput } from "../employee/types";
+import { getRange, PAGE_SIZE } from "../utils/reusables";
 
 /* ------------------------------------------------------------------
    1. LOGIN
@@ -260,3 +262,133 @@ export async function updateOrderWithLoadmen(
     );
   }
 }
+
+/* ------------------------------------------------------------------
+   13. GET TODAY DELIVERY ORDERS WITH PAGINATION
+-------------------------------------------------------------------*/
+
+export async function getTodayDeliveryOrdersWithPagination(
+  page: number
+): Promise<PaginatedResult<Order>> {
+  const today = new Date().toISOString().split("T")[0];
+  const { from, to } = getRange(page);
+
+  const { data, count, error } = await supabase
+    .from("orders")
+    .select(
+      `
+      *,
+      customers (
+        name,
+        phone
+      )
+      `,
+      { count: "exact" }
+    )
+    .eq("delivery_date", today)
+    .range(from, to)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  return {
+    data: data ?? [],
+    total: count ?? 0,
+    hasMore: (from + PAGE_SIZE) < (count ?? 0),
+  };
+}
+
+/* ------------------------------------------------------------------
+   14. GET UNDELIVERED ORDERS WITH PAGINATION
+-------------------------------------------------------------------*/
+
+export async function getUndeliveredOrders(
+  page: number
+): Promise<PaginatedResult<Order>> {
+  const { from, to } = getRange(page);
+
+  const { data, count, error } = await supabase
+    .from("orders")
+    .select(
+      `
+      *,
+      customers ( name, phone )
+      `,
+      { count: "exact" }
+    )
+    .eq("delivered", false)
+    .range(from, to)
+    .order("delivery_date", { ascending: true });
+
+  if (error) throw error;
+
+  return {
+    data: data ?? [],
+    total: count ?? 0,
+    hasMore: (from + PAGE_SIZE) < (count ?? 0),
+  };
+}
+
+/* ------------------------------------------------------------------
+   15. GET DELIVERED ORDERS WITH PAGINATION
+-------------------------------------------------------------------*/
+
+export async function getDeliveredOrders(
+  page: number
+): Promise<PaginatedResult<Order>> {
+  const { from, to } = getRange(page);
+
+  const { data, count, error } = await supabase
+    .from("orders")
+    .select(
+      `
+      *,
+      customers ( name, phone )
+      `,
+      { count: "exact" }
+    )
+    .eq("delivered", true)
+    .range(from, to)
+    .order("delivery_date", { ascending: false });
+
+  if (error) throw error;
+
+  return {
+    data: data ?? [],
+    total: count ?? 0,
+    hasMore: (from + PAGE_SIZE) < (count ?? 0),
+  };
+}
+
+/* ------------------------------------------------------------------
+   16. GET UNPAID ORDERS WITH PAGINATION
+-------------------------------------------------------------------*/
+
+export async function getUnpaidOrders(
+  page: number
+): Promise<PaginatedResult<Order>> {
+  const { from, to } = getRange(page);
+
+  const { data, count, error } = await supabase
+    .from("orders")
+    .select(
+      `
+      *,
+      customers ( name, phone )
+      `,
+      { count: "exact" }
+    )
+    .eq("delivered", true)
+    .in("payment_status", ["NOT_PAID", "PARTIALLY_PAID"])
+    .range(from, to)
+    .order("delivery_date", { ascending: true });
+
+  if (error) throw error;
+
+  return {
+    data: data ?? [],
+    total: count ?? 0,
+    hasMore: (from + PAGE_SIZE) < (count ?? 0),
+  };
+}
+
