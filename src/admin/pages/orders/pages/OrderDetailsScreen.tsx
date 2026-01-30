@@ -1,319 +1,183 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, CalendarIcon } from 'lucide-react';
-import {  AdminOrder } from '../../../../AdminApp';
 import { Popup } from '../../../../components/Popup';
 import { Calendar } from '../../../../components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '../../../../components/ui/popover';
 import { format } from 'date-fns';
 import { cn } from '../../../../components/ui/utils';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAdminNavigation } from '../../../hooks/useAdminNavigation';
+import { getOrderWithLoadmen, getLoadmen, updateOrderWithLoadmen } from '../../../../services/middleware.service';
+import { OrderWithLoadmen, EmployeeWithCategory, Order, PaymentStatus } from '../../../../services/types';
+import { validateOrderDetails } from '../../../validators/orderDetails.validator';
 
+interface OrderDetailsInput {
+  brickQuantity: number;
+  deliveryDate: string;
+  pricePerBrick: number;
+  location: string;
+  finalPrice: number;
+  paymentStatus: PaymentStatus;
+  amountPaid: number;
+  gstNumber: string | null;
+  deliveryChallanNumber: string;
+  loadMen: string[];
+}
 
-type PaymentStatus = 'Not Paid' | 'Partially Paid' | 'Fully Paid';
+export type { OrderDetailsInput };
 
 const LOAD_MEN = ['Raju Kumar', 'Suresh Yadav', 'Mohan Singh', 'Ramesh Patel', 'Gopal Reddy'];
 
-const MOCK_ORDERS: AdminOrder[] = [
-  {
-    id: 'ORD-001',
-    date: '2025-12-08',
-    deliveryDate: '2025-12-08',
-    customerName: 'Rajesh Kumar',
-    customerNumber: '9876543210',
-    customerId: 'CUST-001',
-    quantity: 5000,
-    pricePerBrick: 10,
-    paperPrice: 50000,
-    location: '123 MG Road, Bangalore',
-    finalPrice: 50000,
-    paymentStatus: 'Not Paid',
-    loadMen: ['Raju Kumar', 'Suresh Yadav'],
-    deliveryToday: true,
-    isDelivered: false,
-  },
-  {
-    id: 'ORD-002',
-    date: '2025-12-07',
-    deliveryDate: '2025-12-05',
-    customerName: 'Priya Sharma',
-    customerNumber: '9876543211',
-    customerId: 'CUST-002',
-    quantity: 3000,
-    pricePerBrick: 10.5,
-    paperPrice: 31500,
-    location: '456 Brigade Road, Bangalore',
-    finalPrice: 31500,
-    paymentStatus: 'Partially Paid',
-    amountPaid: 15000,
-    loadMen: [],
-    deliveryToday: false,
-    isDelivered: false,
-  },
-  {
-    id: 'ORD-003',
-    date: '2025-12-06',
-    deliveryDate: '2025-12-07',
-    customerName: 'Amit Patel',
-    customerNumber: '9876543212',
-    customerId: 'CUST-003',
-    quantity: 7500,
-    pricePerBrick: 9.8,
-    paperPrice: 73500,
-    location: '789 Koramangala, Bangalore',
-    finalPrice: 73500,
-    paymentStatus: 'Fully Paid',
-    amountPaid: 73500,
-    loadMen: ['Mohan Singh'],
-    deliveryToday: false,
-    isDelivered: true,
-    deliveryChallanNumber: 'DC20251207001',
-    gstNumber: '29ABCDE1234F1Z5',
-  },
-  {
-    id: 'ORD-004',
-    date: '2025-12-05',
-    deliveryDate: '2025-12-09',
-    customerName: 'Sunita Reddy',
-    customerNumber: '9876543213',
-    customerId: 'CUST-004',
-    quantity: 4000,
-    pricePerBrick: 10.2,
-    paperPrice: 40800,
-    location: '321 Indiranagar, Bangalore',
-    finalPrice: 40800,
-    paymentStatus: 'Partially Paid',
-    amountPaid: 20000,
-    loadMen: [],
-    deliveryToday: false,
-    isDelivered: true,
-    deliveryChallanNumber: 'DC20251209001',
-  },
-  {
-    id: 'ORD-005',
-    date: '2025-12-04',
-    deliveryDate: '2025-12-10',
-    customerName: 'Vijay Singh',
-    customerNumber: '9876543214',
-    customerId: 'CUST-005',
-    quantity: 6000,
-    pricePerBrick: 10,
-    paperPrice: 60000,
-    location: '654 Whitefield, Bangalore',
-    finalPrice: 60000,
-    paymentStatus: 'Not Paid',
-    loadMen: [],
-    deliveryToday: false,
-    isDelivered: false,
-  },
-  {
-    id: 'ORD-006',
-    date: '2025-12-03',
-    deliveryDate: '2025-12-11',
-    customerName: 'Lakshmi Rao',
-    customerNumber: '9876543215',
-    customerId: 'CUST-006',
-    quantity: 8000,
-    pricePerBrick: 9.5,
-    paperPrice: 76000,
-    location: '789 Electronic City, Bangalore',
-    finalPrice: 76000,
-    paymentStatus: 'Partially Paid',
-    amountPaid: 40000,
-    loadMen: [],
-    deliveryToday: false,
-    isDelivered: false,
-  },
-  {
-    id: 'ORD-007',
-    date: '2025-12-02',
-    deliveryDate: '2025-12-08',
-    customerName: 'Karthik Menon',
-    customerNumber: '9876543216',
-    customerId: 'CUST-007',
-    quantity: 4500,
-    pricePerBrick: 10.3,
-    paperPrice: 46350,
-    location: '123 Jayanagar, Bangalore',
-    finalPrice: 46350,
-    paymentStatus: 'Fully Paid',
-    amountPaid: 46350,
-    loadMen: ['Ramesh Patel'],
-    deliveryToday: false,
-    isDelivered: true,
-    deliveryChallanNumber: 'DC20251208002',
-  },
-  {
-    id: 'ORD-008',
-    date: '2025-12-01',
-    deliveryDate: '2025-12-12',
-    customerName: 'Anita Desai',
-    customerNumber: '9876543217',
-    customerId: 'CUST-008',
-    quantity: 5500,
-    pricePerBrick: 9.9,
-    paperPrice: 54450,
-    location: '456 HSR Layout, Bangalore',
-    finalPrice: 54450,
-    paymentStatus: 'Not Paid',
-    loadMen: [],
-    deliveryToday: false,
-    isDelivered: false,
-  },
-  {
-    id: 'ORD-009',
-    date: '2025-11-30',
-    deliveryDate: '2025-12-13',
-    customerName: 'Ramesh Iyer',
-    customerNumber: '9876543218',
-    customerId: 'CUST-009',
-    quantity: 7000,
-    pricePerBrick: 10.1,
-    paperPrice: 70700,
-    location: '789 BTM Layout, Bangalore',
-    finalPrice: 70700,
-    paymentStatus: 'Partially Paid',
-    amountPaid: 35000,
-    loadMen: [],
-    deliveryToday: false,
-    isDelivered: false,
-  },
-  {
-    id: 'ORD-010',
-    date: '2025-11-29',
-    deliveryDate: '2025-12-14',
-    customerName: 'Deepa Nair',
-    customerNumber: '9876543219',
-    customerId: 'CUST-010',
-    quantity: 6500,
-    pricePerBrick: 9.7,
-    paperPrice: 63050,
-    location: '321 Marathahalli, Bangalore',
-    finalPrice: 63050,
-    paymentStatus: 'Fully Paid',
-    amountPaid: 63050,
-    loadMen: ['Gopal Reddy'],
-    deliveryToday: false,
-    isDelivered: true,
-    deliveryChallanNumber: 'DC20251214001',
-  },
-  {
-    id: 'ORD-011',
-    date: '2025-11-28',
-    deliveryDate: '2025-12-15',
-    customerName: 'Arun Kumar',
-    customerNumber: '9876543220',
-    customerId: 'CUST-011',
-    quantity: 5200,
-    pricePerBrick: 10.4,
-    paperPrice: 54080,
-    location: '654 Rajajinagar, Bangalore',
-    finalPrice: 54080,
-    paymentStatus: 'Not Paid',
-    loadMen: [],
-    deliveryToday: false,
-    isDelivered: false,
-  },
-  {
-    id: 'ORD-012',
-    date: '2025-11-27',
-    deliveryDate: '2025-12-16',
-    customerName: 'Meena Krishnan',
-    customerNumber: '9876543221',
-    customerId: 'CUST-012',
-    quantity: 4800,
-    pricePerBrick: 9.6,
-    paperPrice: 46080,
-    location: '789 Malleshwaram, Bangalore',
-    finalPrice: 46080,
-    paymentStatus: 'Partially Paid',
-    amountPaid: 25000,
-    loadMen: [],
-    deliveryToday: false,
-    isDelivered: false,
-  },
-];
-
 export function OrderDetailsScreen() {
   const { goBack } = useAdminNavigation();
-  const {orderId} = useParams<{ orderId: string }>();
-  console.log('Order ID:', orderId);
-  const order = MOCK_ORDERS.find((o) => o.id == orderId);
+  const navigate = useNavigate();
+  const { orderId } = useParams<{ orderId: string }>();
 
-  if (!order) {
-    return <div>Order not found</div>;
-  }
-
-  const [brickQuantity, setBrickQuantity] = useState(order.quantity.toString());
-  const [deliveryDate, setDeliveryDate] = useState<Date | undefined>(new Date(order.deliveryDate));
-  const [pricePerBrick, setPricePerBrick] = useState(order.pricePerBrick.toString());
-  const [deliveryLocation, setDeliveryLocation] = useState(order.location);
-  const [finalPrice, setFinalPrice] = useState(order.finalPrice.toString());
-  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(order.paymentStatus);
-  const [amountPaid, setAmountPaid] = useState(order.amountPaid?.toString() || '');
-  const [selectedLoadMen, setSelectedLoadMen] = useState<string[]>(order.loadMen || []);
-  const [gstNumber, setGstNumber] = useState(order.gstNumber || '');
-  const [deliveryChallanNumber, setDeliveryChallanNumber] = useState(order.deliveryChallanNumber || '');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [order, setOrder] = useState<OrderWithLoadmen | null>(null);
+  const [loadmen, setLoadmen] = useState<EmployeeWithCategory[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+  const [showFailurePopup, setShowFailurePopup] = useState(false);
 
-  // Calculate paper price automatically
-  const paperPrice = brickQuantity && pricePerBrick 
-    ? (parseFloat(brickQuantity) * parseFloat(pricePerBrick)).toFixed(2)
-    : '';
+  const [orderDetailsInput, setOrderDetailsInput] = useState<OrderDetailsInput>({
+    brickQuantity: 0,
+    deliveryDate: '',
+    pricePerBrick: 0,
+    location: '',
+    finalPrice: 0,
+    paymentStatus: 'NOT_PAID',
+    amountPaid: 0,
+    gstNumber: null,
+    deliveryChallanNumber: '',
+    loadMen: [],
+  });
 
-  const handleLoadManToggle = (loadMan: string) => {
-    setSelectedLoadMen((prev) =>
-      prev.includes(loadMan) ? prev.filter((m) => m !== loadMan) : [...prev, loadMan]
-    );
-  };
+  const [selectedLoadmen, setSelectedLoadmen] = useState<EmployeeWithCategory[]>([]);
+
+  useEffect(() => {
+    if (!orderId) {
+      setError('Order ID not found');
+      return;
+    }
+    getOrderData();
+    getLoadmenData();
+  }, [orderId]);
+
+  async function getOrderData() {
+    try {
+      setLoading(true);
+      const orderData = await getOrderWithLoadmen(orderId!);
+      setOrder(orderData);
+
+      setOrderDetailsInput({
+        brickQuantity: orderData.brick_quantity,
+        deliveryDate: orderData.delivery_date,
+        pricePerBrick: orderData.price_per_brick || 0,
+        location: orderData.location,
+        finalPrice: orderData.final_price,
+        paymentStatus: orderData.payment_status,
+        amountPaid: orderData.amount_paid || 0,
+        gstNumber: orderData.gst_number || null,
+        deliveryChallanNumber: orderData.dc_number || '',
+        loadMen: orderData.loadmen?.map(l => l.id) || [],
+      });
+    } catch (err) {
+      setError('Failed to load order details');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function getLoadmenData() {
+    try {
+      const loadmenData = await getLoadmen();
+      setLoadmen(loadmenData);
+
+      // Set selected loadmen after both order and loadmen are loaded
+      if (order?.loadmen) {
+        const selected = loadmenData.filter(l => order.loadmen!.some(ol => ol.id === l.id));
+        setSelectedLoadmen(selected);
+      }
+    } catch (err) {
+      setError('Failed to load loadmen details');
+      console.error(err);
+    }
+  }
+
+  useEffect(() => {
+    if (order && loadmen.length > 0 && order.loadmen) {
+      const selected = loadmen.filter(l => order.loadmen!.some(ol => ol.id === l.id));
+      setSelectedLoadmen(selected);
+      setOrderDetailsInput(prev => ({
+        ...prev,
+        loadMen: selected.map(l => l.id)
+      }));
+    }
+  }, [order, loadmen]);
+
+  function updateOrderDetailsInput(field: keyof OrderDetailsInput, value: any) {
+    setOrderDetailsInput(prev => ({ ...prev, [field]: value }));
+  }
+
+  function handleLoadManToggle(loadMan: EmployeeWithCategory) {
+    if (selectedLoadmen.some(l => l.id === loadMan.id)) {
+      setSelectedLoadmen(prev => prev.filter(l => l.id !== loadMan.id));
+      setOrderDetailsInput(prev => ({
+        ...prev,
+        loadMen: prev.loadMen.filter(id => id !== loadMan.id)
+      }));
+    } else {
+      setSelectedLoadmen(prev => [...prev, loadMan]);
+      setOrderDetailsInput(prev => ({
+        ...prev,
+        loadMen: [...prev.loadMen, loadMan.id]
+      }));
+    }
+  }
 
   const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!brickQuantity) {
-      newErrors.brickQuantity = 'Brick quantity is required';
-    }
-    
-    if (!deliveryDate) {
-      newErrors.deliveryDate = 'Delivery date is required';
-    }
-
-    if (!pricePerBrick) {
-      newErrors.pricePerBrick = 'Price per brick is required';
-    } else if (parseFloat(pricePerBrick) <= 0) {
-      newErrors.pricePerBrick = 'Price per brick must be greater than 0';
-    }
-
-    if (!deliveryLocation) newErrors.deliveryLocation = 'Delivery location is required';
-    if (!finalPrice) newErrors.finalPrice = 'Final price is required';
-
-    if (paymentStatus === 'Partially Paid') {
-      if (!amountPaid) {
-        newErrors.amountPaid = 'Amount paid is required';
-      } else {
-        const paidValue = parseFloat(amountPaid);
-        const finalValue = parseFloat(finalPrice);
-        if (paidValue <= 0) {
-          newErrors.amountPaid = 'Amount paid must be greater than 0';
-        } else if (paidValue >= finalValue) {
-          newErrors.amountPaid = 'Amount paid must be less than final price';
-        }
-      }
-    }
-
-    // Validate GST Number - if entered, must be exactly 15 characters
-    if (gstNumber && gstNumber.length !== 15) {
-      newErrors.gstNumber = 'Enter valid GST Number';
-    }
-
+    const newErrors = validateOrderDetails(orderDetailsInput);
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleConfirm = () => {
-    if (validateForm()) {
+  const handleConfirm = async () => {
+    if (!validateForm() || !order) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      let amountPaid = 0;
+      if (orderDetailsInput.paymentStatus === 'PARTIALLY_PAID') {
+        amountPaid = orderDetailsInput.amountPaid;
+      } else if (orderDetailsInput.paymentStatus === 'FULLY_PAID') {
+        amountPaid = orderDetailsInput.finalPrice;
+      }
+
+      const orderUpdate: Partial<Order> = {
+        brick_quantity: orderDetailsInput.brickQuantity,
+        delivery_date: orderDetailsInput.deliveryDate,
+        price_per_brick: orderDetailsInput.pricePerBrick,
+        location: orderDetailsInput.location,
+        final_price: orderDetailsInput.finalPrice,
+        payment_status: orderDetailsInput.paymentStatus,
+        amount_paid: amountPaid,
+        gst_number: orderDetailsInput.gstNumber || null,
+        dc_number: orderDetailsInput.deliveryChallanNumber,
+      };
+
+      await updateOrderWithLoadmen(orderId!, orderUpdate, orderDetailsInput.loadMen);
       setShowSuccessPopup(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update order');
+      setShowFailurePopup(true);
+      console.error('Failed to update order:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -322,8 +186,23 @@ export function OrderDetailsScreen() {
     goBack('/admin/orders');
   };
 
+  const paperPrice = orderDetailsInput.brickQuantity && orderDetailsInput.pricePerBrick
+    ? (orderDetailsInput.brickQuantity * orderDetailsInput.pricePerBrick).toFixed(2)
+    : '';
+
+  if (!orderId) {
+    return <div className="text-center py-12">Order not found</div>;
+  }
+
+  if (loading && !order) {
+    return <div className="text-center py-12">Loading order details...</div>;
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
+      {error && (
+        <Popup title="Error" message={error} onClose={() => setError(null)} type="error" />
+      )}
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Header */}
         <div className="mb-8">
@@ -335,25 +214,27 @@ export function OrderDetailsScreen() {
             Back 
           </button>
           <h1 className="text-gray-900">Order Details</h1>
-          <p className="text-gray-600 mt-1">Edit order information - {order.id}</p>
+          <p className="text-gray-600 mt-1">Edit order information - {order?.id}</p>
         </div>
 
         {/* Form */}
         <div className="bg-white rounded-lg shadow-lg p-6 sm:p-8">
           <div className="space-y-6">
             {/* Customer Info - Read Only */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-gray-700 mb-1">Customer: {order.customerName}</p>
-              <p className="text-gray-600 text-sm">Phone: {order.customerNumber}</p>
-              <p className="text-gray-600 text-sm">Order Date: {new Date(order.date).toLocaleDateString()}</p>
-              {order.isDelivered && (
-                <p className="text-gray-600 text-sm mt-2">
-                  <span className="inline-block bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
-                    Delivered
-                  </span>
-                </p>
-              )}
-            </div>
+            {order && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-gray-700 mb-1">Customer: {order.customers?.name}</p>
+                <p className="text-gray-600 text-sm">Phone: {order.customers?.phone}</p>
+                <p className="text-gray-600 text-sm">Order Date: {new Date(order.order_date).toLocaleDateString()}</p>
+                {order.delivered && (
+                  <p className="text-gray-600 text-sm mt-2">
+                    <span className="inline-block bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
+                      Delivered
+                    </span>
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Brick Quantity */}
             <div>
@@ -363,8 +244,9 @@ export function OrderDetailsScreen() {
               <input
                 id="brickQuantity"
                 type="number"
-                value={brickQuantity}
-                onChange={(e) => setBrickQuantity(e.target.value)}
+                value={orderDetailsInput.brickQuantity}
+                onChange={(e) => updateOrderDetailsInput('brickQuantity', parseInt(e.target.value) || 0)}
+                onWheel={(e) => e.currentTarget.blur()}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 min="1"
               />
@@ -382,12 +264,12 @@ export function OrderDetailsScreen() {
                     type="button"
                     className={cn(
                       "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-left",
-                      !deliveryDate && "text-gray-400"
+                      !orderDetailsInput.deliveryDate && "text-gray-400"
                     )}
                   >
                     <div className="flex items-center justify-between">
                       <span>
-                        {deliveryDate ? format(deliveryDate, 'PPP') : 'Select delivery date'}
+                        {orderDetailsInput.deliveryDate ? format(new Date(orderDetailsInput.deliveryDate), 'PPP') : 'Select delivery date'}
                       </span>
                       <CalendarIcon className="w-5 h-5 text-gray-400" />
                     </div>
@@ -396,8 +278,12 @@ export function OrderDetailsScreen() {
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
-                    selected={deliveryDate}
-                    onSelect={setDeliveryDate}
+                    selected={orderDetailsInput.deliveryDate ? new Date(orderDetailsInput.deliveryDate) : undefined}
+                    onSelect={(date: Date | undefined) => {
+                      if (date) {
+                        updateOrderDetailsInput('deliveryDate', format(date, 'yyyy-MM-dd'));
+                      }
+                    }}
                     disabled={(date: Date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                     initialFocus
                   />
@@ -414,8 +300,9 @@ export function OrderDetailsScreen() {
               <input
                 id="pricePerBrick"
                 type="number"
-                value={pricePerBrick}
-                onChange={(e) => setPricePerBrick(e.target.value)}
+                value={orderDetailsInput.pricePerBrick}
+                onChange={(e) => updateOrderDetailsInput('pricePerBrick', parseFloat(e.target.value) || 0)}
+                onWheel={(e) => e.currentTarget.blur()}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 step="0.01"
                 min="0.01"
@@ -449,11 +336,11 @@ export function OrderDetailsScreen() {
               <input
                 id="location"
                 type="text"
-                value={deliveryLocation}
-                onChange={(e) => setDeliveryLocation(e.target.value)}
+                value={orderDetailsInput.location}
+                onChange={(e) => updateOrderDetailsInput('location', e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
               />
-              {errors.deliveryLocation && <p className="text-red-600 text-sm mt-1">{errors.deliveryLocation}</p>}
+              {errors.location && <p className="text-red-600 text-sm mt-1">{errors.location}</p>}
             </div>
 
             {/* Final Price */}
@@ -464,15 +351,16 @@ export function OrderDetailsScreen() {
               <input
                 id="finalPrice"
                 type="number"
-                value={finalPrice}
-                onChange={(e) => setFinalPrice(e.target.value)}
+                value={orderDetailsInput.finalPrice}
+                onChange={(e) => updateOrderDetailsInput('finalPrice', parseFloat(e.target.value) || 0)}
+                onWheel={(e) => e.currentTarget.blur()}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 min="0.01"
                 step="0.01"
               />
-              {finalPrice && brickQuantity && (
-                <p className="text-red-600 text-sm mt-1">
-                  Price per brick: ₹{(parseFloat(finalPrice) / parseFloat(brickQuantity)).toFixed(2)}
+              {orderDetailsInput.finalPrice && orderDetailsInput.brickQuantity && (
+                <p className="text-gray-600 text-sm mt-1">
+                  Price per brick: ₹{(orderDetailsInput.finalPrice / orderDetailsInput.brickQuantity).toFixed(2)}
                 </p>
               )}
               {errors.finalPrice && <p className="text-red-600 text-sm mt-1">{errors.finalPrice}</p>}
@@ -485,18 +373,18 @@ export function OrderDetailsScreen() {
               </label>
               <select
                 id="paymentStatus"
-                value={paymentStatus}
-                onChange={(e) => setPaymentStatus(e.target.value as PaymentStatus)}
+                value={orderDetailsInput.paymentStatus}
+                onChange={(e) => updateOrderDetailsInput('paymentStatus', e.target.value as PaymentStatus)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
               >
-                <option value="Not Paid">Not Paid</option>
-                <option value="Partially Paid">Partially Paid</option>
-                <option value="Fully Paid">Fully Paid</option>
+                <option value="NOT_PAID">Not Paid</option>
+                <option value="PARTIALLY_PAID">Partially Paid</option>
+                <option value="FULLY_PAID">Fully Paid</option>
               </select>
             </div>
 
             {/* Amount Paid - Conditional */}
-            {paymentStatus === 'Partially Paid' && (
+            {orderDetailsInput.paymentStatus === 'PARTIALLY_PAID' && (
               <div>
                 <label htmlFor="amountPaid" className="block text-gray-700 mb-2">
                   Amount Paid <span className="text-red-600">*</span>
@@ -504,8 +392,9 @@ export function OrderDetailsScreen() {
                 <input
                   id="amountPaid"
                   type="number"
-                  value={amountPaid}
-                  onChange={(e) => setAmountPaid(e.target.value)}
+                  value={orderDetailsInput.amountPaid}
+                  onChange={(e) => updateOrderDetailsInput('amountPaid', parseFloat(e.target.value) || 0)}
+                  onWheel={(e) => e.currentTarget.blur()}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                   min="0.01"
                   step="0.01"
@@ -522,14 +411,14 @@ export function OrderDetailsScreen() {
               <input
                 id="gstNumber"
                 type="text"
-                value={gstNumber}
+                value={orderDetailsInput.gstNumber || ''}
                 onChange={(e) => {
                   const value = e.target.value.toUpperCase();
                   if (value.length <= 15) {
-                    setGstNumber(value);
+                    updateOrderDetailsInput('gstNumber', value || null);
                   }
                 }}
-                placeholder="Enter GST Number"
+                placeholder="Enter GST Number (15 characters)"
                 maxLength={15}
                 className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none ${
                   errors.gstNumber ? 'border-red-600' : 'border-gray-300'
@@ -545,49 +434,55 @@ export function OrderDetailsScreen() {
               </label>
               <input
                 id="deliveryChallanNumber"
-                type="number"
-                value={deliveryChallanNumber}
-                onChange={(e) => setDeliveryChallanNumber(e.target.value)}
-                onWheel={(e) => e.currentTarget.blur()}
+                type="text"
+                value={orderDetailsInput.deliveryChallanNumber}
+                onChange={(e) => updateOrderDetailsInput('deliveryChallanNumber', e.target.value)}
                 placeholder="Enter Delivery Challan Number"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none ${
+                  errors.deliveryChallanNumber ? 'border-red-600' : 'border-gray-300'
+                }`}
               />
+              {errors.deliveryChallanNumber && <p className="text-red-600 text-sm mt-1">{errors.deliveryChallanNumber}</p>}
             </div>
 
             {/* Load Men */}
             <div>
-              <label className="block text-gray-700 mb-2">Load Men</label>
+              <label className="block text-gray-700 mb-2">
+                Load Men <span className="text-red-600">*</span>
+              </label>
               <div className="border border-gray-300 rounded-lg p-4">
                 <div className="space-y-2">
-                  {LOAD_MEN.map((loadMan) => (
+                  {loadmen.map((loadman) => (
                     <label
-                      key={loadMan}
+                      key={loadman.id}
                       className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded"
                     >
                       <input
                         type="checkbox"
-                        checked={selectedLoadMen.includes(loadMan)}
-                        onChange={() => handleLoadManToggle(loadMan)}
+                        checked={selectedLoadmen.some(l => l.id === loadman.id)}
+                        onChange={() => handleLoadManToggle(loadman)}
                         className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                       />
-                      <span className="text-gray-900">{loadMan}</span>
+                      <span className="text-gray-900">{loadman.name}</span>
                     </label>
                   ))}
                 </div>
               </div>
-              {selectedLoadMen.length > 0 && (
+              {selectedLoadmen.length > 0 && (
                 <p className="text-gray-600 text-sm mt-2">
-                  Selected: {selectedLoadMen.join(', ')}
+                  Selected: {selectedLoadmen.map(l => l.name).join(', ')}
                 </p>
               )}
+              {errors.loadMen && <p className="text-red-600 text-sm mt-1">{errors.loadMen}</p>}
             </div>
 
             {/* Confirm Button */}
             <button
               onClick={handleConfirm}
-              className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors"
+              disabled={loading}
+              className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              Confirm
+              {loading ? 'Updating...' : 'Confirm'}
             </button>
           </div>
         </div>
@@ -600,6 +495,16 @@ export function OrderDetailsScreen() {
           message="The order has been updated successfully."
           onClose={handlePopupClose}
           type="success"
+        />
+      )}
+
+      {/* Failure Popup */}
+      {showFailurePopup && (
+        <Popup
+          title="Update Failed"
+          message={error || 'Failed to update order. Please try again.'}
+          onClose={() => setShowFailurePopup(false)}
+          type="error"
         />
       )}
     </div>
