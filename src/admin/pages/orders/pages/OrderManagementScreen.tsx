@@ -1,277 +1,111 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ArrowLeft, Plus, AlertCircle } from "lucide-react";
 import { AdminOrder } from "../../../../AdminApp";
 import { useAdminNavigation } from "../../../hooks/useAdminNavigation";
+import {
+  getTodayDeliveryOrdersWithPagination,
+  getUndeliveredOrders,
+  getDeliveredOrders,
+  getUnpaidOrders,
+} from "../../../../services/middleware.service";
+import { updateOrderWithLoadmen } from "../../../../services/middleware.service";
+import { Popup } from "../../../../components/Popup";
+import { Order } from "../../../../services/types";
 
 
 type OrderTab = "Today" | "Undelivered" | "Delivered" | "Unpaid";
 
-// Mock orders data
-const MOCK_ORDERS: AdminOrder[] = [
-  {
-    id: "ORD-001",
-    date: "2025-12-08",
-    deliveryDate: "2025-12-08",
-    customerName: "Rajesh Kumar",
-    customerNumber: "9876543210",
-    customerId: "CUST-001",
-    quantity: 5000,
-    pricePerBrick: 10,
-    paperPrice: 50000,
-    location: "123 MG Road, Bangalore",
-    finalPrice: 50000,
-    paymentStatus: "Not Paid",
-    loadMen: ["Raju Kumar", "Suresh Yadav"],
-    deliveryToday: true,
-    isDelivered: false,
-  },
-  {
-    id: "ORD-002",
-    date: "2025-12-07",
-    deliveryDate: "2025-12-05",
-    customerName: "Priya Sharma",
-    customerNumber: "9876543211",
-    customerId: "CUST-002",
-    quantity: 3000,
-    pricePerBrick: 10.5,
-    paperPrice: 31500,
-    location: "456 Brigade Road, Bangalore",
-    finalPrice: 31500,
-    paymentStatus: "Partially Paid",
-    amountPaid: 15000,
-    loadMen: [],
-    deliveryToday: false,
-    isDelivered: false,
-  },
-  {
-    id: "ORD-003",
-    date: "2025-12-06",
-    deliveryDate: "2025-12-07",
-    customerName: "Amit Patel",
-    customerNumber: "9876543212",
-    customerId: "CUST-003",
-    quantity: 7500,
-    pricePerBrick: 9.8,
-    paperPrice: 73500,
-    location: "789 Koramangala, Bangalore",
-    finalPrice: 73500,
-    paymentStatus: "Fully Paid",
-    amountPaid: 73500,
-    loadMen: ["Mohan Singh"],
-    deliveryToday: false,
-    isDelivered: true,
-    deliveryChallanNumber: "DC20251207001",
-    gstNumber: "29ABCDE1234F1Z5",
-  },
-  {
-    id: "ORD-004",
-    date: "2025-12-05",
-    deliveryDate: "2025-12-09",
-    customerName: "Sunita Reddy",
-    customerNumber: "9876543213",
-    customerId: "CUST-004",
-    quantity: 4000,
-    pricePerBrick: 10.2,
-    paperPrice: 40800,
-    location: "321 Indiranagar, Bangalore",
-    finalPrice: 40800,
-    paymentStatus: "Partially Paid",
-    amountPaid: 20000,
-    loadMen: [],
-    deliveryToday: false,
-    isDelivered: true,
-    deliveryChallanNumber: "DC20251209001",
-  },
-  {
-    id: "ORD-005",
-    date: "2025-12-04",
-    deliveryDate: "2025-12-10",
-    customerName: "Vijay Singh",
-    customerNumber: "9876543214",
-    customerId: "CUST-005",
-    quantity: 6000,
-    pricePerBrick: 10,
-    paperPrice: 60000,
-    location: "654 Whitefield, Bangalore",
-    finalPrice: 60000,
-    paymentStatus: "Not Paid",
-    loadMen: [],
-    deliveryToday: false,
-    isDelivered: false,
-  },
-  {
-    id: "ORD-006",
-    date: "2025-12-03",
-    deliveryDate: "2025-12-11",
-    customerName: "Lakshmi Rao",
-    customerNumber: "9876543215",
-    customerId: "CUST-006",
-    quantity: 8000,
-    pricePerBrick: 9.5,
-    paperPrice: 76000,
-    location: "789 Electronic City, Bangalore",
-    finalPrice: 76000,
-    paymentStatus: "Partially Paid",
-    amountPaid: 40000,
-    loadMen: [],
-    deliveryToday: false,
-    isDelivered: false,
-  },
-  {
-    id: "ORD-007",
-    date: "2025-12-02",
-    deliveryDate: "2025-12-08",
-    customerName: "Karthik Menon",
-    customerNumber: "9876543216",
-    customerId: "CUST-007",
-    quantity: 4500,
-    pricePerBrick: 10.3,
-    paperPrice: 46350,
-    location: "123 Jayanagar, Bangalore",
-    finalPrice: 46350,
-    paymentStatus: "Fully Paid",
-    amountPaid: 46350,
-    loadMen: ["Ramesh Patel"],
-    deliveryToday: false,
-    isDelivered: true,
-    deliveryChallanNumber: "DC20251208002",
-  },
-  {
-    id: "ORD-008",
-    date: "2025-12-01",
-    deliveryDate: "2025-12-12",
-    customerName: "Anita Desai",
-    customerNumber: "9876543217",
-    customerId: "CUST-008",
-    quantity: 5500,
-    pricePerBrick: 9.9,
-    paperPrice: 54450,
-    location: "456 HSR Layout, Bangalore",
-    finalPrice: 54450,
-    paymentStatus: "Not Paid",
-    loadMen: [],
-    deliveryToday: false,
-    isDelivered: false,
-  },
-  {
-    id: "ORD-009",
-    date: "2025-11-30",
-    deliveryDate: "2025-12-13",
-    customerName: "Ramesh Iyer",
-    customerNumber: "9876543218",
-    customerId: "CUST-009",
-    quantity: 7000,
-    pricePerBrick: 10.1,
-    paperPrice: 70700,
-    location: "789 BTM Layout, Bangalore",
-    finalPrice: 70700,
-    paymentStatus: "Partially Paid",
-    amountPaid: 35000,
-    loadMen: [],
-    deliveryToday: false,
-    isDelivered: false,
-  },
-  {
-    id: "ORD-010",
-    date: "2025-11-29",
-    deliveryDate: "2025-12-14",
-    customerName: "Deepa Nair",
-    customerNumber: "9876543219",
-    customerId: "CUST-010",
-    quantity: 6500,
-    pricePerBrick: 9.7,
-    paperPrice: 63050,
-    location: "321 Marathahalli, Bangalore",
-    finalPrice: 63050,
-    paymentStatus: "Fully Paid",
-    amountPaid: 63050,
-    loadMen: ["Gopal Reddy"],
-    deliveryToday: false,
-    isDelivered: true,
-    deliveryChallanNumber: "DC20251214001",
-  },
-  {
-    id: "ORD-011",
-    date: "2025-11-28",
-    deliveryDate: "2025-12-15",
-    customerName: "Arun Kumar",
-    customerNumber: "9876543220",
-    customerId: "CUST-011",
-    quantity: 5200,
-    pricePerBrick: 10.4,
-    paperPrice: 54080,
-    location: "654 Rajajinagar, Bangalore",
-    finalPrice: 54080,
-    paymentStatus: "Not Paid",
-    loadMen: [],
-    deliveryToday: false,
-    isDelivered: false,
-  },
-  {
-    id: "ORD-012",
-    date: "2025-11-27",
-    deliveryDate: "2025-12-16",
-    customerName: "Meena Krishnan",
-    customerNumber: "9876543221",
-    customerId: "CUST-012",
-    quantity: 4800,
-    pricePerBrick: 9.6,
-    paperPrice: 46080,
-    location: "789 Malleshwaram, Bangalore",
-    finalPrice: 46080,
-    paymentStatus: "Partially Paid",
-    amountPaid: 25000,
-    loadMen: [],
-    deliveryToday: false,
-    isDelivered: false,
-  },
-];
-
 export function OrderManagementScreen() {
-  const { goTo,goBack } = useAdminNavigation();
+  const { goTo, goBack } = useAdminNavigation();
   const [activeTab, setActiveTab] = useState<OrderTab>("Today");
-  const [displayCount, setDisplayCount] = useState(10);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const getFilteredOrders = () => {
-    const today = new Date().toISOString().split("T")[0];
+  // Fetch orders based on the active tab
+  const fetchOrders = async (page: number, isInitial: boolean = true) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      let result;
+      switch (activeTab) {
+        case "Today":
+          result = await getTodayDeliveryOrdersWithPagination(page);
+          break;
+        case "Undelivered":
+          result = await getUndeliveredOrders(page);
+          break;
+        case "Delivered":
+          result = await getDeliveredOrders(page);
+          break;
+        case "Unpaid":
+          result = await getUnpaidOrders(page);
+          break;
+        default:
+          result = { data: [], total: 0, hasMore: false };
+      }
 
-    switch (activeTab) {
-      case "Today":
-        return MOCK_ORDERS.filter(
-          (order) => !order.isDelivered && order.deliveryDate === today,
-        );
-      case "Undelivered":
-        return MOCK_ORDERS.filter((order) => !order.isDelivered);
-      case "Delivered":
-        return MOCK_ORDERS.filter((order) => order.isDelivered);
-      case "Unpaid":
-        return MOCK_ORDERS.filter(
-          (order) =>
-            order.isDelivered &&
-            (order.paymentStatus === "Not Paid" ||
-              order.paymentStatus === "Partially Paid"),
-        );
-      default:
-        return MOCK_ORDERS;
+      if (isInitial) {
+        setOrders(Array.isArray(result.data) ? result.data : [result.data]);
+      } else {
+        setOrders((prev) => [...prev, ...(Array.isArray(result.data) ? result.data : [result.data])]);
+      }
+      setHasMore(result.hasMore);
+      setCurrentPage(page);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch orders");
+      console.error("Error fetching orders:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const filteredOrders = getFilteredOrders();
-  const displayedOrders = filteredOrders.slice(0, displayCount);
-  const hasMore = displayCount < filteredOrders.length;
+  // Fetch orders when tab changes
+  useEffect(() => {
+    setCurrentPage(0);
+    setOrders([]);
+    setHasMore(false);
+    fetchOrders(0, true);
+  }, [activeTab]);
 
-  const isOrderOverdue = (order: AdminOrder) => {
+  const isOrderOverdue = (order: Order) => {
     const today = new Date().toISOString().split("T")[0];
-    return !order.isDelivered && order.deliveryDate < today;
+    return !order.delivered && order.delivery_date < today;
   };
 
-  const handleToggleDeliveryToday = (orderId: string) => {
-    // In a real app, this would update the order
-    console.log("Toggle delivery today for order:", orderId);
+  const handleLoadMore = () => {
+    const nextPage = currentPage + 1;
+    fetchOrders(nextPage, false);
+  };
+
+  const handleToggleDeliveryToday = async (orderId: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const today = new Date().toISOString().split("T")[0];
+
+      // Update delivery_date to today's date
+      await updateOrderWithLoadmen(orderId, { delivery_date: today }, []);
+
+      // Refetch the current page after update to ensure consistency
+      await fetchOrders(currentPage, true);
+    } catch (err) {
+      console.error("Failed to update delivery date:", err);
+      setError(err instanceof Error ? err.message : "Failed to update order");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {error && (
+        <Popup title="Error" message={error} onClose={() => setError(null)} type="error" />
+      )}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Header */}
         <div className="mb-8">
@@ -309,10 +143,7 @@ export function OrderManagementScreen() {
               ).map((tab) => (
                 <button
                   key={tab}
-                  onClick={() => {
-                    setActiveTab(tab);
-                    setDisplayCount(10);
-                  }}
+                  onClick={() => setActiveTab(tab)}
                   className={`px-6 py-4 whitespace-nowrap transition-colors ${
                     activeTab === tab
                       ? "border-b-2 border-blue-600 text-blue-600"
@@ -327,7 +158,16 @@ export function OrderManagementScreen() {
 
           {/* Orders List */}
           <div className="p-6">
-            {displayedOrders.length === 0 ? (
+            {loading && currentPage === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <p className="text-gray-600">Loading orders...</p>
+              </div>
+            ) : error ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <AlertCircle className="w-16 h-16 text-red-400 mb-4" />
+                <p className="text-red-600">{error}</p>
+              </div>
+            ) : orders.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12">
                 <AlertCircle className="w-16 h-16 text-gray-400 mb-4" />
                 <p className="text-gray-600">No orders at the moment</p>
@@ -376,58 +216,73 @@ export function OrderManagementScreen() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                      {displayedOrders.map((order) => (
-                        <tr
-                          key={order.id}
-                          onClick={() =>
-                            goTo(`${order.id}`)
-                          }
-                          className={`cursor-pointer hover:bg-gray-50 transition-colors ${
-                            isOrderOverdue(order) ? "text-red-600" : ""
-                          }`}
-                        >
+                      {orders.map((order) => {
+                        const isDeliveryToday =
+                          order.delivery_date === new Date().toISOString().split("T")[0];
+
+                        return (
+                          <tr
+                            key={order.id}
+                            onClick={() => goTo(`${order.id}`)}
+                            className={`cursor-pointer hover:bg-gray-50 transition-colors ${
+                              isOrderOverdue(order) ? "text-red-600" : ""
+                            }`}
+                          >
                           <td className="px-4 py-4">{order.id}</td>
                           <td className="px-4 py-4">
-                            {new Date(order.date).toLocaleDateString()}
+                            {new Date(order.order_date).toLocaleDateString()}
                           </td>
                           <td className="px-4 py-4">
-                            {new Date(order.deliveryDate).toLocaleDateString()}
+                            {new Date(order.delivery_date).toLocaleDateString()}
                           </td>
-                          <td className="px-4 py-4">{order.customerName}</td>
-                          <td className="px-4 py-4">{order.customerNumber}</td>
+                          <td className="px-4 py-4">{order.customers?.name || "-"}</td>
+                          <td className="px-4 py-4">{order.customers?.phone || "-"}</td>
                           <td className="px-4 py-4">
-                            {order.quantity.toLocaleString()}
+                            {order.brick_quantity.toLocaleString()}
                           </td>
                           <td className="px-4 py-4">
-                            ₹{order.finalPrice.toLocaleString()}
+                            ₹{order.final_price.toLocaleString()}
                           </td>
                           <td className="px-4 py-4">
                             <span
                               className={`inline-block px-2 py-1 rounded-full text-sm ${
-                                order.paymentStatus === "Fully Paid"
+                                order.payment_status === "FULLY_PAID"
                                   ? "bg-green-100 text-green-800"
-                                  : order.paymentStatus === "Partially Paid"
+                                  : order.payment_status === "PARTIALLY_PAID"
                                     ? "bg-yellow-100 text-yellow-800"
                                     : "bg-red-100 text-red-800"
                               }`}
                             >
-                              {order.paymentStatus}
+                              {order.payment_status === "FULLY_PAID"
+                                ? "Fully Paid"
+                                : order.payment_status === "PARTIALLY_PAID"
+                                  ? "Partially Paid"
+                                  : "Not Paid"}
                             </span>
                           </td>
                           {activeTab === "Delivered" && (
                             <td className="px-4 py-4">
-                              {order.deliveryChallanNumber || "-"}
+                              {order.dc_number || "-"}
                             </td>
                           )}
                           {activeTab === "Undelivered" && (
                             <td className="px-4 py-4">
-                              <label className="relative inline-flex items-center cursor-pointer">
+                              <label
+                                className="relative inline-flex items-center cursor-pointer"
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <input
                                   type="checkbox"
-                                  checked={order.deliveryToday}
+                                  checked={isDeliveryToday}
+                                  onClick={(e) => e.stopPropagation()}
                                   onChange={(e) => {
                                     e.stopPropagation();
-                                    handleToggleDeliveryToday(order.id);
+                                    if (isDeliveryToday) {
+                                      // If delivery date is already today, navigate to edit screen
+                                      goTo(`${order.id}`);
+                                    } else {
+                                      handleToggleDeliveryToday(order.id);
+                                    }
                                   }}
                                   className="sr-only peer"
                                 />
@@ -436,14 +291,15 @@ export function OrderManagementScreen() {
                             </td>
                           )}
                         </tr>
-                      ))}
+                      );
+                      })}
                     </tbody>
                   </table>
                 </div>
 
                 {/* Mobile View - Cards */}
                 <div className="lg:hidden space-y-4">
-                  {displayedOrders.map((order) => (
+                  {orders.map((order) => (
                     <div
                       key={order.id}
                       onClick={() => goTo(`${order.id}`)}
@@ -461,19 +317,23 @@ export function OrderManagementScreen() {
                             {order.id}
                           </p>
                           <p className="text-gray-600 text-sm">
-                            {order.customerName}
+                            {order.customers?.name || "-"}
                           </p>
                         </div>
                         <span
                           className={`px-2 py-1 rounded-full text-sm ${
-                            order.paymentStatus === "Fully Paid"
+                            order.payment_status === "FULLY_PAID"
                               ? "bg-green-100 text-green-800"
-                              : order.paymentStatus === "Partially Paid"
+                              : order.payment_status === "PARTIALLY_PAID"
                                 ? "bg-yellow-100 text-yellow-800"
                                 : "bg-red-100 text-red-800"
                           }`}
                         >
-                          {order.paymentStatus}
+                          {order.payment_status === "FULLY_PAID"
+                            ? "Fully Paid"
+                            : order.payment_status === "PARTIALLY_PAID"
+                              ? "Partially Paid"
+                              : "Not Paid"}
                         </span>
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-sm">
@@ -486,7 +346,7 @@ export function OrderManagementScreen() {
                                 : "text-gray-900"
                             }
                           >
-                            {new Date(order.deliveryDate).toLocaleDateString()}
+                            {new Date(order.delivery_date).toLocaleDateString()}
                           </p>
                         </div>
                         <div>
@@ -498,7 +358,7 @@ export function OrderManagementScreen() {
                                 : "text-gray-900"
                             }
                           >
-                            {order.quantity.toLocaleString()}
+                            {order.brick_quantity.toLocaleString()}
                           </p>
                         </div>
                         <div>
@@ -510,7 +370,7 @@ export function OrderManagementScreen() {
                                 : "text-gray-900"
                             }
                           >
-                            ₹{order.finalPrice.toLocaleString()}
+                            ₹{order.final_price.toLocaleString()}
                           </p>
                         </div>
                         <div>
@@ -522,15 +382,15 @@ export function OrderManagementScreen() {
                                 : "text-gray-900"
                             }
                           >
-                            {order.customerNumber}
+                            {order.customers?.phone || "-"}
                           </p>
                         </div>
                         {activeTab === "Delivered" &&
-                          order.deliveryChallanNumber && (
+                          order.dc_number && (
                             <div className="col-span-2">
                               <p className="text-gray-500">DC No</p>
                               <p className="text-gray-900">
-                                {order.deliveryChallanNumber}
+                                {order.dc_number}
                               </p>
                             </div>
                           )}
@@ -543,10 +403,11 @@ export function OrderManagementScreen() {
                 {hasMore && (
                   <div className="flex justify-center pt-4">
                     <button
-                      onClick={() => setDisplayCount(displayCount + 10)}
-                      className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                      onClick={handleLoadMore}
+                      disabled={loading}
+                      className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Load More
+                      {loading ? "Loading..." : "Load More"}
                     </button>
                   </div>
                 )}

@@ -398,7 +398,7 @@ export function OrderDetailsScreen() {
                     mode="single"
                     selected={deliveryDate}
                     onSelect={setDeliveryDate}
-                    disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                    disabled={(date: Date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                     initialFocus
                   />
                 </PopoverContent>
