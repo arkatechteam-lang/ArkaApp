@@ -11,7 +11,9 @@ import {
   Employee,
   OrderWithLoadmen,
   EmployeeWithCategory,
-  PaginatedResult
+  PaginatedResult,
+  Customer,
+  CreateOrderInput
 } from './types'
 import { MaterialPurchaseInput, ProductionInput } from "../employee/types";
 import { getRange, PAGE_SIZE } from "../utils/reusables";
@@ -93,6 +95,21 @@ export async function getVendors(): Promise<Vendor[]> {
 
   if (error) throw error;
   return data;
+}
+
+/* ------------------------------------------------------------------
+   6.5 SEARCH CUSTOMERS
+-------------------------------------------------------------------*/
+
+export async function searchCustomers(searchTerm: string): Promise<Customer[]> {
+  const { data, error } = await supabase
+    .from("customers")
+    .select("*")
+    .or(`name.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%`)
+    .order("name");
+
+  if (error) throw error;
+  return data ?? [];
 }
 
 /* ------------------------------------------------------------------
@@ -390,5 +407,50 @@ export async function getUnpaidOrders(
     total: count ?? 0,
     hasMore: (from + PAGE_SIZE) < (count ?? 0),
   };
+}
+
+export async function createOrder(
+  orderInput: CreateOrderInput,
+  loadmenIds: string[],
+  createdBy: string
+): Promise<{ orderId: string }> {
+  /* -------------------------------------------------------------
+     1. CREATE ORDER
+  --------------------------------------------------------------*/
+  const { data: order, error: orderError } = await supabase
+    .from("orders")
+    .insert({
+      ...orderInput,
+      delivered: false,
+      created_by: createdBy,
+    })
+    .select("id")
+    .single();
+
+  if (orderError) throw orderError;
+
+  const orderId = order.id;
+
+  /* -------------------------------------------------------------
+     2. CREATE ORDER ↔ LOADMEN MAPPING
+     (only if loadmen are provided)
+  --------------------------------------------------------------*/
+  if (loadmenIds.length > 0) {
+    const loadmenRows = loadmenIds.map((employee_id) => ({
+      order_id: orderId,
+      employee_id,
+    }));
+
+    const { error: loadmenError } = await supabase
+      .from("order_loadmen")
+      .insert(loadmenRows);
+
+    if (loadmenError) throw loadmenError;
+  }
+
+  /* -------------------------------------------------------------
+     3. RETURN CREATED ORDER ID
+  --------------------------------------------------------------*/
+  return { orderId };
 }
 

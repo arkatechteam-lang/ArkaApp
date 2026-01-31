@@ -24,6 +24,14 @@ export interface Vendor {
   alternate_phone: string | null;
 }
 
+export interface Customer {
+  id: string;
+  name: string;
+  phone: number;
+  gst_number: string | null;
+  address: string;
+}
+
 export interface ProcurementInput {
   material_id: string;
   vendor_id: string;
@@ -96,4 +104,19 @@ export interface PaginatedResult<T> {
   data: T[];
   total: number;      // total matching rows
   hasMore: boolean;   // for "Load more" visibility
+}
+
+export interface CreateOrderInput {
+  customer_id: string;
+  order_date: string;        // YYYY-MM-DD
+  delivery_date: string;     // YYYY-MM-DD
+  brick_quantity: number;
+  price_per_brick?: number;
+  paper_price?: number;
+  final_price: number;
+  location: string;
+  payment_status: "NOT_PAID" | "PARTIALLY_PAID" | "FULLY_PAID";
+  amount_paid: number;
+  gst_number?: string | null;
+  dc_number?: string | null;
 }
