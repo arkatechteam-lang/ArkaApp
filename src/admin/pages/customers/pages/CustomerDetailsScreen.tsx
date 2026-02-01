@@ -1,9 +1,16 @@
-import React, { useState } from "react";
-import { AdminScreen, Customer, AdminOrder } from "../../../../AdminApp";
+import React, { useState, useEffect } from "react";
+import {  Customer } from "../../../../AdminApp";
 import { ArrowLeft, Plus, Edit2, Trash2, X } from "lucide-react";
 import { Popup } from "../../../../components/Popup";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useParams } from "react-router-dom";
+import {
+  getCustomerById,
+  getOrdersByCustomer,
+  updateCustomer,
+} from "../../../../services/middleware.service";
 import { useAdminNavigation } from "../../../hooks/useAdminNavigation";
+import { Order } from "../../../../services/types";
+import { validateCustomer } from "../../../validators/customer.validator";
 
 interface Payment {
   id: string;
@@ -15,132 +22,132 @@ interface Payment {
 }
 
 // Mock order history for customer
-const MOCK_CUSTOMER_ORDERS: AdminOrder[] = [
-  {
-    id: "ORD-001",
-    date: "2025-12-08",
-    deliveryDate: "2025-12-08",
-    customerName: "Rajesh Kumar",
-    customerNumber: "9876543210",
-    customerId: "CUST-001",
-    quantity: 5000,
-    pricePerBrick: 10,
-    paperPrice: 50000,
-    location: "123 MG Road, Bangalore",
-    finalPrice: 50000,
-    paymentStatus: "Not Paid",
-    loadMen: ["Raju Kumar", "Suresh Yadav"],
-    deliveryToday: true,
-    isDelivered: true,
-    gstNumber: "29ABCDE1234F1Z5",
-    deliveryChallanNumber: "12345",
-  },
-  {
-    id: "ORD-015",
-    date: "2025-11-25",
-    deliveryDate: "2025-11-26",
-    customerName: "Rajesh Kumar",
-    customerNumber: "9876543210",
-    customerId: "CUST-001",
-    quantity: 3000,
-    pricePerBrick: 10,
-    paperPrice: 30000,
-    location: "123 MG Road, Bangalore",
-    finalPrice: 30000,
-    paymentStatus: "Fully Paid",
-    amountPaid: 30000,
-    loadMen: ["Mohan Singh"],
-    deliveryToday: false,
-    isDelivered: true,
-  },
-  {
-    id: "ORD-025",
-    date: "2025-11-10",
-    deliveryDate: "2025-11-11",
-    customerName: "Rajesh Kumar",
-    customerNumber: "9876543210",
-    customerId: "CUST-001",
-    quantity: 7000,
-    pricePerBrick: 9.8,
-    paperPrice: 68600,
-    location: "123 MG Road, Bangalore",
-    finalPrice: 68600,
-    paymentStatus: "Partially Paid",
-    amountPaid: 35000,
-    loadMen: ["Raju Kumar"],
-    deliveryToday: false,
-    isDelivered: true,
-    gstNumber: "29FGHIJ6789K2L6",
-    deliveryChallanNumber: "67890",
-  },
-];
+// const MOCK_CUSTOMER_ORDERS: AdminOrder[] = [
+//   {
+//     id: "ORD-001",
+//     date: "2025-12-08",
+//     deliveryDate: "2025-12-08",
+//     customerName: "Rajesh Kumar",
+//     customerNumber: "9876543210",
+//     customerId: "CUST-001",
+//     quantity: 5000,
+//     pricePerBrick: 10,
+//     paperPrice: 50000,
+//     location: "123 MG Road, Bangalore",
+//     finalPrice: 50000,
+//     paymentStatus: "Not Paid",
+//     loadMen: ["Raju Kumar", "Suresh Yadav"],
+//     deliveryToday: true,
+//     isDelivered: true,
+//     gstNumber: "29ABCDE1234F1Z5",
+//     deliveryChallanNumber: "12345",
+//   },
+//   {
+//     id: "ORD-015",
+//     date: "2025-11-25",
+//     deliveryDate: "2025-11-26",
+//     customerName: "Rajesh Kumar",
+//     customerNumber: "9876543210",
+//     customerId: "CUST-001",
+//     quantity: 3000,
+//     pricePerBrick: 10,
+//     paperPrice: 30000,
+//     location: "123 MG Road, Bangalore",
+//     finalPrice: 30000,
+//     paymentStatus: "Fully Paid",
+//     amountPaid: 30000,
+//     loadMen: ["Mohan Singh"],
+//     deliveryToday: false,
+//     isDelivered: true,
+//   },
+//   {
+//     id: "ORD-025",
+//     date: "2025-11-10",
+//     deliveryDate: "2025-11-11",
+//     customerName: "Rajesh Kumar",
+//     customerNumber: "9876543210",
+//     customerId: "CUST-001",
+//     quantity: 7000,
+//     pricePerBrick: 9.8,
+//     paperPrice: 68600,
+//     location: "123 MG Road, Bangalore",
+//     finalPrice: 68600,
+//     paymentStatus: "Partially Paid",
+//     amountPaid: 35000,
+//     loadMen: ["Raju Kumar"],
+//     deliveryToday: false,
+//     isDelivered: true,
+//     gstNumber: "29FGHIJ6789K2L6",
+//     deliveryChallanNumber: "67890",
+//   },
+// ];
 
-const MOCK_CUSTOMERS: Customer[] = [
-  {
-    id: "CUST-001",
-    name: "Rajesh Kumar",
-    phoneNumber: "9876543210",
-    address: "123 MG Road, Bangalore",
-    unpaidAmount: 15000,
-    totalSales: 250000,
-  },
-  {
-    id: "CUST-002",
-    name: "Priya Sharma",
-    phoneNumber: "9876543211",
-    address: "456 Brigade Road, Bangalore",
-    unpaidAmount: 0,
-    totalSales: 180000,
-  },
-  {
-    id: "CUST-003",
-    name: "Amit Patel",
-    phoneNumber: "9876543212",
-    address: "789 Koramangala, Bangalore",
-    unpaidAmount: 25000,
-    totalSales: 320000,
-  },
-  {
-    id: "CUST-004",
-    name: "Sunita Reddy",
-    phoneNumber: "9876543213",
-    address: "321 Indiranagar, Bangalore",
-    unpaidAmount: 8000,
-    totalSales: 145000,
-  },
-  {
-    id: "CUST-005",
-    name: "Mohan Singh",
-    phoneNumber: "9876543214",
-    address: "654 Whitefield, Bangalore",
-    unpaidAmount: 0,
-    totalSales: 95000,
-  },
-  {
-    id: "CUST-006",
-    name: "Lakshmi Iyer",
-    phoneNumber: "9876543215",
-    address: "987 Jayanagar, Bangalore",
-    unpaidAmount: 12000,
-    totalSales: 210000,
-  },
-  {
-    id: "CUST-007",
-    name: "Ramesh Gupta",
-    phoneNumber: "9876543216",
-    address: "147 BTM Layout, Bangalore",
-    unpaidAmount: 0,
-    totalSales: 165000,
-  },
-  {
-    id: "CUST-008",
-    name: "Anita Desai",
-    phoneNumber: "9876543217",
-    address: "258 HSR Layout, Bangalore",
-    unpaidAmount: 18000,
-    totalSales: 275000,
-  },
-];
+// const MOCK_CUSTOMERS: Customer[] = [
+//   {
+//     id: "CUST-001",
+//     name: "Rajesh Kumar",
+//     phoneNumber: "9876543210",
+//     address: "123 MG Road, Bangalore",
+//     unpaidAmount: 15000,
+//     totalSales: 250000,
+//   },
+//   {
+//     id: "CUST-002",
+//     name: "Priya Sharma",
+//     phoneNumber: "9876543211",
+//     address: "456 Brigade Road, Bangalore",
+//     unpaidAmount: 0,
+//     totalSales: 180000,
+//   },
+//   {
+//     id: "CUST-003",
+//     name: "Amit Patel",
+//     phoneNumber: "9876543212",
+//     address: "789 Koramangala, Bangalore",
+//     unpaidAmount: 25000,
+//     totalSales: 320000,
+//   },
+//   {
+//     id: "CUST-004",
+//     name: "Sunita Reddy",
+//     phoneNumber: "9876543213",
+//     address: "321 Indiranagar, Bangalore",
+//     unpaidAmount: 8000,
+//     totalSales: 145000,
+//   },
+//   {
+//     id: "CUST-005",
+//     name: "Mohan Singh",
+//     phoneNumber: "9876543214",
+//     address: "654 Whitefield, Bangalore",
+//     unpaidAmount: 0,
+//     totalSales: 95000,
+//   },
+//   {
+//     id: "CUST-006",
+//     name: "Lakshmi Iyer",
+//     phoneNumber: "9876543215",
+//     address: "987 Jayanagar, Bangalore",
+//     unpaidAmount: 12000,
+//     totalSales: 210000,
+//   },
+//   {
+//     id: "CUST-007",
+//     name: "Ramesh Gupta",
+//     phoneNumber: "9876543216",
+//     address: "147 BTM Layout, Bangalore",
+//     unpaidAmount: 0,
+//     totalSales: 165000,
+//   },
+//   {
+//     id: "CUST-008",
+//     name: "Anita Desai",
+//     phoneNumber: "9876543217",
+//     address: "258 HSR Layout, Bangalore",
+//     unpaidAmount: 18000,
+//     totalSales: 275000,
+//   },
+// ];
 
 const MOCK_PAYMENTS: Payment[] = [
   {
@@ -180,7 +187,13 @@ const RECEIVER_ACCOUNTS = [
 export function CustomerDetailsScreen() {
   const { customerId } = useParams<{ customerId: string }>();
   const { goBack, goTo } = useAdminNavigation();
-  const customer = MOCK_CUSTOMERS.find((c) => c.id === customerId);
+  // const customer = MOCK_CUSTOMERS.find((c) => c.id === customerId);
+  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [page, setPage] = useState(1);
+  const [hasMoreOrders, setHasMoreOrders] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [savingCustomer, setSavingCustomer] = useState(false);
 
   const [activeTab, setActiveTab] = useState<"Orders" | "Payments">("Orders");
   const [displayCount, setDisplayCount] = useState(10);
@@ -217,6 +230,61 @@ export function CustomerDetailsScreen() {
   >("Cash");
   const [senderAccount, setSenderAccount] = useState("");
   const [receiverAccount, setReceiverAccount] = useState("");
+
+  useEffect(() => {
+    if (!customerId) return;
+
+    const loadCustomerDetails = async () => {
+      try {
+        setLoading(true);
+
+        const customerData = await getCustomerById(customerId);
+        const ordersRes = await getOrdersByCustomer(customerId, 1);
+        console.log("Fetched customer data:", customerData);
+        console.log("Fetched orders data:", ordersRes);
+        setCustomer({
+          id: customerData.id,
+          name: customerData.name,
+          phoneNumber: customerData.phone,
+          address: customerData.address,
+          gstNumber: customerData.gst_number,
+          unpaidAmount: 0, // computed later
+          totalSales: 0, // computed later
+        });
+
+        const mappedOrders = ordersRes.data.map((order: any) => ({
+          id: order.id,
+          date: order.order_date,
+          deliveryDate: order.delivery_date,
+          customerName: customerData.name,
+          customerNumber: customerData.phone,
+          customerId: customerData.id,
+          quantity: order.brick_quantity,
+          pricePerBrick: order.price_per_brick,
+          paperPrice: order.paper_price,
+          location: order.delivery_address || customerData.address,
+          finalPrice: order.final_price,
+          paymentStatus: order.payment_status,
+          amountPaid: order.amount_paid,
+          loadMen: order.load_men || [],
+          deliveryToday: false, // or set from API if available
+          isDelivered: order.is_delivered,
+          gstNumber: order.gst_number,
+          deliveryChallanNumber: order.delivery_challan_number,
+        }));
+
+        setOrders(mappedOrders);
+        setHasMoreOrders(ordersRes.hasMore);
+        setPage(1);
+      } catch (err) {
+        console.error("Failed to load customer details", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadCustomerDetails();
+  }, [customerId]);
 
   const handleAddPayment = () => {
     // Reset form
@@ -328,11 +396,50 @@ export function CustomerDetailsScreen() {
     return isValid;
   };
 
-  const handleConfirmEditCustomer = () => {
-    if (validateCustomerForm()) {
-      setSuccessMessage("Customer details updated successfully");
+  const handleConfirmEditCustomer = async () => {
+    if (!customer) return;
+
+    // Use shared validator
+    const errors = validateCustomer({
+      name: editCustomerName,
+      phone: editCustomerPhone,
+      address: editCustomerAddress,
+      gst_number: editCustomerGst,
+    });
+
+    setCustomerNameError(errors.name || "");
+    setCustomerPhoneError(errors.phone || "");
+    setCustomerGstError(errors.gst_number || "");
+    setCustomerAddressError(errors.address || "");
+
+    if (Object.keys(errors).length > 0) return;
+
+    try {
+      setSavingCustomer(true); // 🔵 START loading
+
+      const updated = await updateCustomer(customer.id, {
+        name: editCustomerName.trim(),
+        phone: editCustomerPhone.trim(),
+        address: editCustomerAddress.trim(),
+        gst_number: editCustomerGst.trim() || undefined,
+      });
+
+      // 🔄 Update local state
+      setCustomer({
+        ...customer,
+        name: updated.name,
+        phoneNumber: updated.phone,
+        address: updated.address,
+        gstNumber: updated.gst_number,
+      });
+
       setShowEditCustomerModal(false);
+      setSuccessMessage("Customer details updated successfully");
       setShowSuccessPopup(true);
+    } catch (err) {
+      console.error("Failed to update customer", err);
+    } finally {
+      setSavingCustomer(false); // 🔵 END loading (always runs)
     }
   };
 
@@ -368,15 +475,22 @@ export function CustomerDetailsScreen() {
     }
 
     // Filter orders and payments within date range
-    const ordersInRange = MOCK_CUSTOMER_ORDERS.filter((order) => {
+    // const ordersInRange = MOCK_CUSTOMER_ORDERS.filter((order) => {
+    //   const orderDate = new Date(order.date);
+    //   return orderDate >= fromDate && orderDate <= toDate;
+    // });
+
+    // const paymentsInRange = MOCK_PAYMENTS.filter((payment) => {
+    //   const paymentDate = new Date(payment.date);
+    //   return paymentDate >= fromDate && paymentDate <= toDate;
+    // });
+
+    const ordersInRange = orders.filter((order) => {
       const orderDate = new Date(order.date);
       return orderDate >= fromDate && orderDate <= toDate;
     });
 
-    const paymentsInRange = MOCK_PAYMENTS.filter((payment) => {
-      const paymentDate = new Date(payment.date);
-      return paymentDate >= fromDate && paymentDate <= toDate;
-    });
+    const paymentsInRange: Payment[] = [];
 
     // Check if transactions exist
     if (ordersInRange.length === 0 && paymentsInRange.length === 0) {
@@ -424,13 +538,70 @@ export function CustomerDetailsScreen() {
     }
   };
 
-  const displayedOrders = MOCK_CUSTOMER_ORDERS.slice(0, displayCount);
+  // const displayedOrders = MOCK_CUSTOMER_ORDERS.slice(0, displayCount);
+  const displayedOrders = orders;
+
   const displayedPayments = MOCK_PAYMENTS.slice(0, displayCount);
-  const hasMoreOrders = displayCount < MOCK_CUSTOMER_ORDERS.length;
   const hasMorePayments = displayCount < MOCK_PAYMENTS.length;
 
+  const loadMoreOrders = async () => {
+    const nextPage = page + 1;
+    const res = await getOrdersByCustomer(customer.id, nextPage);
+
+    const mappedOrders = res.data.map((order: any) => ({
+      id: order.id,
+      date: order.order_date,
+      deliveryDate: order.delivery_date,
+      customerName: customer.name,
+      customerNumber: customer.phoneNumber,
+      customerId: customer.id,
+      quantity: order.brick_quantity,
+      pricePerBrick: order.price_per_brick,
+      paperPrice: order.paper_price,
+      location: order.delivery_address || customer.address,
+      finalPrice: order.final_price,
+      paymentStatus: order.payment_status,
+      amountPaid: order.amount_paid,
+      loadMen: order.load_men || [],
+      deliveryToday: false, // or set from API if available
+      isDelivered: order.is_delivered,
+      gstNumber: order.gst_number,
+      deliveryChallanNumber: order.delivery_challan_number,
+    }));
+
+    setOrders((prev) => [...prev, ...mappedOrders]);
+    setHasMoreOrders(res.hasMore);
+    setPage(nextPage);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+        Loading customer details...
+      </div>
+    );
+  }
+
   if (!customer) {
-    return <div>Customer not found</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="bg-white rounded-xl shadow-lg p-8 flex flex-col items-center">
+          <span className="text-4xl mb-4 text-red-500">😕</span>
+          <h2 className="text-xl font-semibold text-gray-800 mb-2">
+            Customer not found
+          </h2>
+          <p className="text-gray-500 mb-4">
+            The customer you are looking for does not exist or was removed.
+          </p>
+          <button
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            onClick={() => goBack("/admin/customers")}
+          >
+            Back to Customers
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -439,7 +610,7 @@ export function CustomerDetailsScreen() {
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => goBack('/admin/customers')}
+            onClick={() => goBack("/admin/customers")}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -613,10 +784,12 @@ export function CustomerDetailsScreen() {
                             {order.id}
                           </td>
                           <td className="px-4 py-4 text-gray-600">
-                            {new Date(order.date).toLocaleDateString()}
+                            {new Date(order.date).toLocaleDateString() ?? ""}
                           </td>
                           <td className="px-4 py-4 text-gray-600">
-                            {new Date(order.deliveryDate).toLocaleDateString()}
+                            {new Date(
+                              order.deliveryDate,
+                            ).toLocaleDateString() ?? ""}
                           </td>
                           <td className="px-4 py-4 text-gray-900">
                             {order.customerName}
@@ -625,10 +798,10 @@ export function CustomerDetailsScreen() {
                             {order.customerNumber}
                           </td>
                           <td className="px-4 py-4 text-gray-900">
-                            {order.quantity.toLocaleString()}
+                            {order.quantity.toLocaleString() ?? "-"}
                           </td>
                           <td className="px-4 py-4 text-gray-900">
-                            ₹{order.finalPrice.toLocaleString()}
+                            ₹{order.finalPrice.toLocaleString() ?? "0"}
                           </td>
                           <td className="px-4 py-4 text-gray-600">
                             {order.gstNumber || "-"}
@@ -667,7 +840,7 @@ export function CustomerDetailsScreen() {
                         <div>
                           <p className="text-gray-900">{order.id}</p>
                           <p className="text-gray-600 text-sm">
-                            {new Date(order.date).toLocaleDateString()}
+                            {new Date(order.date).toLocaleDateString() ?? ""}
                           </p>
                         </div>
                         <span
@@ -686,13 +859,13 @@ export function CustomerDetailsScreen() {
                         <div>
                           <p className="text-gray-500">Quantity</p>
                           <p className="text-gray-900">
-                            {order.quantity.toLocaleString()}
+                            {order.quantity.toLocaleString() ?? "-"}
                           </p>
                         </div>
                         <div>
                           <p className="text-gray-500">Final Price</p>
                           <p className="text-gray-900">
-                            ₹{order.finalPrice.toLocaleString()}
+                            ₹{order.finalPrice.toLocaleString() ?? "0"}
                           </p>
                         </div>
                       </div>
@@ -704,7 +877,7 @@ export function CustomerDetailsScreen() {
                 {hasMoreOrders && (
                   <div className="flex justify-center pt-4">
                     <button
-                      onClick={() => setDisplayCount(displayCount + 10)}
+                      onClick={loadMoreOrders}
                       className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
                     >
                       Load More
@@ -797,7 +970,7 @@ export function CustomerDetailsScreen() {
                             ₹{payment.amount.toLocaleString()}
                           </p>
                           <p className="text-gray-600 text-sm">
-                            {new Date(payment.date).toLocaleDateString()}
+                            {new Date(payment.date).toLocaleDateString() ?? ""}
                           </p>
                         </div>
                         <div className="flex gap-2">

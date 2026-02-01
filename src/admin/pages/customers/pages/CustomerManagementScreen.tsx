@@ -1,5 +1,4 @@
-import React, { useState } from "react";
-import { AdminScreen, Customer } from "../../../../AdminApp";
+import React, { useState, useEffect } from "react";
 import {
   ArrowLeft,
   Plus,
@@ -10,127 +9,213 @@ import {
   X,
 } from "lucide-react";
 import { Popup } from "../../../../components/Popup";
-import {useAdminNavigation} from "../../../hooks/useAdminNavigation";
+import {
+  getCustomers,
+  createCustomer,
+} from "../../../../services/middleware.service";
+import { validateCustomer } from "../../../validators/customer.validator";
+import { useAdminNavigation } from "../../../hooks/useAdminNavigation";
 
-const MOCK_CUSTOMERS: Customer[] = [
-  {
-    id: "CUST-001",
-    name: "Rajesh Kumar",
-    phoneNumber: "9876543210",
-    address: "123 MG Road, Bangalore",
-    unpaidAmount: 15000,
-    totalSales: 250000,
-  },
-  {
-    id: "CUST-002",
-    name: "Priya Sharma",
-    phoneNumber: "9876543211",
-    address: "456 Brigade Road, Bangalore",
-    unpaidAmount: 0,
-    totalSales: 180000,
-  },
-  {
-    id: "CUST-003",
-    name: "Amit Patel",
-    phoneNumber: "9876543212",
-    address: "789 Koramangala, Bangalore",
-    unpaidAmount: 25000,
-    totalSales: 320000,
-  },
-  {
-    id: "CUST-004",
-    name: "Sunita Reddy",
-    phoneNumber: "9876543213",
-    address: "321 Indiranagar, Bangalore",
-    unpaidAmount: 8000,
-    totalSales: 145000,
-  },
-  {
-    id: "CUST-005",
-    name: "Mohan Singh",
-    phoneNumber: "9876543214",
-    address: "654 Whitefield, Bangalore",
-    unpaidAmount: 0,
-    totalSales: 95000,
-  },
-  {
-    id: "CUST-006",
-    name: "Lakshmi Iyer",
-    phoneNumber: "9876543215",
-    address: "987 Jayanagar, Bangalore",
-    unpaidAmount: 12000,
-    totalSales: 210000,
-  },
-  {
-    id: "CUST-007",
-    name: "Ramesh Gupta",
-    phoneNumber: "9876543216",
-    address: "147 BTM Layout, Bangalore",
-    unpaidAmount: 0,
-    totalSales: 165000,
-  },
-  {
-    id: "CUST-008",
-    name: "Anita Desai",
-    phoneNumber: "9876543217",
-    address: "258 HSR Layout, Bangalore",
-    unpaidAmount: 18000,
-    totalSales: 275000,
-  },
-];
-
+// const MOCK_CUSTOMERS: Customer[] = [
+//   {
+//     id: "CUST-001",
+//     name: "Rajesh Kumar",
+//     phoneNumber: "9876543210",
+//     address: "123 MG Road, Bangalore",
+//     unpaidAmount: 15000,
+//     totalSales: 250000,
+//   },
+//   {
+//     id: "CUST-002",
+//     name: "Priya Sharma",
+//     phoneNumber: "9876543211",
+//     address: "456 Brigade Road, Bangalore",
+//     unpaidAmount: 0,
+//     totalSales: 180000,
+//   },
+//   {
+//     id: "CUST-003",
+//     name: "Amit Patel",
+//     phoneNumber: "9876543212",
+//     address: "789 Koramangala, Bangalore",
+//     unpaidAmount: 25000,
+//     totalSales: 320000,
+//   },
+//   {
+//     id: "CUST-004",
+//     name: "Sunita Reddy",
+//     phoneNumber: "9876543213",
+//     address: "321 Indiranagar, Bangalore",
+//     unpaidAmount: 8000,
+//     totalSales: 145000,
+//   },
+//   {
+//     id: "CUST-005",
+//     name: "Mohan Singh",
+//     phoneNumber: "9876543214",
+//     address: "654 Whitefield, Bangalore",
+//     unpaidAmount: 0,
+//     totalSales: 95000,
+//   },
+//   {
+//     id: "CUST-006",
+//     name: "Lakshmi Iyer",
+//     phoneNumber: "9876543215",
+//     address: "987 Jayanagar, Bangalore",
+//     unpaidAmount: 12000,
+//     totalSales: 210000,
+//   },
+//   {
+//     id: "CUST-007",
+//     name: "Ramesh Gupta",
+//     phoneNumber: "9876543216",
+//     address: "147 BTM Layout, Bangalore",
+//     unpaidAmount: 0,
+//     totalSales: 165000,
+//   },
+//   {
+//     id: "CUST-008",
+//     name: "Anita Desai",
+//     phoneNumber: "9876543217",
+//     address: "258 HSR Layout, Bangalore",
+//     unpaidAmount: 18000,
+//     totalSales: 275000,
+//   },
+// ];
+type CustomerUI = {
+  id: string;
+  name: string;
+  phoneNumber: string;
+  address: string;
+  unpaidAmount: number;
+  totalSales: number;
+};
 export function CustomerManagementScreen() {
   const { goBack, goTo } = useAdminNavigation();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [displayCount, setDisplayCount] = useState(10);
+
+  const [customers, setCustomers] = useState<CustomerUI[]>([]);
+  const [page, setPage] = useState<number>(1);
+  const [hasMore, setHasMore] = useState<boolean>(true);
+
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [activeTab, setActiveTab] = useState<"All" | "Unpaid">("All");
+
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
 
-  // Add Customer Form States
+  // form state
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
   const [customerGstNumber, setCustomerGstNumber] = useState("");
+
   const [nameError, setNameError] = useState("");
   const [phoneError, setPhoneError] = useState("");
   const [addressError, setAddressError] = useState("");
   const [gstError, setGstError] = useState("");
 
-  const validateForm = () => {
-    let isValid = true;
-    setNameError("");
-    setPhoneError("");
-    setAddressError("");
-    setGstError("");
+  /* ------------------ EFFECTS ------------------ */
 
-    if (!customerName.trim()) {
-      setNameError("Name is required");
-      isValid = false;
-    }
+  useEffect(() => {
+    loadCustomers(1, true);
+  }, []);
 
-    if (!customerPhone.trim()) {
-      setPhoneError("Phone number is required");
-      isValid = false;
-    } else if (!/^[0-9]{10}$/.test(customerPhone.trim())) {
-      setPhoneError("Phone number must be 10 digits");
-      isValid = false;
-    }
+  useEffect(() => {
+  const timer = setTimeout(() => {
+    setDebouncedSearch(searchQuery);
+  }, 400); // 300–500ms is standard
 
-    if (!customerAddress.trim()) {
-      setAddressError("Address is required");
-      isValid = false;
-    }
+  return () => clearTimeout(timer);
+}, [searchQuery]);
 
-    // Validate GST Number - if entered, must be exactly 15 characters
-    if (customerGstNumber.trim() && customerGstNumber.trim().length !== 15) {
-      setGstError("Enter valid GST Number");
-      isValid = false;
-    }
+useEffect(() => {
+  console.log("Searching for:", debouncedSearch);
+  loadCustomers(1, true);
+}, [debouncedSearch]);
 
-    return isValid;
+  /* ------------------ FUNCTIONS ------------------ */
+
+  const loadCustomers = async (
+  pageNumber: number,
+  reset = false
+): Promise<void> => {
+  try {
+    if (!reset && !hasMore) return;
+
+    const res = await getCustomers(pageNumber, debouncedSearch);
+
+    const mapped: CustomerUI[] = res.data.map((c) => ({
+      id: c.id,
+      name: c.name,
+      phoneNumber: c.phone,
+      address: c.address ?? "-",
+      unpaidAmount: 0,
+      totalSales: 0,
+    }));
+
+    setCustomers((prev) => (reset ? mapped : [...prev, ...mapped]));
+    setHasMore(res.hasMore);
+    setPage(pageNumber);
+  } catch (err) {
+    console.error("Failed to load customers", err);
+  }
+};
+
+
+  const handleSubmitCustomer = async (): Promise<void> => {
+  const payload = {
+    name: customerName.trim(),
+    phone: customerPhone.trim(),
+    address: customerAddress.trim(),
+    gst_number: customerGstNumber || undefined,
   };
 
+  const errors = validateCustomer(payload);
+
+  setNameError(errors.name ?? "");
+  setPhoneError(errors.phone ?? "");
+  setAddressError(errors.address ?? "");
+  setGstError(errors.gst_number ?? "");
+
+  if (Object.keys(errors).length > 0) return;
+
+  try {
+
+    await createCustomer(payload);
+
+    setShowAddCustomerModal(false);
+    setShowSuccessPopup(true);
+
+    // reset form
+    setCustomerName("");
+    setCustomerPhone("");
+    setCustomerAddress("");
+    setCustomerGstNumber("");
+
+    // reload list from page 1
+    await loadCustomers(1, true);
+  } catch (err: any) {
+    console.error("Failed to create customer", err);
+    alert(err?.message || "Failed to create customer");
+  } 
+};
+
+
+  // const filteredCustomers = customers.filter((customer) => {
+  //   const matchesSearch =
+  //     customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  //     customer.phoneNumber.includes(searchQuery) ||
+  //     customer.id.toLowerCase().includes(searchQuery.toLowerCase());
+
+  //   const matchesTab =
+  //     activeTab === "All" ||
+  //     (activeTab === "Unpaid" && customer.unpaidAmount > 0);
+
+  //   return matchesSearch && matchesTab;
+  // });
+
+  const displayedCustomers = customers;
   const handleOpenAddCustomerModal = () => {
     setCustomerName("");
     setCustomerPhone("");
@@ -155,46 +240,13 @@ export function CustomerManagementScreen() {
     setGstError("");
   };
 
-  const handleSubmitCustomer = () => {
-    if (validateForm()) {
-      // In a real app, this would save the customer
-      setShowAddCustomerModal(false);
-      setShowSuccessPopup(true);
-      // Reset form
-      setCustomerName("");
-      setCustomerPhone("");
-      setCustomerAddress("");
-      setCustomerGstNumber("");
-      setNameError("");
-      setPhoneError("");
-      setAddressError("");
-      setGstError("");
-    }
-  };
-
-  const filteredCustomers = MOCK_CUSTOMERS.filter((customer) => {
-    const matchesSearch =
-      customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      customer.phoneNumber.includes(searchQuery) ||
-      customer.id.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesTab =
-      activeTab === "All" ||
-      (activeTab === "Unpaid" && customer.unpaidAmount > 0);
-
-    return matchesSearch && matchesTab;
-  });
-
-  const displayedCustomers = filteredCustomers.slice(0, displayCount);
-  const hasMore = displayCount < filteredCustomers.length;
-
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => goBack('/admin/home')}
+            onClick={() => goBack("/admin/home")}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -238,7 +290,7 @@ export function CustomerManagementScreen() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm">Total Customers</p>
-                <p className="text-gray-900 mt-1">{MOCK_CUSTOMERS.length}</p>
+                <p className="text-gray-900 mt-1">{customers.length}</p>
               </div>
               <div className="bg-blue-100 p-3 rounded-lg">
                 <Phone className="w-6 h-6 text-blue-600" />
@@ -251,10 +303,9 @@ export function CustomerManagementScreen() {
                 <p className="text-gray-600 text-sm">Total Sales</p>
                 <p className="text-gray-900 mt-1">
                   ₹
-                  {MOCK_CUSTOMERS.reduce(
-                    (sum, c) => sum + c.totalSales,
-                    0,
-                  ).toLocaleString()}
+                  {customers
+                    .reduce((sum, c) => sum + c.totalSales, 0)
+                    .toLocaleString()}
                 </p>
               </div>
               <div className="bg-green-100 p-3 rounded-lg">
@@ -268,10 +319,9 @@ export function CustomerManagementScreen() {
                 <p className="text-gray-600 text-sm">Outstanding Amount</p>
                 <p className="text-gray-900 mt-1">
                   ₹
-                  {MOCK_CUSTOMERS.reduce(
-                    (sum, c) => sum + c.unpaidAmount,
-                    0,
-                  ).toLocaleString()}
+                  {customers
+                    .reduce((sum, c) => sum + c.unpaidAmount, 0)
+                    .toLocaleString()}
                 </p>
               </div>
               <div className="bg-red-100 p-3 rounded-lg">
@@ -289,7 +339,6 @@ export function CustomerManagementScreen() {
               <button
                 onClick={() => {
                   setActiveTab("All");
-                  setDisplayCount(10);
                 }}
                 className={`px-6 py-4 whitespace-nowrap transition-colors ${
                   activeTab === "All"
@@ -302,7 +351,6 @@ export function CustomerManagementScreen() {
               <button
                 onClick={() => {
                   setActiveTab("Unpaid");
-                  setDisplayCount(10);
                 }}
                 className={`px-6 py-4 whitespace-nowrap transition-colors ${
                   activeTab === "Unpaid"
@@ -352,7 +400,9 @@ export function CustomerManagementScreen() {
                       {displayedCustomers.map((customer) => (
                         <tr
                           key={customer.id}
-                          onClick={() => goTo(`/admin/customers/${customer.id}`)}
+                          onClick={() =>
+                            goTo(`/admin/customers/${customer.id}`)
+                          }
                           className="cursor-pointer hover:bg-gray-50 transition-colors"
                         >
                           <td className="px-4 py-4 text-gray-900">
@@ -436,7 +486,7 @@ export function CustomerManagementScreen() {
                 {hasMore && (
                   <div className="flex justify-center pt-4">
                     <button
-                      onClick={() => setDisplayCount(displayCount + 10)}
+                      onClick={() => loadCustomers(page + 1)}
                       className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
                     >
                       Load More

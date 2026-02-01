@@ -11,7 +11,8 @@ import {
   Employee,
   OrderWithLoadmen,
   EmployeeWithCategory,
-  PaginatedResult
+  PaginatedResult,
+  Customer
 } from './types'
 import { MaterialPurchaseInput, ProductionInput } from "../employee/types";
 import { getRange, PAGE_SIZE } from "../utils/reusables";
@@ -392,3 +393,143 @@ export async function getUnpaidOrders(
   };
 }
 
+/* ------------------------------------------------------------------
+   17. GET CUSTOMERS WITH PAGINATION
+-------------------------------------------------------------------*/
+
+export async function getCustomers(
+  page = 1,
+  search?: string
+) {
+  const PAGE_SIZE = 20;
+  const from = (page - 1) * PAGE_SIZE;
+  const to = from + PAGE_SIZE - 1;
+
+  let query = supabase
+    .from("customers")
+    .select("*", { count: "exact" })
+    .order("created_at", { ascending: false });
+
+  if (search && search.trim().length >= 2) {
+    const s = search.trim();
+
+    query = query.or(
+      `name.ilike.%${s}%,phone.ilike.%${s}%`
+    );
+  }
+
+  const { data, count, error } = await query.range(from, to);
+  console.log("Search param:", search);
+
+  if (error) {
+    console.error("Customer search error:", error);
+    throw error;
+  }
+
+  return {
+    data: data ?? [],
+    hasMore: count ? to < count - 1 : false,
+  };
+}
+
+
+
+/* ------------------------------------------------------------------
+   18. GET CUSTOMER BY ID
+-------------------------------------------------------------------*/
+
+export async function getCustomerById(
+  customerId: string
+): Promise<Customer> {
+  const { data, error } = await supabase
+    .from("customers")
+    .select("*")
+    .eq("id", customerId)
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+/* ------------------------------------------------------------------
+   19. CREATE CUSTOMER
+-------------------------------------------------------------------*/
+
+export async function createCustomer(input: {
+  name: string;
+  phone: string;
+  address: string;
+  gst_number?: string;
+}): Promise<Customer> {
+  const { data, error } = await supabase
+    .from("customers")
+    .insert({
+  name: input.name,
+  phone: input.phone,
+  address: input.address,
+  gst_number: input.gst_number ?? null,
+})
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+/* ------------------------------------------------------------------
+   20. GET ORDERS BY CUSTOMER
+-------------------------------------------------------------------*/
+
+export async function getOrdersByCustomer(
+  customerId: string,
+  page = 1
+): Promise<PaginatedResult<Order>> {
+  const PAGE_SIZE = 20;
+
+  const from = (page - 1) * PAGE_SIZE;
+  const to = from + PAGE_SIZE - 1;
+
+  const { data, count, error } = await supabase
+    .from("orders")
+    .select("*", { count: "exact" })
+    .eq("customer_id", customerId)
+    .order("created_at", { ascending: false })
+    .range(from, to);
+
+  if (error) throw error;
+
+  return {
+    data: data ?? [],
+    total: count ?? 0,
+    hasMore: count ? to < count - 1 : false,
+  };
+}
+
+/* ------------------------------------------------------------------
+   21. UPDATE CUSTOMER
+-------------------------------------------------------------------*/
+
+export async function updateCustomer(
+  customerId: string,
+  input: {
+    name: string;
+    phone: string;
+    address: string;
+    gst_number?: string;
+  }
+): Promise<Customer> {
+  const { data, error } = await supabase
+    .from("customers")
+    .update({
+      name: input.name,
+      phone: input.phone,
+      address: input.address,
+      gst_number: input.gst_number ?? null,
+    })
+    .eq("id", customerId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}

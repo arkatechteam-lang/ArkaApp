@@ -97,3 +97,12 @@ export interface PaginatedResult<T> {
   total: number;      // total matching rows
   hasMore: boolean;   // for "Load more" visibility
 }
+
+export interface Customer {
+  id: string;
+  name: string;
+  phone: string;
+  address: string;
+  gst_number?: string | null;
+  created_at: string;
+}
