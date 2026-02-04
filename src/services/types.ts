@@ -120,3 +120,18 @@ export interface CreateOrderInput {
   gst_number?: string | null;
   dc_number?: string | null;
 }
+
+export interface ProductionEntry {
+  id: string;
+  production_date: string;
+  round: number;
+  bricks: number;
+
+  wet_ash_kg: number | null;
+  marble_powder_kg: number | null;
+  crusher_powder_kg: number | null;
+  fly_ash_kg: number | null;
+  cement_bags: number | null;
+
+  created_at: string;
+}
