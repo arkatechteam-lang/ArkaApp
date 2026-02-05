@@ -13,10 +13,11 @@ import {
   EmployeeWithCategory,
   PaginatedResult,
   Customer,
-  CreateOrderInput
+  CreateOrderInput,
+  ProductionEntry
 } from './types'
 import { MaterialPurchaseInput, ProductionInput } from "../employee/types";
-import { getRange, PAGE_SIZE } from "../utils/reusables";
+import { getRange, getRangeForProductionStatistics, PAGE_SIZE } from "../utils/reusables";
 
 /* ------------------------------------------------------------------
    1. LOGIN
@@ -409,6 +410,10 @@ export async function getUnpaidOrders(
   };
 }
 
+/* ------------------------------------------------------------------
+   17. CREATE ORDERS
+-------------------------------------------------------------------*/
+
 export async function createOrder(
   orderInput: CreateOrderInput,
   loadmenIds: string[],
@@ -442,4 +447,47 @@ export async function createOrder(
   }
   return { orderId };
 }
+
+/* ------------------------------------------------------------------
+   16. GET PRODUCTION ENTRIES FROM TODAY WITH PAGINATION
+-------------------------------------------------------------------*/
+
+export async function getProductionEntriesFromToday(
+  page: number
+): Promise<PaginatedResult<ProductionEntry>> {
+  const today = new Date().toISOString().split("T")[0];
+  const { from, to, limit } = getRangeForProductionStatistics(page);
+
+  const { data, count, error } = await supabase
+    .from("production_entries")
+    .select(
+      `
+      id,
+      production_date,
+      round,
+      bricks,
+      wet_ash_kg,
+      marble_powder_kg,
+      crusher_powder_kg,
+      fly_ash_kg,
+      cement_bags,
+      created_at
+      `,
+      { count: "exact" }
+    )
+    .lte("production_date", today)
+    .order("production_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .range(from, to);
+
+  if (error) throw error;
+
+  return {
+    data: data ?? [],
+    total: count ?? 0,
+    hasMore: from + limit < (count ?? 0),
+  };
+}
+
+
 
