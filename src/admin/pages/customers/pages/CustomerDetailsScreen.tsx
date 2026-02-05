@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
-import {  Customer } from "../../../../AdminApp";
+import { Customer } from "../../../../AdminApp";
 import { ArrowLeft, Plus, Edit2, Trash2, X } from "lucide-react";
 import { Popup } from "../../../../components/Popup";
 import { useParams } from "react-router-dom";
 import {
-  getCustomerById,
-  getOrdersByCustomer,
+  getCustomerFinancialById,
+  getCustomerOrdersWithSettlement,
   updateCustomer,
 } from "../../../../services/middleware.service";
 import { useAdminNavigation } from "../../../hooks/useAdminNavigation";
@@ -238,40 +238,44 @@ export function CustomerDetailsScreen() {
       try {
         setLoading(true);
 
-        const customerData = await getCustomerById(customerId);
-        const ordersRes = await getOrdersByCustomer(customerId, 1);
+        const customerData = await getCustomerFinancialById(customerId);
+        const ordersRes = await getCustomerOrdersWithSettlement(customerId, 1);
         console.log("Fetched customer data:", customerData);
         console.log("Fetched orders data:", ordersRes);
         setCustomer({
-          id: customerData.id,
+          id: customerData.customer_id,
           name: customerData.name,
           phoneNumber: customerData.phone,
           address: customerData.address,
-          gstNumber: customerData.gst_number,
-          unpaidAmount: 0, // computed later
-          totalSales: 0, // computed later
+          totalSales: customerData.total_sales,
+          unpaidAmount: customerData.unpaid_amount,
         });
 
-        const mappedOrders = ordersRes.data.map((order: any) => ({
-          id: order.id,
-          date: order.order_date,
-          deliveryDate: order.delivery_date,
-          customerName: customerData.name,
-          customerNumber: customerData.phone,
-          customerId: customerData.id,
-          quantity: order.brick_quantity,
-          pricePerBrick: order.price_per_brick,
-          paperPrice: order.paper_price,
-          location: order.delivery_address || customerData.address,
-          finalPrice: order.final_price,
-          paymentStatus: order.payment_status,
-          amountPaid: order.amount_paid,
-          loadMen: order.load_men || [],
-          deliveryToday: false, // or set from API if available
-          isDelivered: order.is_delivered,
-          gstNumber: order.gst_number,
-          deliveryChallanNumber: order.delivery_challan_number,
-        }));
+        const mappedOrders = ordersRes.data.map((o: any) => ({
+  id: o.order_id,
+  date: o.order_date,
+  deliveryDate: o.delivery_date,
+
+  customerName: customerData.name,
+  customerNumber: customerData.phone,
+  customerId: o.customer_id,
+
+  quantity: o.brick_quantity,
+  finalPrice: o.final_price,
+
+  amountPaid: o.total_paid,
+  unpaidAmount: o.remaining_balance,
+
+  gstNumber: o.gst_number,
+  deliveryChallanNumber: o.dc_number,
+
+  paymentStatus:
+    o.payment_status === "FULLY_PAID"
+      ? "Fully Paid"
+      : o.payment_status === "PARTIALLY_PAID"
+        ? "Partially Paid"
+        : "Not Paid",
+}));
 
         setOrders(mappedOrders);
         setHasMoreOrders(ordersRes.hasMore);
@@ -546,28 +550,34 @@ export function CustomerDetailsScreen() {
 
   const loadMoreOrders = async () => {
     const nextPage = page + 1;
-    const res = await getOrdersByCustomer(customer.id, nextPage);
+    const res = await getCustomerOrdersWithSettlement(customer.id, nextPage);
 
-    const mappedOrders = res.data.map((order: any) => ({
-      id: order.id,
-      date: order.order_date,
-      deliveryDate: order.delivery_date,
-      customerName: customer.name,
-      customerNumber: customer.phoneNumber,
-      customerId: customer.id,
-      quantity: order.brick_quantity,
-      pricePerBrick: order.price_per_brick,
-      paperPrice: order.paper_price,
-      location: order.delivery_address || customer.address,
-      finalPrice: order.final_price,
-      paymentStatus: order.payment_status,
-      amountPaid: order.amount_paid,
-      loadMen: order.load_men || [],
-      deliveryToday: false, // or set from API if available
-      isDelivered: order.is_delivered,
-      gstNumber: order.gst_number,
-      deliveryChallanNumber: order.delivery_challan_number,
-    }));
+    const mappedOrders = res.data.map((o: any) => ({
+  id: o.order_id,
+  date: o.order_date,
+  deliveryDate: o.delivery_date,
+
+  customerName: customer.name,
+  customerNumber: customer.phoneNumber,
+  customerId: o.customer_id,
+
+  quantity: o.brick_quantity,
+  finalPrice: o.final_price,
+
+  amountPaid: o.total_paid,
+  unpaidAmount: o.remaining_balance,
+
+  gstNumber: o.gst_number,
+  deliveryChallanNumber: o.dc_number,
+
+  paymentStatus:
+    o.payment_status === "FULLY_PAID"
+      ? "Fully Paid"
+      : o.payment_status === "PARTIALLY_PAID"
+      ? "Partially Paid"
+      : "Not Paid",
+}));
+
 
     setOrders((prev) => [...prev, ...mappedOrders]);
     setHasMoreOrders(res.hasMore);
@@ -577,7 +587,31 @@ export function CustomerDetailsScreen() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
-        Loading customer details...
+        <div className="flex flex-col items-center gap-4">
+          <svg
+            className="animate-spin h-8 w-8 text-blue-600"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            ></circle>
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+            ></path>
+          </svg>
+          <span className="text-lg text-gray-700 font-medium">
+            Loading customer details...
+          </span>
+        </div>
       </div>
     );
   }
@@ -784,12 +818,10 @@ export function CustomerDetailsScreen() {
                             {order.id}
                           </td>
                           <td className="px-4 py-4 text-gray-600">
-                            {new Date(order.date).toLocaleDateString() ?? ""}
+                            {order.date ? new Date(order.date).toLocaleDateString() : "-"}
                           </td>
                           <td className="px-4 py-4 text-gray-600">
-                            {new Date(
-                              order.deliveryDate,
-                            ).toLocaleDateString() ?? ""}
+                            {order.deliveryDate ? new Date(order.deliveryDate).toLocaleDateString() : "-"}
                           </td>
                           <td className="px-4 py-4 text-gray-900">
                             {order.customerName}
@@ -798,10 +830,15 @@ export function CustomerDetailsScreen() {
                             {order.customerNumber}
                           </td>
                           <td className="px-4 py-4 text-gray-900">
-                            {order.quantity.toLocaleString() ?? "-"}
+                            {typeof order.quantity === "number"
+                              ? order.quantity.toLocaleString()
+                              : "-"}
                           </td>
                           <td className="px-4 py-4 text-gray-900">
-                            ₹{order.finalPrice.toLocaleString() ?? "0"}
+                            ₹
+                            {typeof order.finalPrice === "number"
+                              ? order.finalPrice.toLocaleString()
+                              : "0"}
                           </td>
                           <td className="px-4 py-4 text-gray-600">
                             {order.gstNumber || "-"}
@@ -840,7 +877,7 @@ export function CustomerDetailsScreen() {
                         <div>
                           <p className="text-gray-900">{order.id}</p>
                           <p className="text-gray-600 text-sm">
-                            {new Date(order.date).toLocaleDateString() ?? ""}
+                            {order.date ? new Date(order.date).toLocaleDateString() : "-"}
                           </p>
                         </div>
                         <span
@@ -859,13 +896,18 @@ export function CustomerDetailsScreen() {
                         <div>
                           <p className="text-gray-500">Quantity</p>
                           <p className="text-gray-900">
-                            {order.quantity.toLocaleString() ?? "-"}
+                            {typeof order.quantity === "number"
+                              ? order.quantity.toLocaleString()
+                              : "-"}
                           </p>
                         </div>
                         <div>
                           <p className="text-gray-500">Final Price</p>
                           <p className="text-gray-900">
-                            ₹{order.finalPrice.toLocaleString() ?? "0"}
+                            ₹
+                            {typeof order.finalPrice === "number"
+                              ? order.finalPrice.toLocaleString()
+                              : "0"}
                           </p>
                         </div>
                       </div>

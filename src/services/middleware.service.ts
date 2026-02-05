@@ -397,7 +397,7 @@ export async function getUnpaidOrders(
    17. GET CUSTOMERS WITH PAGINATION
 -------------------------------------------------------------------*/
 
-export async function getCustomers(
+export async function getCustomersWithFinancials(
   page = 1,
   search?: string
 ) {
@@ -406,25 +406,18 @@ export async function getCustomers(
   const to = from + PAGE_SIZE - 1;
 
   let query = supabase
-    .from("customers")
+    .from("customer_financials")
     .select("*", { count: "exact" })
-    .order("created_at", { ascending: false });
+    .order("name");
 
   if (search && search.trim().length >= 2) {
-    const s = search.trim();
-
     query = query.or(
-      `name.ilike.%${s}%,phone.ilike.%${s}%`
+      `name.ilike.%${search}%,phone.ilike.%${search}%`
     );
   }
 
   const { data, count, error } = await query.range(from, to);
-  console.log("Search param:", search);
-
-  if (error) {
-    console.error("Customer search error:", error);
-    throw error;
-  }
+  if (error) throw error;
 
   return {
     data: data ?? [],
@@ -438,18 +431,17 @@ export async function getCustomers(
    18. GET CUSTOMER BY ID
 -------------------------------------------------------------------*/
 
-export async function getCustomerById(
-  customerId: string
-): Promise<Customer> {
+export async function getCustomerFinancialById(customerId: string) {
   const { data, error } = await supabase
-    .from("customers")
+    .from("customer_financials")
     .select("*")
-    .eq("id", customerId)
+    .eq("customer_id", customerId)
     .single();
 
   if (error) throw error;
   return data;
 }
+
 
 /* ------------------------------------------------------------------
    19. CREATE CUSTOMER
@@ -480,30 +472,44 @@ export async function createCustomer(input: {
    20. GET ORDERS BY CUSTOMER
 -------------------------------------------------------------------*/
 
-export async function getOrdersByCustomer(
+export async function getCustomerOrdersWithSettlement(
   customerId: string,
   page = 1
-): Promise<PaginatedResult<Order>> {
+) {
   const PAGE_SIZE = 20;
-
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
   const { data, count, error } = await supabase
-    .from("orders")
-    .select("*", { count: "exact" })
+    .from("customer_order_settlement")
+    .select(
+      `
+        order_id,
+        customer_id,
+        order_date,
+        delivery_date,
+        brick_quantity,
+        final_price,
+        gst_number,
+        dc_number,
+        total_paid,
+        remaining_balance,
+        payment_status
+      `,
+      { count: "exact" }
+    )
     .eq("customer_id", customerId)
-    .order("created_at", { ascending: false })
+    .order("order_date", { ascending: true })
     .range(from, to);
 
   if (error) throw error;
 
   return {
     data: data ?? [],
-    total: count ?? 0,
     hasMore: count ? to < count - 1 : false,
   };
 }
+
 
 /* ------------------------------------------------------------------
    21. UPDATE CUSTOMER

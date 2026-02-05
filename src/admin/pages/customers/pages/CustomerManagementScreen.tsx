@@ -10,78 +10,12 @@ import {
 } from "lucide-react";
 import { Popup } from "../../../../components/Popup";
 import {
-  getCustomers,
+  getCustomersWithFinancials,
   createCustomer,
 } from "../../../../services/middleware.service";
 import { validateCustomer } from "../../../validators/customer.validator";
 import { useAdminNavigation } from "../../../hooks/useAdminNavigation";
 
-// const MOCK_CUSTOMERS: Customer[] = [
-//   {
-//     id: "CUST-001",
-//     name: "Rajesh Kumar",
-//     phoneNumber: "9876543210",
-//     address: "123 MG Road, Bangalore",
-//     unpaidAmount: 15000,
-//     totalSales: 250000,
-//   },
-//   {
-//     id: "CUST-002",
-//     name: "Priya Sharma",
-//     phoneNumber: "9876543211",
-//     address: "456 Brigade Road, Bangalore",
-//     unpaidAmount: 0,
-//     totalSales: 180000,
-//   },
-//   {
-//     id: "CUST-003",
-//     name: "Amit Patel",
-//     phoneNumber: "9876543212",
-//     address: "789 Koramangala, Bangalore",
-//     unpaidAmount: 25000,
-//     totalSales: 320000,
-//   },
-//   {
-//     id: "CUST-004",
-//     name: "Sunita Reddy",
-//     phoneNumber: "9876543213",
-//     address: "321 Indiranagar, Bangalore",
-//     unpaidAmount: 8000,
-//     totalSales: 145000,
-//   },
-//   {
-//     id: "CUST-005",
-//     name: "Mohan Singh",
-//     phoneNumber: "9876543214",
-//     address: "654 Whitefield, Bangalore",
-//     unpaidAmount: 0,
-//     totalSales: 95000,
-//   },
-//   {
-//     id: "CUST-006",
-//     name: "Lakshmi Iyer",
-//     phoneNumber: "9876543215",
-//     address: "987 Jayanagar, Bangalore",
-//     unpaidAmount: 12000,
-//     totalSales: 210000,
-//   },
-//   {
-//     id: "CUST-007",
-//     name: "Ramesh Gupta",
-//     phoneNumber: "9876543216",
-//     address: "147 BTM Layout, Bangalore",
-//     unpaidAmount: 0,
-//     totalSales: 165000,
-//   },
-//   {
-//     id: "CUST-008",
-//     name: "Anita Desai",
-//     phoneNumber: "9876543217",
-//     address: "258 HSR Layout, Bangalore",
-//     unpaidAmount: 18000,
-//     totalSales: 275000,
-//   },
-// ];
 type CustomerUI = {
   id: string;
   name: string;
@@ -96,6 +30,7 @@ export function CustomerManagementScreen() {
   const [customers, setCustomers] = useState<CustomerUI[]>([]);
   const [page, setPage] = useState<number>(1);
   const [hasMore, setHasMore] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(true);
 
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -122,85 +57,83 @@ export function CustomerManagementScreen() {
   }, []);
 
   useEffect(() => {
-  const timer = setTimeout(() => {
-    setDebouncedSearch(searchQuery);
-  }, 400); // 300–500ms is standard
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 400); // 300–500ms is standard
 
-  return () => clearTimeout(timer);
-}, [searchQuery]);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
-useEffect(() => {
-  console.log("Searching for:", debouncedSearch);
-  loadCustomers(1, true);
-}, [debouncedSearch]);
+  useEffect(() => {
+    console.log("Searching for:", debouncedSearch);
+    loadCustomers(1, true);
+  }, [debouncedSearch]);
 
   /* ------------------ FUNCTIONS ------------------ */
 
   const loadCustomers = async (
-  pageNumber: number,
-  reset = false
-): Promise<void> => {
-  try {
-    if (!reset && !hasMore) return;
-
-    const res = await getCustomers(pageNumber, debouncedSearch);
-
-    const mapped: CustomerUI[] = res.data.map((c) => ({
-      id: c.id,
-      name: c.name,
-      phoneNumber: c.phone,
-      address: c.address ?? "-",
-      unpaidAmount: 0,
-      totalSales: 0,
-    }));
-
-    setCustomers((prev) => (reset ? mapped : [...prev, ...mapped]));
-    setHasMore(res.hasMore);
-    setPage(pageNumber);
-  } catch (err) {
-    console.error("Failed to load customers", err);
-  }
-};
-
-
-  const handleSubmitCustomer = async (): Promise<void> => {
-  const payload = {
-    name: customerName.trim(),
-    phone: customerPhone.trim(),
-    address: customerAddress.trim(),
-    gst_number: customerGstNumber || undefined,
+    pageNumber: number,
+    reset = false,
+  ): Promise<void> => {
+    try {
+      if (!reset && !hasMore) return;
+      setLoading(true);
+      const res = await getCustomersWithFinancials(pageNumber, debouncedSearch);
+      console.log("API response:---------->", res);
+      const mapped: CustomerUI[] = res.data.map((c) => ({
+        id: c.customer_id,
+        name: c.name,
+        phoneNumber: c.phone,
+        address: c.address ?? "-",
+        totalSales: c.total_sales,
+        unpaidAmount: c.unpaid_amount, // Fix: use correct field from API
+      }));
+      setCustomers((prev) => (reset ? mapped : [...prev, ...mapped]));
+      setHasMore(res.hasMore);
+      setPage(pageNumber);
+    } catch (err) {
+      console.error("Failed to load customers", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const errors = validateCustomer(payload);
+  const handleSubmitCustomer = async (): Promise<void> => {
+    const payload = {
+      name: customerName.trim(),
+      phone: customerPhone.trim(),
+      address: customerAddress.trim(),
+      gst_number: customerGstNumber || undefined,
+    };
 
-  setNameError(errors.name ?? "");
-  setPhoneError(errors.phone ?? "");
-  setAddressError(errors.address ?? "");
-  setGstError(errors.gst_number ?? "");
+    const errors = validateCustomer(payload);
 
-  if (Object.keys(errors).length > 0) return;
+    setNameError(errors.name ?? "");
+    setPhoneError(errors.phone ?? "");
+    setAddressError(errors.address ?? "");
+    setGstError(errors.gst_number ?? "");
 
-  try {
+    if (Object.keys(errors).length > 0) return;
 
-    await createCustomer(payload);
+    try {
+      await createCustomer(payload);
 
-    setShowAddCustomerModal(false);
-    setShowSuccessPopup(true);
+      setShowAddCustomerModal(false);
+      setShowSuccessPopup(true);
 
-    // reset form
-    setCustomerName("");
-    setCustomerPhone("");
-    setCustomerAddress("");
-    setCustomerGstNumber("");
+      // reset form
+      setCustomerName("");
+      setCustomerPhone("");
+      setCustomerAddress("");
+      setCustomerGstNumber("");
 
-    // reload list from page 1
-    await loadCustomers(1, true);
-  } catch (err: any) {
-    console.error("Failed to create customer", err);
-    alert(err?.message || "Failed to create customer");
-  } 
-};
-
+      // reload list from page 1
+      await loadCustomers(1, true);
+    } catch (err: any) {
+      console.error("Failed to create customer", err);
+      alert(err?.message || "Failed to create customer");
+    }
+  };
 
   // const filteredCustomers = customers.filter((customer) => {
   //   const matchesSearch =
@@ -364,7 +297,13 @@ useEffect(() => {
           </div>
 
           <div className="p-6">
-            {displayedCustomers.length === 0 ? (
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <div className="text-lg text-gray-700">
+                  Loading customers...
+                </div>
+              </div>
+            ) : displayedCustomers.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12">
                 <Search className="w-16 h-16 text-gray-400 mb-4" />
                 <p className="text-gray-600">No customers found</p>
