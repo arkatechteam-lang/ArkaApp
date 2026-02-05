@@ -414,9 +414,6 @@ export async function createOrder(
   loadmenIds: string[],
   createdBy: string
 ): Promise<{ orderId: string }> {
-  /* -------------------------------------------------------------
-     1. CREATE ORDER
-  --------------------------------------------------------------*/
   const { data: order, error: orderError } = await supabase
     .from("orders")
     .insert({
@@ -431,10 +428,6 @@ export async function createOrder(
 
   const orderId = order.id;
 
-  /* -------------------------------------------------------------
-     2. CREATE ORDER ↔ LOADMEN MAPPING
-     (only if loadmen are provided)
-  --------------------------------------------------------------*/
   if (loadmenIds.length > 0) {
     const loadmenRows = loadmenIds.map((employee_id) => ({
       order_id: orderId,
@@ -447,10 +440,6 @@ export async function createOrder(
 
     if (loadmenError) throw loadmenError;
   }
-
-  /* -------------------------------------------------------------
-     3. RETURN CREATED ORDER ID
-  --------------------------------------------------------------*/
   return { orderId };
 }
 
