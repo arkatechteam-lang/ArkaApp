@@ -18,6 +18,7 @@ import {
   CreateCustomerPaymentInput,
   CreateOrderInput,
   ProductionEntry,
+  Loan,
 } from './types'
 import { MaterialPurchaseInput, ProductionInput } from "../employee/types";
 import { getRange, getRangeForProductionStatistics, PAGE_SIZE } from "../utils/reusables";
@@ -772,6 +773,35 @@ export async function getCustomerPayments(
     data: data ?? [],
     hasMore: count ? to < count - 1 : false,
   };
+}
+
+/* ------------------------------------------------------------------
+   29. GET LOANS
+-------------------------------------------------------------------*/
+
+export async function getLoans(): Promise<Loan[]> {
+  const { data, error } = await supabase
+    .from("loans")
+    .select(`
+      id,
+      lender_name,
+      loan_type,
+      principal_amount,
+      interest_rate,
+      outstanding_balance,
+      disbursement_account_id,
+      start_date,
+      status,
+      notes,
+      created_at
+    `)
+    // ACTIVE first, then CLOSED
+    .order("status", { ascending: true }) // ACTIVE < CLOSED alphabetically
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  return data ?? [];
 }
    
 

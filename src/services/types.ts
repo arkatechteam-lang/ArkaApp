@@ -162,3 +162,17 @@ export interface Account {
   opening_balance: number;
   created_at: string;
 }
+
+export interface Loan {
+  id: string;
+  lender_name: string;
+  loan_type: LoanType;
+  principal_amount: number;
+  interest_rate: number | null;
+  outstanding_balance: number;
+  disbursement_account_id: string | null;
+  start_date: string;
+  status: LoanStatus;
+  notes: string | null;
+  created_at: string;
+}

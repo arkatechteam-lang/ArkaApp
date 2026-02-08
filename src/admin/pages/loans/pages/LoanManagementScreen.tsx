@@ -1,69 +1,23 @@
-import React, { useState } from 'react';
-import { AdminScreen } from '../../../../AdminApp';
+import React from 'react';
 import { ArrowLeft, Plus } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Popup } from '../../../../components/Popup';
+import { useLoanManagement } from '../../../hooks/useLoanManagement';
 
-interface LoanManagementScreenProps {
-  onNavigate: (screen: AdminScreen) => void;
-}
-
-interface Loan {
-  id: string;
-  lenderName: string;
-  loanType: 'Owner Loan' | 'Bank Loan' | 'Short-term Borrowing';
-  principalAmount: number;
-  outstandingBalance: number;
-  status: 'Active' | 'Closed';
-}
-
-// Mock data
-const MOCK_LOANS: Loan[] = [
-  {
-    id: 'LOAN-001',
-    lenderName: 'ABC Bank',
-    loanType: 'Bank Loan',
-    principalAmount: 1000000,
-    outstandingBalance: 500000,
-    status: 'Active',
-  },
-  {
-    id: 'LOAN-002',
-    lenderName: 'Owner - John Doe',
-    loanType: 'Owner Loan',
-    principalAmount: 500000,
-    outstandingBalance: 0,
-    status: 'Closed',
-  },
-  {
-    id: 'LOAN-003',
-    lenderName: 'XYZ Finance',
-    loanType: 'Short-term Borrowing',
-    principalAmount: 300000,
-    outstandingBalance: 150000,
-    status: 'Active',
-  },
-];
-
-export function LoanManagementScreen({ onNavigate }: LoanManagementScreenProps) {
-  const navigate = useNavigate();
-  const [loans] = useState<Loan[]>(MOCK_LOANS);
-
-  const getStatusColor = (status: string) => {
-    return status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800';
-  };
-
-  const getLoanTypeColor = (type: string) => {
-    switch (type) {
-      case 'Owner Loan':
-        return 'from-blue-500 to-blue-600';
-      case 'Bank Loan':
-        return 'from-purple-500 to-purple-600';
-      case 'Short-term Borrowing':
-        return 'from-orange-500 to-orange-600';
-      default:
-        return 'from-gray-500 to-gray-600';
-    }
-  };
+export function LoanManagementScreen() {
+  const {
+    loans,
+    loading,
+    showFailurePopup,
+    errorMessage,
+    getStatusLabel,
+    getStatusColor,
+    getLoanTypeLabel,
+    getLoanTypeColor,
+    handleBackToHome,
+    handleCreateLoan,
+    handleOpenLedger,
+    handleFailureClose,
+  } = useLoanManagement();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -71,7 +25,7 @@ export function LoanManagementScreen({ onNavigate }: LoanManagementScreenProps) 
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => navigate('/admin/home')}
+            onClick={handleBackToHome}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -84,7 +38,7 @@ export function LoanManagementScreen({ onNavigate }: LoanManagementScreenProps) 
               <p className="text-gray-600 mt-1">Manage borrowed funds and repayments</p>
             </div>
             <button
-              onClick={() => onNavigate('create-loan')}
+              onClick={handleCreateLoan}
               className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
             >
               <Plus className="w-5 h-5" />
@@ -94,7 +48,11 @@ export function LoanManagementScreen({ onNavigate }: LoanManagementScreenProps) 
         </div>
 
         {/* Loan Cards Grid */}
-        {loans.length === 0 ? (
+        {loading ? (
+          <div className="bg-white rounded-lg shadow-md p-12 text-center">
+            <p className="text-gray-600">Loading loans...</p>
+          </div>
+        ) : loans.length === 0 ? (
           <div className="bg-white rounded-lg shadow-md p-12 text-center">
             <p className="text-gray-600">No loans found. Create a new loan to get started.</p>
           </div>
@@ -106,9 +64,9 @@ export function LoanManagementScreen({ onNavigate }: LoanManagementScreenProps) 
                 className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow"
               >
                 {/* Gradient Header */}
-                <div className={`bg-gradient-to-r ${getLoanTypeColor(loan.loanType)} p-4`}>
-                  <h3 className="text-white">{loan.lenderName}</h3>
-                  <p className="text-white text-sm opacity-90 mt-1">{loan.loanType}</p>
+                <div className={`bg-gradient-to-r ${getLoanTypeColor(loan.loan_type)} p-4`}>
+                  <h3 className="text-white">{loan.lender_name}</h3>
+                  <p className="text-white text-sm opacity-90 mt-1">{getLoanTypeLabel(loan.loan_type)}</p>
                 </div>
 
                 {/* Card Content */}
@@ -116,27 +74,27 @@ export function LoanManagementScreen({ onNavigate }: LoanManagementScreenProps) 
                   <div className="space-y-4">
                     <div>
                       <p className="text-gray-600 text-sm">Principal Amount</p>
-                      <p className="text-gray-900 text-xl">₹{loan.principalAmount.toLocaleString()}</p>
+                      <p className="text-gray-900 text-xl">₹{loan.principal_amount.toLocaleString()}</p>
                     </div>
 
                     <div>
                       <p className="text-gray-600 text-sm">Outstanding Balance</p>
-                      <p className={`text-xl ${loan.outstandingBalance > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                        ₹{loan.outstandingBalance.toLocaleString()}
+                      <p className={`text-xl ${loan.outstanding_balance > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                        ₹{loan.outstanding_balance.toLocaleString()}
                       </p>
                     </div>
 
                     <div>
                       <p className="text-gray-600 text-sm mb-2">Status</p>
                       <span className={`px-3 py-1 rounded-full text-sm ${getStatusColor(loan.status)}`}>
-                        {loan.status}
+                        {getStatusLabel(loan.status)}
                       </span>
                     </div>
                   </div>
 
                   {/* Open Ledger Button */}
                   <button
-                    onClick={() => onNavigate('loan-ledger')}
+                    onClick={() => handleOpenLedger(loan.id)}
                     className="w-full mt-6 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                   >
                     Open Ledger
@@ -147,6 +105,16 @@ export function LoanManagementScreen({ onNavigate }: LoanManagementScreenProps) 
           </div>
         )}
       </div>
+
+      {/* Failure Popup */}
+      {showFailurePopup && (
+        <Popup
+          title="Failed to load loans"
+          message={errorMessage || 'Failed to load loans. Please try again.'}
+          onClose={handleFailureClose}
+          type="error"
+        />
+      )}
     </div>
   );
 }
