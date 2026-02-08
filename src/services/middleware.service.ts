@@ -13,9 +13,11 @@ import {
   EmployeeWithCategory,
   PaginatedResult,
   Customer,
-  CreateCustomerPaymentInput
   CreateOrderInput,
-  ProductionEntry
+  CreateCustomerPaymentInput,
+  ProductionEntry,
+  CreateLoanInput,
+  Account
 } from './types'
 import { MaterialPurchaseInput, ProductionInput } from "../employee/types";
 import { getRange, getRangeForProductionStatistics, PAGE_SIZE , mapPaymentModeToDb } from "../utils/reusables";
@@ -592,138 +594,59 @@ export async function getProductionEntriesFromToday(
 
   return {
     data: data ?? [],
-    hasMore: count ? to < count - 1 : false,
-  };
-}
-
-/* ------------------------------------------------------------------
-   21. UPDATE CUSTOMER
--------------------------------------------------------------------*/
-
-export async function updateCustomer(
-  customerId: string,
-  input: {
-    name: string;
-    phone: string;
-    address: string;
-    gst_number?: string;
-  }
-): Promise<Customer> {
-  const { data, error } = await supabase
-    .from("customers")
-    .update({
-      name: input.name,
-      phone: input.phone,
-      address: input.address,
-      gst_number: input.gst_number ?? null,
-    })
-    .eq("id", customerId)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-}
-
-/* ------------------------------------------------------------------
-   22. GET COMPANY ACC FOR CUSTOMER PAYMENTS
--------------------------------------------------------------------*/
-
-export async function getAccountsForPayments() {
-  const { data, error } = await supabase
-    .from("accounts")
-    .select("id, account_number");
-
-  if (error) throw error;
-  return data ?? [];
-}
-
-/* ------------------------------------------------------------------
-   23. CREATE CUSTOMER PAYMENT
--------------------------------------------------------------------*/
-
-export async function createCustomerPayment(
-  input: CreateCustomerPaymentInput
-) {
-  /**
-   * 1️⃣ Insert payment
-   */
-  const { data: payment, error: insertError } = await supabase
-    .from("customer_payments")
-    .insert({
-      customer_id: input.customer_id,
-      payment_date: input.payment_date,
-      amount: input.amount,
-      mode: input.mode, // MUST be: 'CASH' | 'UPI' | 'BANK' | 'CHEQUE'
-      sender_account_id: input.sender_account_id ?? null,
-      receiver_account_id: input.receiver_account_id,
-    })
-    .select()
-    .single();
-
-  if (insertError) throw insertError;
-
-  /**
-   * 2️⃣ Apply FIFO settlement
-   */
-  const { error: fifoError } = await supabase.rpc(
-    "apply_customer_payment_fifo",
-    {
-      p_customer_id: input.customer_id,
-      p_payment_id: payment.id,
-      p_amount: input.amount,
-    }
-  );
-
-  if (fifoError) throw fifoError;
-
-  /**
-   * 3️⃣ Increment account balance
-   */
-  const { error: accountError } = await supabase.rpc(
-    "increment_account_balance",
-    {
-      p_account_id: input.receiver_account_id,
-      p_amount: input.amount,
-    }
-  );
-
-  if (accountError) throw accountError;
-
-  return payment;
-}
-
-
-
-/* ------------------------------------------------------------------
-   24. GET CUSTOMER PAYMENT
--------------------------------------------------------------------*/
-
-export async function getCustomerPayments(
-  customerId: string,
-  page = 1
-) {
-  const PAGE_SIZE = 20;
-  const from = (page - 1) * PAGE_SIZE;
-  const to = from + PAGE_SIZE - 1;
-
-  const { data, count, error } = await supabase
-    .from("customer_payments_view")
-    .select("*", { count: "exact" })
-    .eq("customer_id", customerId)
-    .range(from, to);
-
-  if (error) throw error;
-
-  return {
-    data: data ?? [],
-    hasMore: count ? to < count - 1 : false,
-  };
-}
     total: count ?? 0,
     hasMore: from + limit < (count ?? 0),
   };
 }
+
+/* ------------------------------------------------------------------
+   16. CREATE LOANS
+-------------------------------------------------------------------*/
+
+export async function createLoan(
+  input: CreateLoanInput
+): Promise<{ loanId: string }> {
+  const { data, error } = await supabase
+    .from("loans")
+    .insert({
+      lender_name: input.lender_name,
+      loan_type: input.loan_type,
+      principal_amount: input.principal_amount,
+      interest_rate: input.interest_rate ?? null,
+      outstanding_balance: input.principal_amount, // 👈 important
+      disbursement_account_id: input.disbursement_account_id ?? null,
+      start_date: input.start_date,
+      status: "ACTIVE",
+      notes: input.notes ?? null,
+    })
+    .select("id")
+    .single();
+
+  if (error) throw error;
+
+  return { loanId: data.id };
+}
+
+/* ------------------------------------------------------------------
+   16. GET ACCOUNTS (for loan disbursement)
+-------------------------------------------------------------------*/
+
+export async function getAccounts(): Promise<Account[]> {
+  const { data, error } = await supabase
+    .from("accounts")
+    .select(`
+      id,
+      account_number,
+      opening_balance,
+      created_at
+    `)
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+
+  return data ?? [];
+}
+
 
 
 
