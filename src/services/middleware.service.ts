@@ -12,7 +12,8 @@ import {
   OrderWithLoadmen,
   EmployeeWithCategory,
   PaginatedResult,
-  Customer
+  Customer,
+  CreateCustomerPaymentInput
 } from './types'
 import { MaterialPurchaseInput, ProductionInput } from "../employee/types";
 import { getRange, PAGE_SIZE } from "../utils/reusables";
@@ -510,7 +511,6 @@ export async function getCustomerOrdersWithSettlement(
   };
 }
 
-
 /* ------------------------------------------------------------------
    21. UPDATE CUSTOMER
 -------------------------------------------------------------------*/
@@ -538,4 +538,92 @@ export async function updateCustomer(
 
   if (error) throw error;
   return data;
+}
+
+/* ------------------------------------------------------------------
+   22. GET COMPANY ACC FOR CUSTOMER PAYMENTS
+-------------------------------------------------------------------*/
+
+export async function getAccountsForPayments() {
+  const { data, error } = await supabase
+    .from("accounts")
+    .select("id, account_number");
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+/* ------------------------------------------------------------------
+   23. CREATE CUSTOMER PAYMENT
+-------------------------------------------------------------------*/
+
+export async function createCustomerPayment(
+  input: CreateCustomerPaymentInput
+) {
+  const { data: payment, error } = await supabase
+    .from("customer_payments")
+    .insert([
+      {
+        customer_id: input.customer_id,
+        payment_date: input.payment_date,
+        amount: input.amount,
+        mode: input.mode,
+        sender_account_id: input.sender_account_id ?? null,
+      },
+    ])
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  // FIFO settlement
+  const { error: settleError } = await supabase.rpc(
+    "apply_customer_payment_fifo",
+    {
+      p_customer_id: input.customer_id,
+      p_payment_id: payment.id,
+      p_amount: input.amount,
+    }
+  );
+
+  if (settleError) throw settleError;
+
+  // Credit receiver account
+  const { error: accountError } = await supabase.rpc(
+    "increment_account_balance",
+    {
+      p_account_id: input.receiver_account_id,
+      p_amount: input.amount,
+    }
+  );
+
+  if (accountError) throw accountError;
+
+  return payment;
+}
+
+/* ------------------------------------------------------------------
+   24. GET CUSTOMER PAYMENT
+-------------------------------------------------------------------*/
+
+export async function getCustomerPayments(
+  customerId: string,
+  page = 1
+) {
+  const PAGE_SIZE = 20;
+  const from = (page - 1) * PAGE_SIZE;
+  const to = from + PAGE_SIZE - 1;
+
+  const { data, count, error } = await supabase
+    .from("customer_payments_view")
+    .select("*", { count: "exact" })
+    .eq("customer_id", customerId)
+    .range(from, to);
+
+  if (error) throw error;
+
+  return {
+    data: data ?? [],
+    hasMore: count ? to < count - 1 : false,
+  };
 }
