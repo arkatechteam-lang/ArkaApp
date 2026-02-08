@@ -33,7 +33,7 @@ import { CashFlowScreen } from './admin/pages/CashFlowScreen';
 import { CashLedgerScreen } from './components/admin/CashLedgerScreen';
 import { LoanManagementScreen } from './admin/pages/loans/pages/LoanManagementScreen';
 import { CreateLoanScreen } from './admin/pages/loans/pages/CreateLoanScreen';
-import { LoanLedgerScreen } from './components/admin/LoanLedgerScreen';
+import { LoanLedgerScreen } from './admin/pages/loans/pages/LoanLedgerScreen';
 import { AddLoanTransactionScreen } from './components/admin/AddLoanTransactionScreen';
 import { AdminRoutes } from './admin/routes';
 

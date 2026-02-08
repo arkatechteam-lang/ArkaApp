@@ -11,9 +11,9 @@ export function LoansRoutes() {
 
       <Route path="/create" element={<CreateLoanScreen />} />
 
-      <Route path="/ledger" element={<LoanLedgerScreen />} />
+      <Route path="/ledger/:loanId" element={<LoanLedgerScreen />} />
 
-      <Route path="/ledger/add-transaction" element={<AddLoanTransactionScreen />} />
+      <Route path="/ledger/:loanId/add-transaction" element={<AddLoanTransactionScreen />} />
 
       <Route path="*" element={<Navigate to="." replace />} />
     </Routes>

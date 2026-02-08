@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAdminNavigation } from './useAdminNavigation';
 import { validateCreateLoan } from '../validators/createLoan.validator';
-import { createLoan, getAccounts } from '../../services/middleware.service';
+import { createLoanWithDisbursementAndCashEntry, getAccounts } from '../../services/middleware.service';
 import type { Account, CreateLoanInput } from '../../services/types';
 
 export function useCreateLoan() {
@@ -60,7 +60,7 @@ export function useCreateLoan() {
     try {
       setLoading(true);
       
-      await createLoan({
+      await createLoanWithDisbursementAndCashEntry({
         ...createLoanInput,
         interest_rate:
           createLoanInput.interest_rate === null || createLoanInput.interest_rate === undefined

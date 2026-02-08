@@ -75,7 +75,7 @@ export function useLoanManagement() {
   };
 
   const handleOpenLedger = (loanId: string) => {
-    goTo(`/admin/loans/ledger?loanId=${loanId}`);
+    goTo(`/admin/loans/ledger/${loanId}`);
   };
 
   const handleFailureClose = () => {
