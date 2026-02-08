@@ -13,19 +13,17 @@ import {
   EmployeeWithCategory,
   PaginatedResult,
   Customer,
+  CreateLoanInput,
+  Account,
+  CreateCustomerPaymentInput,
   CreateOrderInput,
   ProductionEntry,
-  CreateLoanInput,
-  Account
-  CreateCustomerPaymentInput
-  CreateOrderInput,
-  ProductionEntry
 } from './types'
 import { MaterialPurchaseInput, ProductionInput } from "../employee/types";
 import { getRange, getRangeForProductionStatistics, PAGE_SIZE } from "../utils/reusables";
 
 /* ------------------------------------------------------------------
-   1. LOGIN
+   1. LOGIN 
 -------------------------------------------------------------------*/
 
 export async function login(
@@ -522,8 +520,18 @@ export async function getCustomerOrdersWithSettlement(
     )
     .eq("customer_id", customerId)
     .order("order_date", { ascending: true })
-  */-----------------------------------------------------------
-   17. CREATE ORDERS
+    .range(from, to);
+
+  if (error) throw error;
+
+  return {
+    data: data ?? [],
+    hasMore: count ? to < count - 1 : false,
+  };
+  }
+
+  /*-----------------------------------------------------------
+   21. CREATE ORDERS
 -------------------------------------------------------------------*/
 
 export async function createOrder(
@@ -561,7 +569,7 @@ export async function createOrder(
 }
 
 /* ------------------------------------------------------------------
-   16. GET PRODUCTION ENTRIES FROM TODAY WITH PAGINATION
+   22. GET PRODUCTION ENTRIES FROM TODAY WITH PAGINATION
 -------------------------------------------------------------------*/
 
 export async function getProductionEntriesFromToday(
@@ -602,7 +610,7 @@ export async function getProductionEntriesFromToday(
 }
 
 /* ------------------------------------------------------------------
-   16. CREATE LOANS
+   23. CREATE LOANS
 -------------------------------------------------------------------*/
 
 export async function createLoan(
@@ -630,7 +638,7 @@ export async function createLoan(
 }
 
 /* ------------------------------------------------------------------
-   16. GET ACCOUNTS (for loan disbursement)
+   24. GET ACCOUNTS (for loan disbursement)
 -------------------------------------------------------------------*/
 
 export async function getAccounts(): Promise<Account[]> {
@@ -649,12 +657,8 @@ export async function getAccounts(): Promise<Account[]> {
   return data ?? [];
 }
 
-    hasMore: count ? to < count - 1 : false,
-  };
-}
-
 /* ------------------------------------------------------------------
-   21. UPDATE CUSTOMER
+   25. UPDATE CUSTOMER
 -------------------------------------------------------------------*/
 
 export async function updateCustomer(
@@ -683,7 +687,7 @@ export async function updateCustomer(
 }
 
 /* ------------------------------------------------------------------
-   22. GET COMPANY ACC FOR CUSTOMER PAYMENTS
+   26. GET COMPANY ACC FOR CUSTOMER PAYMENTS
 -------------------------------------------------------------------*/
 
 export async function getAccountsForPayments() {
@@ -696,7 +700,7 @@ export async function getAccountsForPayments() {
 }
 
 /* ------------------------------------------------------------------
-   23. CREATE CUSTOMER PAYMENT
+   27. CREATE CUSTOMER PAYMENT
 -------------------------------------------------------------------*/
 
 export async function createCustomerPayment(
@@ -745,7 +749,7 @@ export async function createCustomerPayment(
 }
 
 /* ------------------------------------------------------------------
-   24. GET CUSTOMER PAYMENT
+   28. GET CUSTOMER PAYMENT
 -------------------------------------------------------------------*/
 
 export async function getCustomerPayments(
@@ -769,10 +773,6 @@ export async function getCustomerPayments(
     hasMore: count ? to < count - 1 : false,
   };
 }
-    total: count ?? 0,
-    hasMore: from + limit < (count ?? 0),
-  };
-}
-
+   
 
 
