@@ -106,6 +106,23 @@ export interface PaginatedResult<T> {
   hasMore: boolean;   // for "Load more" visibility
 }
 
+export interface Customer {
+  id: string;
+  name: string;
+  phone: string;
+  address: string;
+  gst_number?: string | null;
+  created_at: string;
+}
+
+export interface CreateCustomerPaymentInput {
+  customer_id: string;
+  payment_date: string;
+  amount: number;
+  mode: "Cash" | "UPI" | "Bank Transfer" | "Cheque";
+  sender_account_id?: string;
+  receiver_account_id: string;
+}
 export interface CreateOrderInput {
   customer_id: string;
   order_date: string;        // YYYY-MM-DD
