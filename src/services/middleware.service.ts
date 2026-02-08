@@ -14,9 +14,11 @@ import {
   PaginatedResult,
   Customer,
   CreateCustomerPaymentInput
+  CreateOrderInput,
+  ProductionEntry
 } from './types'
 import { MaterialPurchaseInput, ProductionInput } from "../employee/types";
-import { getRange, PAGE_SIZE } from "../utils/reusables";
+import { getRange, getRangeForProductionStatistics, PAGE_SIZE } from "../utils/reusables";
 
 /* ------------------------------------------------------------------
    1. LOGIN
@@ -95,6 +97,21 @@ export async function getVendors(): Promise<Vendor[]> {
 
   if (error) throw error;
   return data;
+}
+
+/* ------------------------------------------------------------------
+   6.5 SEARCH CUSTOMERS
+-------------------------------------------------------------------*/
+
+export async function searchCustomers(searchTerm: string): Promise<Customer[]> {
+  const { data, error } = await supabase
+    .from("customers")
+    .select("*")
+    .or(`name.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%`)
+    .order("name");
+
+  if (error) throw error;
+  return data ?? [];
 }
 
 /* ------------------------------------------------------------------
@@ -501,6 +518,74 @@ export async function getCustomerOrdersWithSettlement(
     )
     .eq("customer_id", customerId)
     .order("order_date", { ascending: true })
+  */-----------------------------------------------------------
+   17. CREATE ORDERS
+-------------------------------------------------------------------*/
+
+export async function createOrder(
+  orderInput: CreateOrderInput,
+  loadmenIds: string[],
+  createdBy: string
+): Promise<{ orderId: string }> {
+  const { data: order, error: orderError } = await supabase
+    .from("orders")
+    .insert({
+      ...orderInput,
+      delivered: false,
+      created_by: createdBy,
+    })
+    .select("id")
+    .single();
+
+  if (orderError) throw orderError;
+
+  const orderId = order.id;
+
+  if (loadmenIds.length > 0) {
+    const loadmenRows = loadmenIds.map((employee_id) => ({
+      order_id: orderId,
+      employee_id,
+    }));
+
+    const { error: loadmenError } = await supabase
+      .from("order_loadmen")
+      .insert(loadmenRows);
+
+    if (loadmenError) throw loadmenError;
+  }
+  return { orderId };
+}
+
+/* ------------------------------------------------------------------
+   16. GET PRODUCTION ENTRIES FROM TODAY WITH PAGINATION
+-------------------------------------------------------------------*/
+
+export async function getProductionEntriesFromToday(
+  page: number
+): Promise<PaginatedResult<ProductionEntry>> {
+  const today = new Date().toISOString().split("T")[0];
+  const { from, to, limit } = getRangeForProductionStatistics(page);
+
+  const { data, count, error } = await supabase
+    .from("production_entries")
+    .select(
+      `
+      id,
+      production_date,
+      round,
+      bricks,
+      wet_ash_kg,
+      marble_powder_kg,
+      crusher_powder_kg,
+      fly_ash_kg,
+      cement_bags,
+      created_at
+      `,
+      { count: "exact" }
+    )
+    .lte("production_date", today)
+    .order("production_date", { ascending: false })
+    .order("created_at", { ascending: false })
     .range(from, to);
 
   if (error) throw error;
@@ -627,3 +712,10 @@ export async function getCustomerPayments(
     hasMore: count ? to < count - 1 : false,
   };
 }
+    total: count ?? 0,
+    hasMore: from + limit < (count ?? 0),
+  };
+}
+
+
+

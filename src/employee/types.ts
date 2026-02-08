@@ -58,3 +58,4 @@ export interface ProductionInput {
   flyAsh: number;
   cement: number;
 }
+

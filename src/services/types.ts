@@ -24,6 +24,14 @@ export interface Vendor {
   alternate_phone: string | null;
 }
 
+export interface Customer {
+  id: string;
+  name: string;
+  phone: number;
+  gst_number: string | null;
+  address: string;
+}
+
 export interface ProcurementInput {
   material_id: string;
   vendor_id: string;
@@ -114,4 +122,33 @@ export interface CreateCustomerPaymentInput {
   mode: "Cash" | "UPI" | "Bank Transfer" | "Cheque";
   sender_account_id?: string;
   receiver_account_id: string;
+}
+export interface CreateOrderInput {
+  customer_id: string;
+  order_date: string;        // YYYY-MM-DD
+  delivery_date: string;     // YYYY-MM-DD
+  brick_quantity: number;
+  price_per_brick?: number;
+  paper_price?: number;
+  final_price: number;
+  location: string;
+  payment_status: "NOT_PAID" | "PARTIALLY_PAID" | "FULLY_PAID";
+  amount_paid: number;
+  gst_number?: string | null;
+  dc_number?: string | null;
+}
+
+export interface ProductionEntry {
+  id: string;
+  production_date: string;
+  round: number;
+  bricks: number;
+
+  wet_ash_kg: number | null;
+  marble_powder_kg: number | null;
+  crusher_powder_kg: number | null;
+  fly_ash_kg: number | null;
+  cement_bags: number | null;
+
+  created_at: string;
 }
