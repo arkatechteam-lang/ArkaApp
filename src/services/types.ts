@@ -25,15 +25,6 @@ export interface Vendor {
   phone: string | null;
   alternate_phone: string | null;
 }
-
-export interface Customer {
-  id: string;
-  name: string;
-  phone: number;
-  gst_number: string | null;
-  address: string;
-}
-
 export interface ProcurementInput {
   material_id: string;
   vendor_id: string;
@@ -108,7 +99,7 @@ export interface PaginatedResult<T> {
   hasMore: boolean;   // for "Load more" visibility
 }
 
-export interface Customer {
+export interface Customer{
   id: string;
   name: string;
   phone: string;
@@ -189,4 +180,3 @@ export interface Account {
   opening_balance: number;
   created_at: string;
 }
-
