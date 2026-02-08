@@ -13,6 +13,10 @@ import {
   EmployeeWithCategory,
   PaginatedResult,
   Customer,
+  CreateOrderInput,
+  ProductionEntry,
+  CreateLoanInput,
+  Account
   CreateCustomerPaymentInput
   CreateOrderInput,
   ProductionEntry
@@ -592,6 +596,59 @@ export async function getProductionEntriesFromToday(
 
   return {
     data: data ?? [],
+    total: count ?? 0,
+    hasMore: from + limit < (count ?? 0),
+  };
+}
+
+/* ------------------------------------------------------------------
+   16. CREATE LOANS
+-------------------------------------------------------------------*/
+
+export async function createLoan(
+  input: CreateLoanInput
+): Promise<{ loanId: string }> {
+  const { data, error } = await supabase
+    .from("loans")
+    .insert({
+      lender_name: input.lender_name,
+      loan_type: input.loan_type,
+      principal_amount: input.principal_amount,
+      interest_rate: input.interest_rate ?? null,
+      outstanding_balance: input.principal_amount, // 👈 important
+      disbursement_account_id: input.disbursement_account_id ?? null,
+      start_date: input.start_date,
+      status: "ACTIVE",
+      notes: input.notes ?? null,
+    })
+    .select("id")
+    .single();
+
+  if (error) throw error;
+
+  return { loanId: data.id };
+}
+
+/* ------------------------------------------------------------------
+   16. GET ACCOUNTS (for loan disbursement)
+-------------------------------------------------------------------*/
+
+export async function getAccounts(): Promise<Account[]> {
+  const { data, error } = await supabase
+    .from("accounts")
+    .select(`
+      id,
+      account_number,
+      opening_balance,
+      created_at
+    `)
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+
+  return data ?? [];
+}
+
     hasMore: count ? to < count - 1 : false,
   };
 }

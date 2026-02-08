@@ -1,57 +1,23 @@
-import React, { useState } from 'react';
-import { AdminScreen } from '../../AdminApp';
+import React from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { Popup } from '../Popup';
+import { Popup } from '../../../../components/Popup';
+import { useCreateLoan } from '../../../hooks/useCreateLoan';
 
-interface CreateLoanScreenProps {
-  onNavigate: (screen: AdminScreen) => void;
-}
-
-export function CreateLoanScreen({ onNavigate }: CreateLoanScreenProps) {
-  const [lenderName, setLenderName] = useState('');
-  const [loanType, setLoanType] = useState<'Owner Loan' | 'Bank Loan' | 'Short-term Borrowing'>('Bank Loan');
-  const [principalAmount, setPrincipalAmount] = useState('');
-  const [interestRate, setInterestRate] = useState('');
-  const [disbursementAccount, setDisbursementAccount] = useState('Cash');
-  const [loanStartDate, setLoanStartDate] = useState('');
-  const [notes, setNotes] = useState('');
-
-  const [lenderNameError, setLenderNameError] = useState('');
-  const [principalAmountError, setPrincipalAmountError] = useState('');
-  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
-
-  const validateForm = () => {
-    let isValid = true;
-    setLenderNameError('');
-    setPrincipalAmountError('');
-
-    if (!lenderName.trim()) {
-      setLenderNameError('Lender name is required');
-      isValid = false;
-    }
-
-    if (!principalAmount.trim()) {
-      setPrincipalAmountError('Principal amount is required');
-      isValid = false;
-    } else if (isNaN(Number(principalAmount)) || Number(principalAmount) <= 0) {
-      setPrincipalAmountError('Principal amount must be a valid positive number');
-      isValid = false;
-    }
-
-    return isValid;
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (validateForm()) {
-      setShowSuccessPopup(true);
-    }
-  };
-
-  const handleSuccessClose = () => {
-    setShowSuccessPopup(false);
-    onNavigate('loan-management');
-  };
+export function CreateLoanScreen() {
+  const {
+    createLoanInput,
+    updateCreateLoanInput,
+    accounts,
+    accountsLoading,
+    errors,
+    showSuccessPopup,
+    showFailurePopup,
+    loading,
+    handleCreate,
+    handleSuccessClose,
+    handleFailureClose,
+    goBack,
+  } = useCreateLoan();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -59,7 +25,7 @@ export function CreateLoanScreen({ onNavigate }: CreateLoanScreenProps) {
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => onNavigate('loan-management')}
+            onClick={() => goBack('/admin/loans')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -71,8 +37,8 @@ export function CreateLoanScreen({ onNavigate }: CreateLoanScreenProps) {
         </div>
 
         {/* Form */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="bg-white rounded-lg shadow-lg p-6 sm:p-8">
+          <div className="space-y-6">
             {/* Lender Name */}
             <div>
               <label htmlFor="lenderName" className="block text-gray-700 mb-2">
@@ -81,13 +47,13 @@ export function CreateLoanScreen({ onNavigate }: CreateLoanScreenProps) {
               <input
                 id="lenderName"
                 type="text"
-                value={lenderName}
-                onChange={(e) => setLenderName(e.target.value)}
+                value={createLoanInput.lender_name}
+                onChange={(e) => updateCreateLoanInput('lender_name', e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 placeholder="Enter lender name"
               />
-              {lenderNameError && (
-                <p className="text-red-600 text-sm mt-1">{lenderNameError}</p>
+              {errors.lender_name && (
+                <p className="text-red-600 text-sm mt-1">{errors.lender_name}</p>
               )}
             </div>
 
@@ -98,13 +64,13 @@ export function CreateLoanScreen({ onNavigate }: CreateLoanScreenProps) {
               </label>
               <select
                 id="loanType"
-                value={loanType}
-                onChange={(e) => setLoanType(e.target.value as 'Owner Loan' | 'Bank Loan' | 'Short-term Borrowing')}
+                value={createLoanInput.loan_type}
+                onChange={(e) => updateCreateLoanInput('loan_type', e.target.value as 'OWNER' | 'BANK' | 'SHORT_TERM')}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
               >
-                <option value="Owner Loan">Owner Loan</option>
-                <option value="Bank Loan">Bank Loan</option>
-                <option value="Short-term Borrowing">Short-term Borrowing</option>
+                <option value="OWNER">Owner Loan</option>
+                <option value="BANK">Bank Loan</option>
+                <option value="SHORT_TERM">Short-term Borrowing</option>
               </select>
             </div>
 
@@ -116,13 +82,16 @@ export function CreateLoanScreen({ onNavigate }: CreateLoanScreenProps) {
               <input
                 id="principalAmount"
                 type="number"
-                value={principalAmount}
-                onChange={(e) => setPrincipalAmount(e.target.value)}
+                value={createLoanInput.principal_amount || ''}
+                onChange={(e) => updateCreateLoanInput('principal_amount', parseFloat(e.target.value) || 0)}
+                onWheel={(e) => e.currentTarget.blur()}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 placeholder="Enter principal amount"
+                min="0.01"
+                step="0.01"
               />
-              {principalAmountError && (
-                <p className="text-red-600 text-sm mt-1">{principalAmountError}</p>
+              {errors.principal_amount && (
+                <p className="text-red-600 text-sm mt-1">{errors.principal_amount}</p>
               )}
             </div>
 
@@ -135,11 +104,16 @@ export function CreateLoanScreen({ onNavigate }: CreateLoanScreenProps) {
                 id="interestRate"
                 type="number"
                 step="0.01"
-                value={interestRate}
-                onChange={(e) => setInterestRate(e.target.value)}
+                value={createLoanInput.interest_rate ?? ''}
+                onChange={(e) => updateCreateLoanInput('interest_rate', e.target.value ? parseFloat(e.target.value) : null)}
+                onWheel={(e) => e.currentTarget.blur()}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 placeholder="Enter interest rate"
+                min="0"
               />
+              {errors.interest_rate && (
+                <p className="text-red-600 text-sm mt-1">{errors.interest_rate}</p>
+              )}
             </div>
 
             {/* Disbursement Account */}
@@ -149,13 +123,22 @@ export function CreateLoanScreen({ onNavigate }: CreateLoanScreenProps) {
               </label>
               <select
                 id="disbursementAccount"
-                value={disbursementAccount}
-                onChange={(e) => setDisbursementAccount(e.target.value)}
+                value={createLoanInput.disbursement_account_id ?? ''}
+                onChange={(e) => updateCreateLoanInput('disbursement_account_id', e.target.value || null)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
               >
-                <option value="Cash">Cash</option>
-                <option value="3455332">#3455332</option>
-                <option value="7894561">#7894561</option>
+                <option value="">Cash</option>
+                {accountsLoading ? (
+                  <option value="" disabled>Loading accounts...</option>
+                ) : accounts.length > 0 ? (
+                  accounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.account_number}
+                    </option>
+                  ))
+                ) : (
+                  <option value="" disabled>No accounts found</option>
+                )}
               </select>
             </div>
 
@@ -167,10 +150,13 @@ export function CreateLoanScreen({ onNavigate }: CreateLoanScreenProps) {
               <input
                 id="loanStartDate"
                 type="date"
-                value={loanStartDate}
-                onChange={(e) => setLoanStartDate(e.target.value)}
+                value={createLoanInput.start_date}
+                onChange={(e) => updateCreateLoanInput('start_date', e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
               />
+              {errors.start_date && (
+                <p className="text-red-600 text-sm mt-1">{errors.start_date}</p>
+              )}
             </div>
 
             {/* Notes */}
@@ -180,43 +166,55 @@ export function CreateLoanScreen({ onNavigate }: CreateLoanScreenProps) {
               </label>
               <textarea
                 id="notes"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value.slice(0, 100))}
+                value={createLoanInput.notes ?? ''}
+                onChange={(e) => updateCreateLoanInput('notes', e.target.value.slice(0, 100))}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 rows={3}
                 maxLength={100}
                 placeholder="Enter any additional notes"
               />
-              <p className="text-gray-500 text-sm mt-1">{notes.length}/100 characters</p>
+              <p className="text-gray-500 text-sm mt-1">{(createLoanInput.notes ?? '').length}/100 characters</p>
             </div>
 
             {/* Buttons */}
             <div className="flex gap-3 pt-4">
               <button
                 type="button"
-                onClick={() => onNavigate('loan-management')}
+                onClick={() => goBack('/admin/loans')}
                 className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Cancel
               </button>
               <button
-                type="submit"
-                className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                type="button"
+                onClick={handleCreate}
+                disabled={loading}
+                className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
-                Create
+                {loading ? 'Creating...' : 'Create'}
               </button>
             </div>
-          </form>
+          </div>
         </div>
       </div>
 
       {/* Success Popup */}
       {showSuccessPopup && (
         <Popup
-          title="Success"
-          message="Loan created successfully"
+          title="Loan Created Successfully"
+          message="The loan has been created successfully."
           onClose={handleSuccessClose}
           type="success"
+        />
+      )}
+
+      {/* Failure Popup */}
+      {showFailurePopup && (
+        <Popup
+          title="Creation Failed"
+          message={errors.form || 'Failed to create loan. Please try again.'}
+          onClose={handleFailureClose}
+          type="error"
         />
       )}
     </div>

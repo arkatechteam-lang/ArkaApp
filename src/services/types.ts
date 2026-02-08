@@ -4,6 +4,8 @@
 
 export type UserRole = "ADMIN" | "EMPLOYEE";
 export type EmployeeCategory = "DAILY" | "FIXED" | "LOADMEN";
+export type LoanType = "OWNER" | "BANK" | "SHORT_TERM";
+export type LoanStatus = "ACTIVE" | "CLOSED";
 
 export interface Profile {
   id: string;
@@ -152,3 +154,21 @@ export interface ProductionEntry {
 
   created_at: string;
 }
+
+export interface CreateLoanInput {
+  lender_name: string;
+  loan_type: LoanType;
+  principal_amount: number;
+  interest_rate?: number | null;
+  disbursement_account_id?: string | null;
+  start_date: string; // YYYY-MM-DD
+  notes?: string | null;
+}
+
+export interface Account {
+  id: string;
+  account_number: string;
+  opening_balance: number;
+  created_at: string;
+}
+
