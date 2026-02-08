@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AdminScreen } from '../../AdminApp';
+import { AdminScreen } from '../../../../AdminApp';
 import { ArrowLeft, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 

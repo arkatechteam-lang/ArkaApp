@@ -13,7 +13,10 @@ import {
   EmployeeWithCategory,
   PaginatedResult,
   Customer,
-  CreateOrderInput
+  CreateOrderInput,
+  ProductionEntry,
+  CreateLoanInput,
+  Account
 } from './types'
 import { MaterialPurchaseInput, ProductionInput } from "../employee/types";
 import { getRange, PAGE_SIZE } from "../utils/reusables";
@@ -453,4 +456,96 @@ export async function createOrder(
   --------------------------------------------------------------*/
   return { orderId };
 }
+
+/* ------------------------------------------------------------------
+   16. GET PRODUCTION ENTRIES FROM TODAY WITH PAGINATION
+-------------------------------------------------------------------*/
+
+export async function getProductionEntriesFromToday(
+  page: number
+): Promise<PaginatedResult<ProductionEntry>> {
+  const today = new Date().toISOString().split("T")[0];
+  const { from, to, limit } = getRangeForProductionStatistics(page);
+
+  const { data, count, error } = await supabase
+    .from("production_entries")
+    .select(
+      `
+      id,
+      production_date,
+      round,
+      bricks,
+      wet_ash_kg,
+      marble_powder_kg,
+      crusher_powder_kg,
+      fly_ash_kg,
+      cement_bags,
+      created_at
+      `,
+      { count: "exact" }
+    )
+    .lte("production_date", today)
+    .order("production_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .range(from, to);
+
+  if (error) throw error;
+
+  return {
+    data: data ?? [],
+    total: count ?? 0,
+    hasMore: from + limit < (count ?? 0),
+  };
+}
+
+/* ------------------------------------------------------------------
+   16. CREATE LOANS
+-------------------------------------------------------------------*/
+
+export async function createLoan(
+  input: CreateLoanInput
+): Promise<{ loanId: string }> {
+  const { data, error } = await supabase
+    .from("loans")
+    .insert({
+      lender_name: input.lender_name,
+      loan_type: input.loan_type,
+      principal_amount: input.principal_amount,
+      interest_rate: input.interest_rate ?? null,
+      outstanding_balance: input.principal_amount, // 👈 important
+      disbursement_account_id: input.disbursement_account_id ?? null,
+      start_date: input.start_date,
+      status: "ACTIVE",
+      notes: input.notes ?? null,
+    })
+    .select("id")
+    .single();
+
+  if (error) throw error;
+
+  return { loanId: data.id };
+}
+
+/* ------------------------------------------------------------------
+   16. GET ACCOUNTS (for loan disbursement)
+-------------------------------------------------------------------*/
+
+export async function getAccounts(): Promise<Account[]> {
+  const { data, error } = await supabase
+    .from("accounts")
+    .select(`
+      id,
+      account_number,
+      opening_balance,
+      created_at
+    `)
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+
+  return data ?? [];
+}
+
+
+
 

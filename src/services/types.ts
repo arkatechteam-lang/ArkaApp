@@ -4,6 +4,8 @@
 
 export type UserRole = "ADMIN" | "EMPLOYEE";
 export type EmployeeCategory = "DAILY" | "FIXED" | "LOADMEN";
+export type LoanType = "OWNER" | "BANK" | "SHORT_TERM";
+export type LoanStatus = "ACTIVE" | "CLOSED";
 
 export interface Profile {
   id: string;
@@ -120,3 +122,36 @@ export interface CreateOrderInput {
   gst_number?: string | null;
   dc_number?: string | null;
 }
+
+export interface ProductionEntry {
+  id: string;
+  production_date: string;
+  round: number;
+  bricks: number;
+
+  wet_ash_kg: number | null;
+  marble_powder_kg: number | null;
+  crusher_powder_kg: number | null;
+  fly_ash_kg: number | null;
+  cement_bags: number | null;
+
+  created_at: string;
+}
+
+export interface CreateLoanInput {
+  lender_name: string;
+  loan_type: LoanType;
+  principal_amount: number;
+  interest_rate?: number | null;
+  disbursement_account_id?: string | null;
+  start_date: string; // YYYY-MM-DD
+  notes?: string | null;
+}
+
+export interface Account {
+  id: string;
+  account_number: string;
+  opening_balance: number;
+  created_at: string;
+}
+
