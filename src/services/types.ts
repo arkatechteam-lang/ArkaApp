@@ -6,6 +6,10 @@ export type UserRole = "ADMIN" | "EMPLOYEE";
 export type EmployeeCategory = "DAILY" | "FIXED" | "LOADMEN";
 export type LoanType = "OWNER" | "BANK" | "SHORT_TERM";
 export type LoanStatus = "ACTIVE" | "CLOSED";
+export type LoanTransactionType =
+  | "DISBURSEMENT"
+  | "REPAYMENT"
+  | "INTEREST";
 export type DbPaymentMode = "CASH" | "BANK" | "UPI" | "CHEQUE";
 
 export interface Profile {
@@ -174,6 +178,20 @@ export interface Loan {
   disbursement_account_id: string | null;
   start_date: string;
   status: LoanStatus;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface LoanLedgerItem {
+  id: string;
+  loan_id: string;
+  transaction_type: LoanTransactionType;
+  amount: number;
+  running_balance: number;
+  payment_mode: "CASH" | "BANK" | "UPI" | "CHEQUE";
+  sender_account_id: string | null;
+  receiver_account_info: string | null;
+  transaction_date: string; // YYYY-MM-DD
   notes: string | null;
   created_at: string;
 }

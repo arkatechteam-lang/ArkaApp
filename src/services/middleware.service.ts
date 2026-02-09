@@ -19,9 +19,12 @@ import {
   CreateOrderInput,
   ProductionEntry,
   Loan,
+  LoanLedgerItem,
 } from './types'
 import { MaterialPurchaseInput, ProductionInput } from "../employee/types";
 import { getRange, getRangeForProductionStatistics, PAGE_SIZE , mapPaymentModeToDb } from "../utils/reusables";
+
+export const CASH_ACCOUNT_ID = "04f194f4-af1f-4ac0-98be-a5b7f81b449f";
 
 /* ------------------------------------------------------------------
    1. LOGIN 
@@ -614,18 +617,30 @@ export async function getProductionEntriesFromToday(
    23. CREATE LOANS
 -------------------------------------------------------------------*/
 
-export async function createLoan(
-  input: CreateLoanInput
+export async function createLoanWithDisbursementAndCashEntry(
+  input: CreateLoanInput,
+  // openCashLedgerDayId: string // currently OPEN cash_ledger_days.id
 ): Promise<{ loanId: string }> {
-  const { data, error } = await supabase
+  /* -------------------------------------------------------------
+     1. DETERMINE PAYMENT MODE
+  --------------------------------------------------------------*/
+  const paymentMode =
+    input.disbursement_account_id === CASH_ACCOUNT_ID
+      ? "CASH"
+      : "BANK";
+
+  /* -------------------------------------------------------------
+     2. CREATE LOAN
+  --------------------------------------------------------------*/
+  const { data: loan, error: loanError } = await supabase
     .from("loans")
     .insert({
       lender_name: input.lender_name,
       loan_type: input.loan_type,
       principal_amount: input.principal_amount,
       interest_rate: input.interest_rate ?? null,
-      outstanding_balance: input.principal_amount, // 👈 important
-      disbursement_account_id: input.disbursement_account_id ?? null,
+      outstanding_balance: input.principal_amount,
+      disbursement_account_id: input.disbursement_account_id,
       start_date: input.start_date,
       status: "ACTIVE",
       notes: input.notes ?? null,
@@ -633,10 +648,51 @@ export async function createLoan(
     .select("id")
     .single();
 
-  if (error) throw error;
+  if (loanError) throw loanError;
 
-  return { loanId: data.id };
+  const loanId = loan.id;
+
+  /* -------------------------------------------------------------
+     3. CREATE LOAN LEDGER (DISBURSEMENT)
+  --------------------------------------------------------------*/
+  const { error: loanLedgerError } = await supabase
+    .from("loan_ledger")
+    .insert({
+      loan_id: loanId,
+      transaction_type: "DISBURSEMENT",
+      amount: input.principal_amount,
+      running_balance: input.principal_amount,
+      payment_mode: paymentMode,
+      sender_account_id: input.disbursement_account_id,
+      receiver_account_info: input.lender_name,
+      transaction_date: input.start_date,
+      notes: input.notes ?? "Loan disbursement",
+    });
+
+  if (loanLedgerError) throw loanLedgerError;
+
+  /* -------------------------------------------------------------
+     4. CREATE CASH LEDGER ENTRY (CASH IN)
+  --------------------------------------------------------------*/
+  // const { error: cashLedgerError } = await supabase
+  //   .from("cash_ledger_entries")
+  //   .insert({
+  //     ledger_day_id: openCashLedgerDayId,
+  //     direction: "IN",
+  //     source_type: "LOAN_DISBURSEMENT",
+  //     account_id: input.disbursement_account_id,
+  //     amount: input.principal_amount,
+  //     reason: input.notes ?? "Loan disbursement",
+  //   });
+
+  // if (cashLedgerError) throw cashLedgerError;
+
+  /* -------------------------------------------------------------
+     5. RETURN LOAN ID
+  --------------------------------------------------------------*/
+  return { loanId };
 }
+
 
 /* ------------------------------------------------------------------
    24. GET ACCOUNTS (for loan disbursement)
@@ -812,6 +868,74 @@ export async function getLoans(): Promise<Loan[]> {
 
   return data ?? [];
 }
-   
 
+/* ------------------------------------------------------------------
+   30. GET LOAN LEDGER
+-------------------------------------------------------------------*/
+
+export async function getLoanLedger(
+  loanId: string,
+  page: number
+): Promise<PaginatedResult<LoanLedgerItem>> {
+  const { from, to } = getRange(page);
+
+  const { data, count, error } = await supabase
+    .from("loan_ledger")
+    .select(
+      `
+      id,
+      loan_id,
+      transaction_type,
+      amount,
+      running_balance,
+      payment_mode,
+      sender_account_id,
+      receiver_account_info,
+      transaction_date,
+      notes,
+      created_at
+      `,
+      { count: "exact" }
+    )
+    .eq("loan_id", loanId)
+    .order("transaction_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .range(from, to);
+
+  if (error) throw error;
+
+  return {
+    data: data ?? [],
+    total: count ?? 0,
+    hasMore: (from + PAGE_SIZE) < (count ?? 0),
+  };
+}
+
+/* ------------------------------------------------------------------
+   31. GET LOAN BY ID
+-------------------------------------------------------------------*/
+
+export async function getLoanById(loanId: string): Promise<Loan> {
+  const { data, error } = await supabase
+    .from("loans")
+    .select(`
+      id,
+      lender_name,
+      loan_type,
+      principal_amount,
+      interest_rate,
+      outstanding_balance,
+      disbursement_account_id,
+      start_date,
+      status,
+      notes,
+      created_at
+    `)
+    .eq("id", loanId)
+    .single();
+
+  if (error) throw error;
+
+  return data;
+}
 
