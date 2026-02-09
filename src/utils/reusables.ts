@@ -1,3 +1,4 @@
+import {DbPaymentMode} from "../services/types";
 export const PAGE_SIZE = 20;
 const PRODUCTION_STATISTICS_FIRST_PAGE_SIZE = 30;
 
@@ -24,4 +25,22 @@ export function getRangeForProductionStatistics(page: number) {
     to,
     limit: PAGE_SIZE,
   };
+}
+
+
+export function mapPaymentModeToDb(
+  mode: "Cash" | "UPI" | "Bank Transfer" | "Cheque"
+): DbPaymentMode {
+  switch (mode) {
+    case "Cash":
+      return "CASH";
+    case "UPI":
+      return "UPI";
+    case "Bank Transfer":
+      return "BANK";
+    case "Cheque":
+      return "CHEQUE";
+    default:
+      throw new Error(`Unsupported payment mode: ${mode}`);
+  }
 }

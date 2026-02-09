@@ -120,8 +120,8 @@ export interface CreateCustomerPaymentInput {
   payment_date: string;
   amount: number;
   mode: "Cash" | "UPI" | "Bank Transfer" | "Cheque";
-  sender_account_id?: string;
-  receiver_account_id: string;
+  sender_account_no?: string;        // ✅ text
+  receiver_account_id?: string;      // ✅ uuid, optional for Cash
 }
 export interface CreateOrderInput {
   customer_id: string;
@@ -152,3 +152,6 @@ export interface ProductionEntry {
 
   created_at: string;
 }
+
+
+export type DbPaymentMode = "CASH" | "BANK" | "UPI" | "CHEQUE";
