@@ -34,7 +34,7 @@ import { CashLedgerScreen } from './components/admin/CashLedgerScreen';
 import { LoanManagementScreen } from './admin/pages/loans/pages/LoanManagementScreen';
 import { CreateLoanScreen } from './admin/pages/loans/pages/CreateLoanScreen';
 import { LoanLedgerScreen } from './admin/pages/loans/pages/LoanLedgerScreen';
-import { AddLoanTransactionScreen } from './components/admin/AddLoanTransactionScreen';
+import { AddLoanTransactionScreen } from './admin/pages/loans/pages/AddLoanTransactionScreen';
 import { AdminRoutes } from './admin/routes';
 
 export type AdminScreen = 

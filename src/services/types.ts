@@ -10,6 +10,7 @@ export type LoanTransactionType =
   | "DISBURSEMENT"
   | "REPAYMENT"
   | "INTEREST";
+export type PaymentMode = "CASH" | "BANK" | "UPI" | "CHEQUE";
 
 export interface Profile {
   id: string;
@@ -195,16 +196,13 @@ export interface LoanLedgerItem {
   created_at: string;
 }
 
-export interface Loan {
-  id: string;
-  lender_name: string;
-  loan_type: LoanType;
-  principal_amount: number;
-  interest_rate: number | null;
-  outstanding_balance: number;
-  disbursement_account_id: string | null;
-  start_date: string; // YYYY-MM-DD
-  status: LoanStatus;
-  notes: string | null;
-  created_at: string;
+export interface CreateLoanLedgerInput {
+  loan_id: string;
+  transaction_type: LoanTransactionType;
+  amount: number;
+  transaction_date: string; // YYYY-MM-DD
+  payment_mode: PaymentMode;
+  sender_account_id: string;
+  receiver_account_info?: string | null;
+  notes?: string | null;
 }
