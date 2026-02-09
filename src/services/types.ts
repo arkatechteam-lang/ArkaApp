@@ -10,6 +10,7 @@ export type LoanTransactionType =
   | "DISBURSEMENT"
   | "REPAYMENT"
   | "INTEREST";
+export type DbPaymentMode = "CASH" | "BANK" | "UPI" | "CHEQUE";
 
 export interface Profile {
   id: string;
@@ -117,8 +118,8 @@ export interface CreateCustomerPaymentInput {
   payment_date: string;
   amount: number;
   mode: "Cash" | "UPI" | "Bank Transfer" | "Cheque";
-  sender_account_id?: string;
-  receiver_account_id: string;
+  sender_account_no?: string;        // ✅ text
+  receiver_account_id?: string;      // ✅ uuid, optional for Cash
 }
 export interface CreateOrderInput {
   customer_id: string;
@@ -191,20 +192,6 @@ export interface LoanLedgerItem {
   sender_account_id: string | null;
   receiver_account_info: string | null;
   transaction_date: string; // YYYY-MM-DD
-  notes: string | null;
-  created_at: string;
-}
-
-export interface Loan {
-  id: string;
-  lender_name: string;
-  loan_type: LoanType;
-  principal_amount: number;
-  interest_rate: number | null;
-  outstanding_balance: number;
-  disbursement_account_id: string | null;
-  start_date: string; // YYYY-MM-DD
-  status: LoanStatus;
   notes: string | null;
   created_at: string;
 }

@@ -22,7 +22,7 @@ import {
   LoanLedgerItem,
 } from './types'
 import { MaterialPurchaseInput, ProductionInput } from "../employee/types";
-import { getRange, getRangeForProductionStatistics, PAGE_SIZE } from "../utils/reusables";
+import { getRange, getRangeForProductionStatistics, PAGE_SIZE , mapPaymentModeToDb } from "../utils/reusables";
 
 export const CASH_ACCOUNT_ID = "04f194f4-af1f-4ac0-98be-a5b7f81b449f";
 
@@ -763,24 +763,29 @@ export async function getAccountsForPayments() {
 export async function createCustomerPayment(
   input: CreateCustomerPaymentInput
 ) {
-  const { data: payment, error } = await supabase
+  /**
+   * 1️⃣ Insert payment
+   */
+  const dbMode = mapPaymentModeToDb(input.mode);
+  const { data: payment, error: insertError } = await supabase
     .from("customer_payments")
-    .insert([
-      {
-        customer_id: input.customer_id,
-        payment_date: input.payment_date,
-        amount: input.amount,
-        mode: input.mode,
-        sender_account_id: input.sender_account_id ?? null,
-      },
-    ])
+    .insert({
+      customer_id: input.customer_id,
+      payment_date: input.payment_date,
+      amount: input.amount,
+      mode: dbMode, // MUST be: 'CASH' | 'UPI' | 'BANK' | 'CHEQUE'
+      sender_account_no: input.sender_account_no ?? null,
+      receiver_account_id: input.receiver_account_id,
+    })
     .select()
     .single();
 
-  if (error) throw error;
+  if (insertError) throw insertError;
 
-  // FIFO settlement
-  const { error: settleError } = await supabase.rpc(
+  /**
+   * 2️⃣ Apply FIFO settlement
+   */
+  const { error: fifoError } = await supabase.rpc(
     "apply_customer_payment_fifo",
     {
       p_customer_id: input.customer_id,
@@ -789,9 +794,11 @@ export async function createCustomerPayment(
     }
   );
 
-  if (settleError) throw settleError;
+  if (fifoError) throw fifoError;
 
-  // Credit receiver account
+  /**
+   * 3️⃣ Increment account balance
+   */
   const { error: accountError } = await supabase.rpc(
     "increment_account_balance",
     {
@@ -804,6 +811,8 @@ export async function createCustomerPayment(
 
   return payment;
 }
+
+
 
 /* ------------------------------------------------------------------
    28. GET CUSTOMER PAYMENT
