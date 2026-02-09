@@ -4,7 +4,7 @@ import { ArrowLeft, Plus, Edit2, Trash2, X } from "lucide-react";
 import { Popup } from "../../../../components/Popup";
 import { useParams } from "react-router-dom";
 import {
-getCustomerFinancialById,
+  getCustomerFinancialById,
   getCustomerOrdersWithSettlement,
   updateCustomer,
   getCustomerPayments,
@@ -235,78 +235,96 @@ export function CustomerDetailsScreen() {
   const [receiverAccount, setReceiverAccount] = useState("");
 
   const [payments, setPayments] = useState<Payment[]>([]);
-const [paymentsPage, setPaymentsPage] = useState(1);
-const [hasMorePayments, setHasMorePayments] = useState(true);
-const [savingPayment, setSavingPayment] = useState(false);
+  const [paymentsPage, setPaymentsPage] = useState(1);
+  const [hasMorePayments, setHasMorePayments] = useState(true);
+  const [savingPayment, setSavingPayment] = useState(false);
 
-const [receiverAccounts, setReceiverAccounts] = useState<
-  { id: string; label: string; value: string }[]
->([]);
+  const [receiverAccounts, setReceiverAccounts] = useState<
+    { id: string; label: string; value: string }[]
+  >([]);
+
+  const cashAccountId =
+  receiverAccounts.find((a) =>
+    a.label.toUpperCase().includes("CASH"),
+  )?.value;
+
   useEffect(() => {
-  const loadAccounts = async () => {
-    try {
-      const data = await getAccountsForPayments();
+    if (paymentMode === "Cash") {
+      const cashAccount = receiverAccounts.find((a) =>
+        a.label.toUpperCase().includes("CASH"),
+      );
+      if (cashAccount) {
+        setReceiverAccount(cashAccount.value);
+      }
+    } else {
+      setReceiverAccount("");
+    }
+  }, [paymentMode, receiverAccounts]);
 
-      const mapped = data.map((a: any) => ({
-        id: a.id,
-        label: a.account_number,
-        value: a.id, // IMPORTANT → use account ID
-      }));
+  useEffect(() => {
+    const loadAccounts = async () => {
+      try {
+        const data = await getAccountsForPayments();
 
-      setReceiverAccounts(mapped);
+        const mapped = data.map((a: any) => ({
+          id: a.id,
+          label: a.account_number,
+          value: a.id, // IMPORTANT → use account ID
+        }));
 
-      // Auto-select Cash account if mode is Cash
-      const cashAccount = mapped.find((a) =>
+        setReceiverAccounts(mapped);
+
+        // Auto-select Cash account if mode is Cash
+        const cashAccount = mapped.find((a) =>
+          a.label.toLowerCase().includes("cash"),
+        );
+        if (cashAccount) setReceiverAccount(cashAccount.value);
+      } catch (e) {
+        console.error("Failed to load accounts", e);
+      }
+    };
+
+    loadAccounts();
+  }, []);
+
+  useEffect(() => {
+    if (activeTab !== "Payments" || !customerId) return;
+
+    const loadPayments = async () => {
+      try {
+        const res = await getCustomerPayments(customerId, 1);
+
+        setPayments(
+          res.data.map((p: any) => ({
+            id: p.id,
+            date: p.payment_date,
+            amount: p.amount,
+            modeOfPayment: p.mode,
+            senderAccountInfo: p.sender_account ?? "-",
+            receiverAccountInfo: p.receiver_account ?? "-",
+          })),
+        );
+
+        setPaymentsPage(1);
+        setHasMorePayments(res.hasMore);
+      } catch (e) {
+        console.error("Failed to load payments", e);
+      }
+    };
+
+    loadPayments();
+  }, [activeTab, customerId]);
+
+  useEffect(() => {
+    if (paymentMode === "Cash") {
+      const cash = receiverAccounts.find((a) =>
         a.label.toLowerCase().includes("cash"),
       );
-      if (cashAccount) setReceiverAccount(cashAccount.value);
-    } catch (e) {
-      console.error("Failed to load accounts", e);
+      if (cash) setReceiverAccount(cash.value);
+    } else {
+      setReceiverAccount("");
     }
-  };
-
-  loadAccounts();
-}, []);
-
-  useEffect(() => {
-  if (activeTab !== "Payments" || !customerId) return;
-
-  const loadPayments = async () => {
-    try {
-      const res = await getCustomerPayments(customerId, 1);
-
-      setPayments(
-        res.data.map((p: any) => ({
-          id: p.id,
-          date: p.payment_date,
-          amount: p.amount,
-          modeOfPayment: p.mode,
-          senderAccountInfo: p.sender_account ?? "-",
-          receiverAccountInfo: p.receiver_account ?? "-",
-        })),
-      );
-
-      setPaymentsPage(1);
-      setHasMorePayments(res.hasMore);
-    } catch (e) {
-      console.error("Failed to load payments", e);
-    }
-  };
-
-  loadPayments();
-}, [activeTab, customerId]);
-
-  useEffect(() => {
-  if (paymentMode === "Cash") {
-    const cash = receiverAccounts.find((a) =>
-      a.label.toLowerCase().includes("cash"),
-    );
-    if (cash) setReceiverAccount(cash.value);
-  } else {
-    setReceiverAccount("");
-  }
-}, [paymentMode, receiverAccounts]);
-
+  }, [paymentMode, receiverAccounts]);
 
   useEffect(() => {
     if (!customerId) return;
@@ -325,7 +343,7 @@ const [receiverAccounts, setReceiverAccounts] = useState<
           phoneNumber: customerData.phone,
           address: customerData.address,
           totalSales: customerData.total_sales,
-          unpaidAmount: customerData.unpaid_amount,
+          outstandingAmount: customerData.outstanding_amount,
         });
 
         const mappedOrders = ordersRes.data.map((o: any) => ({
@@ -399,86 +417,84 @@ const [receiverAccounts, setReceiverAccounts] = useState<
   };
 
   const handleConfirmPayment = async () => {
-  if (!customer) return;
+    if (!customer) return;
 
-  try {
-     setSavingPayment(true);
-    await createCustomerPayment({
-      customer_id: customer.id,
-      payment_date: paymentDate,
-      amount: Number(paymentAmount),
-      mode: paymentMode,
-      receiver_account_id: receiverAccount,
-      sender_account_id:
-        paymentMode === "Cash" ? undefined : senderAccount,
-    });
+    try {
+      setSavingPayment(true);
+      await createCustomerPayment({
+        customer_id: customer.id,
+        payment_date: paymentDate,
+        amount: Number(paymentAmount),
+        mode: paymentMode,
+        receiver_account_id:
+          paymentMode === "Cash" ? cashAccountId : receiverAccount,
+        sender_account_no: paymentMode === "Cash" ? undefined : senderAccount,
+      });
 
-    setShowPaymentModal(false);
-    setSuccessMessage("Payment added successfully");
-    setShowSuccessPopup(true);
+      setShowPaymentModal(false);
+      setSuccessMessage("Payment added successfully");
+      setShowSuccessPopup(true);
 
-    // 🔄 Refresh everything
-    const customerData = await getCustomerFinancialById(customer.id);
-    const ordersRes = await getCustomerOrdersWithSettlement(customer.id, 1);
-    const paymentsRes = await getCustomerPayments(customer.id, 1);
+      // 🔄 Refresh everything
+      const customerData = await getCustomerFinancialById(customer.id);
+      const ordersRes = await getCustomerOrdersWithSettlement(customer.id, 1);
+      const paymentsRes = await getCustomerPayments(customer.id, 1);
 
-    setCustomer({
-      id: customerData.customer_id,
-      name: customerData.name,
-      phoneNumber: customerData.phone,
-      address: customerData.address,
-      totalSales: customerData.total_sales,
-      unpaidAmount: customerData.unpaid_amount,
-    });
+      setCustomer({
+        id: customerData.customer_id,
+        name: customerData.name,
+        phoneNumber: customerData.phone,
+        address: customerData.address,
+        totalSales: customerData.total_sales,
+        outstandingAmount: customerData.outstanding_amount,
+      });
 
-    setOrders(
-      ordersRes.data.map((o: any) => ({
-        id: o.order_id,
-        date: o.order_date,
-        deliveryDate: o.delivery_date,
-        customerName: customerData.name,
-        customerNumber: customerData.phone,
-        customerId: o.customer_id,
-        quantity: o.brick_quantity,
-        finalPrice: o.final_price,
-        amountPaid: o.total_paid,
-        unpaidAmount: o.remaining_balance,
-        gstNumber: o.gst_number,
-        deliveryChallanNumber: o.dc_number,
-        paymentStatus:
-          o.payment_status === "FULLY_PAID"
-            ? "Fully Paid"
-            : o.payment_status === "PARTIALLY_PAID"
-              ? "Partially Paid"
-              : "Not Paid",
-      })),
-    );
+      setOrders(
+        ordersRes.data.map((o: any) => ({
+          id: o.order_id,
+          date: o.order_date,
+          deliveryDate: o.delivery_date,
+          customerName: customerData.name,
+          customerNumber: customerData.phone,
+          customerId: o.customer_id,
+          quantity: o.brick_quantity,
+          finalPrice: o.final_price,
+          amountPaid: o.total_paid,
+          unpaidAmount: o.remaining_balance,
+          gstNumber: o.gst_number,
+          deliveryChallanNumber: o.dc_number,
+          paymentStatus:
+            o.payment_status === "FULLY_PAID"
+              ? "Fully Paid"
+              : o.payment_status === "PARTIALLY_PAID"
+                ? "Partially Paid"
+                : "Not Paid",
+        })),
+      );
 
-    setPayments(
-      paymentsRes.data.map((p: any) => ({
-        id: p.id,
-        date: p.payment_date,
-        amount: p.amount,
-        modeOfPayment: p.mode,
-        senderAccountInfo: p.sender_account ?? "-",
-        receiverAccountInfo: p.receiver_account ?? "-",
-      })),
-    );
+      setPayments(
+        paymentsRes.data.map((p: any) => ({
+          id: p.id,
+          date: p.payment_date,
+          amount: p.amount,
+          modeOfPayment: p.mode,
+          senderAccountInfo: p.sender_account ?? "-",
+          receiverAccountInfo: p.receiver_account ?? "-",
+        })),
+      );
 
-    // Reset form
-    setPaymentDate("");
-    setPaymentAmount("");
-    setSenderAccount("");
-    setReceiverAccount("");
-  } catch (e) {
-    console.error("Payment failed", e);
-    alert("Failed to add payment");
-  } finally {
-    setSavingPayment(false);
-  }
- 
-};
-
+      // Reset form
+      setPaymentDate("");
+      setPaymentAmount("");
+      setSenderAccount("");
+      setReceiverAccount("");
+    } catch (e) {
+      console.error("Payment failed", e);
+      alert("Failed to add payment");
+    } finally {
+      setSavingPayment(false);
+    }
+  };
 
   const handleDeletePayment = (paymentId: string) => {
     // In a real app, this would delete the payment
@@ -637,9 +653,9 @@ const [receiverAccounts, setReceiverAccounts] = useState<
     });
 
     const paymentsInRange = payments.filter((payment) => {
-  const d = new Date(payment.date);
-  return d >= fromDate && d <= toDate;
-});
+      const d = new Date(payment.date);
+      return d >= fromDate && d <= toDate;
+    });
 
     // Check if transactions exist
     if (ordersInRange.length === 0 && paymentsInRange.length === 0) {
@@ -690,7 +706,7 @@ const [receiverAccounts, setReceiverAccounts] = useState<
   // const displayedOrders = MOCK_CUSTOMER_ORDERS.slice(0, displayCount);
   const displayedOrders = orders;
 
- const displayedPayments = payments;
+  const displayedPayments = payments;
 
   const loadMoreOrders = async () => {
     const nextPage = page + 1;
@@ -727,26 +743,30 @@ const [receiverAccounts, setReceiverAccounts] = useState<
     setPage(nextPage);
   };
 
-    const loadMorePayments = async () => {
-  const nextPage = paymentsPage + 1;
+  const loadMorePayments = async () => {
+    const nextPage = paymentsPage + 1;
 
-  const res = await getCustomerPayments(customer.id, nextPage);
+    const res = await getCustomerPayments(customer.id, nextPage);
 
-  setPayments((prev) => [
-    ...prev,
-    ...res.data.map((p: any) => ({
-      id: p.id,
-      date: p.payment_date,
-      amount: p.amount,
-      modeOfPayment: p.mode,
-      senderAccountInfo: p.sender_account ?? "-",
-      receiverAccountInfo: p.receiver_account ?? "-",
-    })),
-  ]);
+    setPayments((prev) => [
+      ...prev,
+      ...res.data.map((p: any) => ({
+        id: p.id,
+        date: p.payment_date,
+        amount: p.amount,
+        modeOfPayment: p.mode,
+        senderAccountInfo: p.sender_account ?? "-",
+        receiverAccountInfo: p.receiver_account ?? "-",
+      })),
+    ]);
 
-  setPaymentsPage(nextPage);
-  setHasMorePayments(res.hasMore);
-};
+    setPaymentsPage(nextPage);
+    setHasMorePayments(res.hasMore);
+  };
+
+  const nonCashAccounts = receiverAccounts.filter(
+  (a) => !a.label.toUpperCase().includes("CASH")
+);
 
 
   if (loading) {
@@ -887,10 +907,10 @@ const [receiverAccounts, setReceiverAccounts] = useState<
           <div className="bg-white rounded-lg shadow-lg p-6">
             <h3 className="text-gray-700 mb-2">Unpaid Amount</h3>
             <p
-              className={`${customer.unpaidAmount > 0 ? "text-red-600" : "text-green-600"}`}
+              className={`${customer.outstandingAmount > 0 ? "text-red-600" : "text-green-600"}`}
             >
-              {customer.unpaidAmount > 0
-                ? `₹${customer.unpaidAmount.toLocaleString()}`
+              {customer.outstandingAmount > 0
+                ? `₹${customer.outstandingAmount.toLocaleString()}`
                 : "₹0"}
             </p>
           </div>
@@ -1151,7 +1171,7 @@ const [receiverAccounts, setReceiverAccounts] = useState<
                           <td className="px-4 py-4">
                             <div className="flex gap-2">
                               <button
-                              disabled
+                                disabled
                                 // onClick={() => handleEditPayment(payment)}
                                 className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors"
                                 aria-label="Edit payment"
@@ -1159,7 +1179,7 @@ const [receiverAccounts, setReceiverAccounts] = useState<
                                 <Edit2 className="w-4 h-4" />
                               </button>
                               <button
-                              disabled
+                                disabled
                                 // onClick={() => handleDeletePayment(payment.id)}
                                 className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
                                 aria-label="Delete payment"
@@ -1355,18 +1375,18 @@ const [receiverAccounts, setReceiverAccounts] = useState<
                     <span className="text-red-600">*</span>
                   </label>
                   <select
-  id="receiverAccount"
-  value={receiverAccount}
-  onChange={(e) => setReceiverAccount(e.target.value)}
-  className="w-full px-4 py-3 border border-gray-300 rounded-lg"
->
-  <option value="">Select account</option>
-  {receiverAccounts.map((account) => (
-    <option key={account.id} value={account.value}>
-      {account.label}
-    </option>
-  ))}
-</select>
+                    id="receiverAccount"
+                    value={receiverAccount}
+                    onChange={(e) => setReceiverAccount(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg"
+                  >
+                    <option value="">Select account</option>
+                    {nonCashAccounts.map((account) => (
+                      <option key={account.id} value={account.value}>
+                        {account.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               )}
 
@@ -1380,7 +1400,8 @@ const [receiverAccounts, setReceiverAccounts] = useState<
                 </button>
                 <button
                   onClick={handleConfirmPayment}
-                  disabled={savingPayment ||
+                  disabled={
+                    savingPayment ||
                     !paymentDate ||
                     !paymentAmount ||
                     (paymentMode !== "Cash" &&
