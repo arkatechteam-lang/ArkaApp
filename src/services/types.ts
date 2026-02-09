@@ -6,6 +6,7 @@ export type UserRole = "ADMIN" | "EMPLOYEE";
 export type EmployeeCategory = "DAILY" | "FIXED" | "LOADMEN";
 export type LoanType = "OWNER" | "BANK" | "SHORT_TERM";
 export type LoanStatus = "ACTIVE" | "CLOSED";
+export type DbPaymentMode = "CASH" | "BANK" | "UPI" | "CHEQUE";
 
 export interface Profile {
   id: string;
@@ -130,24 +131,6 @@ export interface CreateOrderInput {
   gst_number?: string | null;
   dc_number?: string | null;
 }
-
-export interface ProductionEntry {
-  id: string;
-  production_date: string;
-  round: number;
-  bricks: number;
-
-  wet_ash_kg: number | null;
-  marble_powder_kg: number | null;
-  crusher_powder_kg: number | null;
-  fly_ash_kg: number | null;
-  cement_bags: number | null;
-
-  created_at: string;
-}
-
-
-export type DbPaymentMode = "CASH" | "BANK" | "UPI" | "CHEQUE";
 
 export interface ProductionEntry {
   id: string;

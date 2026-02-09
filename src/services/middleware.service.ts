@@ -658,9 +658,8 @@ export async function getAccounts(): Promise<Account[]> {
   return data ?? [];
 }
 
-
 /* ------------------------------------------------------------------
-   21. UPDATE CUSTOMER
+   25. UPDATE CUSTOMER
 -------------------------------------------------------------------*/
 
 export async function updateCustomer(
@@ -689,7 +688,7 @@ export async function updateCustomer(
 }
 
 /* ------------------------------------------------------------------
-   22. GET COMPANY ACC FOR CUSTOMER PAYMENTS
+   26. GET COMPANY ACC FOR CUSTOMER PAYMENTS
 -------------------------------------------------------------------*/
 
 export async function getAccountsForPayments() {
@@ -702,7 +701,7 @@ export async function getAccountsForPayments() {
 }
 
 /* ------------------------------------------------------------------
-   23. CREATE CUSTOMER PAYMENT
+   27. CREATE CUSTOMER PAYMENT
 -------------------------------------------------------------------*/
 
 export async function createCustomerPayment(
@@ -760,7 +759,7 @@ export async function createCustomerPayment(
 
 
 /* ------------------------------------------------------------------
-   24. GET CUSTOMER PAYMENT
+   28. GET CUSTOMER PAYMENT
 -------------------------------------------------------------------*/
 
 export async function getCustomerPayments(
@@ -813,6 +812,6 @@ export async function getLoans(): Promise<Loan[]> {
 
   return data ?? [];
 }
-
+   
 
 
