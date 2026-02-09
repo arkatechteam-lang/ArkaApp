@@ -194,5 +194,3 @@ export interface Loan {
   notes: string | null;
   created_at: string;
 }
-
-export type DbPaymentMode = "CASH" | "BANK" | "UPI" | "CHEQUE";
