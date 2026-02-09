@@ -343,7 +343,7 @@ export function CustomerDetailsScreen() {
           phoneNumber: customerData.phone,
           address: customerData.address,
           totalSales: customerData.total_sales,
-          unpaidAmount: customerData.unpaid_amount,
+          outstandingAmount: customerData.outstanding_amount,
         });
 
         const mappedOrders = ordersRes.data.map((o: any) => ({
@@ -446,7 +446,7 @@ export function CustomerDetailsScreen() {
         phoneNumber: customerData.phone,
         address: customerData.address,
         totalSales: customerData.total_sales,
-        unpaidAmount: customerData.unpaid_amount,
+        outstandingAmount: customerData.outstanding_amount,
       });
 
       setOrders(
@@ -907,10 +907,10 @@ export function CustomerDetailsScreen() {
           <div className="bg-white rounded-lg shadow-lg p-6">
             <h3 className="text-gray-700 mb-2">Unpaid Amount</h3>
             <p
-              className={`${customer.unpaidAmount > 0 ? "text-red-600" : "text-green-600"}`}
+              className={`${customer.outstandingAmount > 0 ? "text-red-600" : "text-green-600"}`}
             >
-              {customer.unpaidAmount > 0
-                ? `₹${customer.unpaidAmount.toLocaleString()}`
+              {customer.outstandingAmount > 0
+                ? `₹${customer.outstandingAmount.toLocaleString()}`
                 : "₹0"}
             </p>
           </div>

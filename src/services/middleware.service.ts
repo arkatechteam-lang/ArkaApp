@@ -711,14 +711,15 @@ export async function createCustomerPayment(
   /**
    * 1️⃣ Insert payment
    */
+  const dbMode = mapPaymentModeToDb(input.mode);
   const { data: payment, error: insertError } = await supabase
     .from("customer_payments")
     .insert({
       customer_id: input.customer_id,
       payment_date: input.payment_date,
       amount: input.amount,
-      mode: input.mode, // MUST be: 'CASH' | 'UPI' | 'BANK' | 'CHEQUE'
-      sender_account_id: input.sender_account_id ?? null,
+      mode: dbMode, // MUST be: 'CASH' | 'UPI' | 'BANK' | 'CHEQUE'
+      sender_account_no: input.sender_account_no ?? null,
       receiver_account_id: input.receiver_account_id,
     })
     .select()
