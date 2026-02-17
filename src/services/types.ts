@@ -10,6 +10,7 @@ export type LoanTransactionType =
   | "DISBURSEMENT"
   | "REPAYMENT"
   | "INTEREST";
+export type PaymentMode = "CASH" | "BANK" | "UPI" | "CHEQUE";
 export type DbPaymentMode = "CASH" | "BANK" | "UPI" | "CHEQUE";
 
 export interface Profile {
@@ -194,4 +195,15 @@ export interface LoanLedgerItem {
   transaction_date: string; // YYYY-MM-DD
   notes: string | null;
   created_at: string;
+}
+
+export interface CreateLoanLedgerInput {
+  loan_id: string;
+  transaction_type: LoanTransactionType;
+  amount: number;
+  transaction_date: string; // YYYY-MM-DD
+  payment_mode: PaymentMode;
+  sender_account_id: string;
+  receiver_account_info?: string | null;
+  notes?: string | null;
 }

@@ -20,6 +20,7 @@ import {
   ProductionEntry,
   Loan,
   LoanLedgerItem,
+  CreateLoanLedgerInput,
 } from './types'
 import { MaterialPurchaseInput, ProductionInput } from "../employee/types";
 import { getRange, getRangeForProductionStatistics, PAGE_SIZE , mapPaymentModeToDb } from "../utils/reusables";
@@ -939,3 +940,94 @@ export async function getLoanById(loanId: string): Promise<Loan> {
   return data;
 }
 
+/* ------------------------------------------------------------------
+   31. GET LOAN BY ID
+-------------------------------------------------------------------*/
+
+export async function createLoanLedgerTransaction(
+  input: CreateLoanLedgerInput
+): Promise<{ newBalance: number; loanStatus: "ACTIVE" | "CLOSED" }> {
+  /* -------------------------------------------------------------
+     1. FETCH CURRENT LOAN BALANCE
+  --------------------------------------------------------------*/
+  const { data: loan, error: loanError } = await supabase
+    .from("loans")
+    .select("id, outstanding_balance, status")
+    .eq("id", input.loan_id)
+    .single();
+
+  if (loanError) throw loanError;
+
+  if (loan.status === "CLOSED") {
+    throw new Error("Loan is already closed");
+  }
+
+  /* -------------------------------------------------------------
+     2. CALCULATE NEW RUNNING BALANCE
+  --------------------------------------------------------------*/
+  let newBalance = loan.outstanding_balance;
+
+  switch (input.transaction_type) {
+    case "DISBURSEMENT":
+      newBalance += input.amount;
+      break;
+
+    case "REPAYMENT":
+      newBalance -= input.amount;
+      break;
+
+    case "INTEREST":
+      // Interest does NOT affect principal balance
+      newBalance = loan.outstanding_balance;
+      break;
+
+    default:
+      throw new Error("Invalid loan transaction type");
+  }
+
+  if (newBalance < 0) {
+    throw new Error("Repayment amount exceeds outstanding balance");
+  }
+
+  /* -------------------------------------------------------------
+     3. INSERT LOAN LEDGER ENTRY
+  --------------------------------------------------------------*/
+  const { error: ledgerError } = await supabase
+    .from("loan_ledger")
+    .insert({
+      loan_id: input.loan_id,
+      transaction_type: input.transaction_type,
+      amount: input.amount,
+      running_balance: newBalance,
+      payment_mode: input.payment_mode,
+      sender_account_id: input.sender_account_id,
+      receiver_account_info: input.receiver_account_info ?? null,
+      transaction_date: input.transaction_date,
+      notes: input.notes ?? null,
+    });
+
+  if (ledgerError) throw ledgerError;
+
+  /* -------------------------------------------------------------
+     4. UPDATE LOAN (BALANCE + STATUS)
+  --------------------------------------------------------------*/
+  const newStatus = newBalance === 0 ? "CLOSED" : "ACTIVE";
+
+  const { error: updateError } = await supabase
+    .from("loans")
+    .update({
+      outstanding_balance: newBalance,
+      status: newStatus,
+    })
+    .eq("id", input.loan_id);
+
+  if (updateError) throw updateError;
+
+  /* -------------------------------------------------------------
+     5. RETURN RESULT
+  --------------------------------------------------------------*/
+  return {
+    newBalance,
+    loanStatus: newStatus,
+  };
+}
