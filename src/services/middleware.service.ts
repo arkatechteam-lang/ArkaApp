@@ -5,6 +5,7 @@ import {
   Profile,
   Material,
   Vendor,
+  CreateVendorInput,
   ProcurementInput,
   ProductionEntryInput,
   Order,
@@ -101,6 +102,28 @@ export async function getVendors(): Promise<Vendor[]> {
     .from("vendors")
     .select("*")
     .order("name");
+
+  if (error) throw error;
+  return data;
+}
+
+/* ------------------------------------------------------------------
+   6.1 CREATE VENDOR
+-------------------------------------------------------------------*/
+
+export async function createVendor(input: CreateVendorInput): Promise<Vendor> {
+  const { data, error } = await supabase
+    .from("vendors")
+    .insert({
+      name: input.name,
+      phone: input.phone,
+      alternate_phone: input.alternate_phone || null,
+      address: input.address,
+      gst_number: input.gst_number || null,
+      notes: input.notes || null,
+    })
+    .select()
+    .single();
 
   if (error) throw error;
   return data;
@@ -1030,4 +1053,54 @@ export async function createLoanLedgerTransaction(
     newBalance,
     loanStatus: newStatus,
   };
+}
+
+/* ------------------------------------------------------------------
+   32. CREATE VENDOR WITH MATERIALS
+-------------------------------------------------------------------*/
+
+export async function createVendorWithMaterials(
+  vendorInput: CreateVendorInput,
+  materialIds: string[]
+): Promise<{ vendorId: string }> {
+  /* -------------------------------------------------------------
+     1. CREATE VENDOR
+  --------------------------------------------------------------*/
+  const { data: vendor, error: vendorError } = await supabase
+    .from("vendors")
+    .insert({
+      name: vendorInput.name,
+      phone: vendorInput.phone ?? null,
+      alternate_phone: vendorInput.alternate_phone ?? null,
+      gst_number: vendorInput.gst_number ?? null,
+      address: vendorInput.address ?? null,
+      notes: vendorInput.notes ?? null,
+    })
+    .select("id")
+    .single();
+
+  if (vendorError) throw vendorError;
+
+  const vendorId = vendor.id;
+
+  /* -------------------------------------------------------------
+     2. CREATE VENDOR ↔ MATERIAL MAPPING
+  --------------------------------------------------------------*/
+  if (materialIds.length > 0) {
+    const rows = materialIds.map((material_id) => ({
+      vendor_id: vendorId,
+      material_id,
+    }));
+
+    const { error: mappingError } = await supabase
+      .from("vendor_materials")
+      .insert(rows);
+
+    if (mappingError) throw mappingError;
+  }
+
+  /* -------------------------------------------------------------
+     3. RETURN CREATED VENDOR ID
+  --------------------------------------------------------------*/
+  return { vendorId };
 }

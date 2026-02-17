@@ -5,13 +5,13 @@ import { ProductionStatisticsScreen } from "./pages/ProductionStatisticsScreen";
 import { MetricsScreen } from "./pages/MetricsScreen";
 import { EmployeeManagementScreen } from "./pages/EmployeeManagementScreen";
 import { SalaryLedgerScreen } from "./pages/SalaryLedgerScreen";
-import { VendorManagementScreen } from "./pages/VendorManagementScreen";
 import { CashFlowScreen } from "./pages/CashFlowScreen";
 import { LoansRoutes } from "./pages/loans/routes";
 import { OrdersRoutes } from "./pages/orders/routes";
 import { CustomersRoutes } from "./pages/customers/routes";
 import { InventoryRoutes } from "./pages/Inventory/routes";
 import { AccountsRoutes } from "./pages/accounts/routes";
+import { VendorsRoutes } from "./pages/vendors/routes";
 
 export function AdminRoutes() {
   return (
@@ -34,7 +34,7 @@ export function AdminRoutes() {
       <Route path="metrics" element={<MetricsScreen />} />
       <Route path="employees" element={<EmployeeManagementScreen />} />
       <Route path="salarys" element={<SalaryLedgerScreen />} />
-      <Route path="vendors" element={<VendorManagementScreen />} />
+      <Route path="vendors/*" element={<VendorsRoutes />} />
       <Route path="cashFlow" element={<CashFlowScreen />} />
       <Route path="loans/*" element={<LoansRoutes />} />
 

@@ -30,6 +30,19 @@ export interface Vendor {
   name: string;
   phone: string | null;
   alternate_phone: string | null;
+  materials_supplied: string[] | null;
+  address: string | null;
+  gst_number: string | null;
+  notes: string | null;
+}
+
+export interface CreateVendorInput {
+  name: string;
+  phone: string;
+  alternate_phone?: string | null;
+  address: string;
+  gst_number?: string | null;
+  notes?: string | null;
 }
 export interface ProcurementInput {
   material_id: string;
