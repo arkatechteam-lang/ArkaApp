@@ -1,12 +1,18 @@
 import React, { useState } from 'react';
-import { AdminScreen, Vendor } from '../../AdminApp';
 import { ArrowLeft, Plus, Search, Store, Edit2, Book } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useAdminNavigation } from '../../../hooks/useAdminNavigation';
 
-interface VendorManagementScreenProps {
-  onNavigate: (screen: AdminScreen) => void;
-  onVendorEdit: (vendor: Vendor) => void;
-}
+type Vendor = {
+  id: string;
+  name: string;
+  phoneNumber: string;
+  alternatePhone?: string;
+  materialsSupplied: string[];
+  address: string;
+  gstNumber?: string;
+  notes?: string;
+  isActive: boolean;
+};
 
 const MOCK_VENDORS: Vendor[] = [
   { id: 'VEN-001', name: 'ABC Suppliers', phoneNumber: '9876501234', alternatePhone: '9876501235', materialsSupplied: ['Wet Ash', 'Crusher Powder'], address: '123 Industrial Area, Phase 2, Bangalore, Karnataka - 560001', gstNumber: 'GST123456', notes: 'Reliable supplier, payment on delivery', isActive: true },
@@ -16,8 +22,8 @@ const MOCK_VENDORS: Vendor[] = [
   { id: 'VEN-005', name: 'JKL Enterprises', phoneNumber: '9876505234', materialsSupplied: ['Wet Ash', 'Fly Ash Powder', 'Cement'], address: '654 Business Park, Technology Zone, Bangalore, Karnataka - 560005', gstNumber: 'GST456789', notes: 'Best prices for bulk orders', isActive: true },
 ];
 
-export function VendorManagementScreen({ onNavigate, onVendorEdit }: VendorManagementScreenProps) {
-  const navigate = useNavigate();
+export function VendorManagementScreen() {
+  const { goBack, goTo } = useAdminNavigation();
   const [searchQuery, setSearchQuery] = useState('');
   const [displayCount, setDisplayCount] = useState(10);
 
@@ -39,7 +45,7 @@ export function VendorManagementScreen({ onNavigate, onVendorEdit }: VendorManag
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => navigate('/admin/home')}
+            onClick={() => goBack('/admin/home')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -52,7 +58,7 @@ export function VendorManagementScreen({ onNavigate, onVendorEdit }: VendorManag
               <p className="text-gray-600 mt-1">Manage vendor information and ledgers</p>
             </div>
             <button
-              onClick={() => onNavigate('create-vendor')}
+              onClick={() => goTo('/admin/vendors/create')}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               <Plus className="w-5 h-5" />
@@ -135,14 +141,14 @@ export function VendorManagementScreen({ onNavigate, onVendorEdit }: VendorManag
                             <td className="px-4 py-4">
                               <div className="flex gap-2">
                                 <button
-                                  onClick={() => onVendorEdit(vendor)}
+                                  onClick={() => goTo(`/admin/vendors/${vendor.id}/edit`)}
                                   className="text-blue-600 hover:text-blue-800"
                                   title="Edit Vendor"
                                 >
                                   <Edit2 className="w-4 h-4" />
                                 </button>
                                 <button
-                                  onClick={() => onNavigate('vendor-ledger')}
+                                  onClick={() => goTo(`/admin/vendors/${vendor.id}/ledger`)}
                                   className="text-green-600 hover:text-green-800"
                                   title="Open Ledger"
                                 >
@@ -183,14 +189,14 @@ export function VendorManagementScreen({ onNavigate, onVendorEdit }: VendorManag
                           </div>
                           <div className="flex gap-2 pt-2 border-t border-gray-200">
                             <button
-                              onClick={() => onVendorEdit(vendor)}
+                              onClick={() => goTo(`/admin/vendors/${vendor.id}/edit`)}
                               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                             >
                               <Edit2 className="w-4 h-4" />
                               Edit
                             </button>
                             <button
-                              onClick={() => onNavigate('vendor-ledger')}
+                              onClick={() => goTo(`/admin/vendors/${vendor.id}/ledger`)}
                               className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                             >
                               <Book className="w-4 h-4" />
