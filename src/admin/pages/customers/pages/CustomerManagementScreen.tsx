@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   ArrowLeft,
   Plus,
@@ -24,6 +24,7 @@ type CustomerUI = {
   unpaidAmount: number;
   totalSales: number;
 };
+
 export function CustomerManagementScreen() {
   const { goBack, goTo } = useAdminNavigation();
 
