@@ -1,4 +1,7 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { CustomerLedgerExport } from "./CustomerLedgerExport";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 import { Customer } from "../../../../AdminApp";
 import { ArrowLeft, Plus, Edit2, Trash2, X } from "lucide-react";
 import { Popup } from "../../../../components/Popup";
@@ -24,179 +27,33 @@ interface Payment {
   receiverAccountInfo: string;
 }
 
-// Mock order history for customer
-// const MOCK_CUSTOMER_ORDERS: AdminOrder[] = [
-//   {
-//     id: "ORD-001",
-//     date: "2025-12-08",
-//     deliveryDate: "2025-12-08",
-//     customerName: "Rajesh Kumar",
-//     customerNumber: "9876543210",
-//     customerId: "CUST-001",
-//     quantity: 5000,
-//     pricePerBrick: 10,
-//     paperPrice: 50000,
-//     location: "123 MG Road, Bangalore",
-//     finalPrice: 50000,
-//     paymentStatus: "Not Paid",
-//     loadMen: ["Raju Kumar", "Suresh Yadav"],
-//     deliveryToday: true,
-//     isDelivered: true,
-//     gstNumber: "29ABCDE1234F1Z5",
-//     deliveryChallanNumber: "12345",
-//   },
-//   {
-//     id: "ORD-015",
-//     date: "2025-11-25",
-//     deliveryDate: "2025-11-26",
-//     customerName: "Rajesh Kumar",
-//     customerNumber: "9876543210",
-//     customerId: "CUST-001",
-//     quantity: 3000,
-//     pricePerBrick: 10,
-//     paperPrice: 30000,
-//     location: "123 MG Road, Bangalore",
-//     finalPrice: 30000,
-//     paymentStatus: "Fully Paid",
-//     amountPaid: 30000,
-//     loadMen: ["Mohan Singh"],
-//     deliveryToday: false,
-//     isDelivered: true,
-//   },
-//   {
-//     id: "ORD-025",
-//     date: "2025-11-10",
-//     deliveryDate: "2025-11-11",
-//     customerName: "Rajesh Kumar",
-//     customerNumber: "9876543210",
-//     customerId: "CUST-001",
-//     quantity: 7000,
-//     pricePerBrick: 9.8,
-//     paperPrice: 68600,
-//     location: "123 MG Road, Bangalore",
-//     finalPrice: 68600,
-//     paymentStatus: "Partially Paid",
-//     amountPaid: 35000,
-//     loadMen: ["Raju Kumar"],
-//     deliveryToday: false,
-//     isDelivered: true,
-//     gstNumber: "29FGHIJ6789K2L6",
-//     deliveryChallanNumber: "67890",
-//   },
-// ];
-
-// const MOCK_CUSTOMERS: Customer[] = [
-//   {
-//     id: "CUST-001",
-//     name: "Rajesh Kumar",
-//     phoneNumber: "9876543210",
-//     address: "123 MG Road, Bangalore",
-//     unpaidAmount: 15000,
-//     totalSales: 250000,
-//   },
-//   {
-//     id: "CUST-002",
-//     name: "Priya Sharma",
-//     phoneNumber: "9876543211",
-//     address: "456 Brigade Road, Bangalore",
-//     unpaidAmount: 0,
-//     totalSales: 180000,
-//   },
-//   {
-//     id: "CUST-003",
-//     name: "Amit Patel",
-//     phoneNumber: "9876543212",
-//     address: "789 Koramangala, Bangalore",
-//     unpaidAmount: 25000,
-//     totalSales: 320000,
-//   },
-//   {
-//     id: "CUST-004",
-//     name: "Sunita Reddy",
-//     phoneNumber: "9876543213",
-//     address: "321 Indiranagar, Bangalore",
-//     unpaidAmount: 8000,
-//     totalSales: 145000,
-//   },
-//   {
-//     id: "CUST-005",
-//     name: "Mohan Singh",
-//     phoneNumber: "9876543214",
-//     address: "654 Whitefield, Bangalore",
-//     unpaidAmount: 0,
-//     totalSales: 95000,
-//   },
-//   {
-//     id: "CUST-006",
-//     name: "Lakshmi Iyer",
-//     phoneNumber: "9876543215",
-//     address: "987 Jayanagar, Bangalore",
-//     unpaidAmount: 12000,
-//     totalSales: 210000,
-//   },
-//   {
-//     id: "CUST-007",
-//     name: "Ramesh Gupta",
-//     phoneNumber: "9876543216",
-//     address: "147 BTM Layout, Bangalore",
-//     unpaidAmount: 0,
-//     totalSales: 165000,
-//   },
-//   {
-//     id: "CUST-008",
-//     name: "Anita Desai",
-//     phoneNumber: "9876543217",
-//     address: "258 HSR Layout, Bangalore",
-//     unpaidAmount: 18000,
-//     totalSales: 275000,
-//   },
-// ];
-
-// const MOCK_PAYMENTS: Payment[] = [
-//   {
-//     id: "PAY-001",
-//     date: "2025-12-07",
-//     amount: 30000,
-//     modeOfPayment: "UPI",
-//     senderAccountInfo: "rajesh@okicici",
-//     receiverAccountInfo: "brickfactory@oksbi",
-//   },
-//   {
-//     id: "PAY-002",
-//     date: "2025-11-26",
-//     amount: 35000,
-//     modeOfPayment: "Bank Transfer",
-//     senderAccountInfo: "1234567890",
-//     receiverAccountInfo: "9876543210",
-//   },
-//   {
-//     id: "PAY-003",
-//     date: "2025-11-15",
-//     amount: 50000,
-//     modeOfPayment: "Cash",
-//     senderAccountInfo: "N/A",
-//     receiverAccountInfo: "N/A",
-//   },
-// ];
-
-// Mock receiver account numbers for dropdown
-// const RECEIVER_ACCOUNTS = [
-//   { id: "1", label: "SBI - 9876543210", value: "9876543210" },
-//   { id: "2", label: "ICICI - 1234567890", value: "1234567890" },
-//   { id: "3", label: "HDFC - 5555666677", value: "5555666677" },
-//   { id: "4", label: "Axis - 9999888877", value: "9999888877" },
-// ];
 
 export function CustomerDetailsScreen() {
   const { customerId } = useParams<{ customerId: string }>();
   const { goBack, goTo } = useAdminNavigation();
   // const customer = MOCK_CUSTOMERS.find((c) => c.id === customerId);
   const [customer, setCustomer] = useState<Customer | null>(null);
-  const [orders, setOrders] = useState<Order[]>([]);
+  type CustomerOrder = {
+    id: string;
+    date: string;
+    deliveryDate: string;
+    customerName: string;
+    customerNumber: string;
+    customerId: string;
+    quantity: number;
+    finalPrice: number;
+    amountPaid: number;
+    unpaidAmount: number;
+    gstNumber?: string;
+    deliveryChallanNumber?: string;
+    paymentStatus: string;
+  };
+  const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [page, setPage] = useState(1);
   const [hasMoreOrders, setHasMoreOrders] = useState(true);
   const [loading, setLoading] = useState(true);
   const [savingCustomer, setSavingCustomer] = useState(false);
+  const exportRef = useRef<HTMLDivElement>(null);
 
   const [activeTab, setActiveTab] = useState<"Orders" | "Payments">("Orders");
   const [displayCount, setDisplayCount] = useState(10);
@@ -238,6 +95,9 @@ export function CustomerDetailsScreen() {
   const [paymentsPage, setPaymentsPage] = useState(1);
   const [hasMorePayments, setHasMorePayments] = useState(true);
   const [savingPayment, setSavingPayment] = useState(false);
+
+  const [exportOrders, setExportOrders] = useState<any[]>([]);
+  const [exportPayments, setExportPayments] = useState<any[]>([]);
 
   const [receiverAccounts, setReceiverAccounts] = useState<
     { id: string; label: string; value: string }[]
@@ -288,7 +148,7 @@ export function CustomerDetailsScreen() {
   }, []);
 
   useEffect(() => {
-    if (activeTab !== "Payments" || !customerId) return;
+    if (!customerId) return;
 
     const loadPayments = async () => {
       try {
@@ -343,7 +203,7 @@ export function CustomerDetailsScreen() {
           phoneNumber: customerData.phone,
           address: customerData.address,
           totalSales: customerData.total_sales,
-          outstandingAmount: customerData.outstanding_amount,
+          unpaidAmount: customerData.outstanding_amount,
         });
 
         const mappedOrders = ordersRes.data.map((o: any) => ({
@@ -446,7 +306,7 @@ export function CustomerDetailsScreen() {
         phoneNumber: customerData.phone,
         address: customerData.address,
         totalSales: customerData.total_sales,
-        outstandingAmount: customerData.outstanding_amount,
+        unpaidAmount: customerData.outstanding_amount,
       });
 
       setOrders(
@@ -502,10 +362,10 @@ export function CustomerDetailsScreen() {
   };
 
   const handleOpenEditCustomer = () => {
-    setEditCustomerName(customer?.name);
-    setEditCustomerPhone(customer?.phoneNumber);
-    setEditCustomerGst(customer?.gstNumber || "");
-    setEditCustomerAddress(customer?.address);
+  setEditCustomerName(customer?.name ?? "");
+  setEditCustomerPhone(customer?.phoneNumber ?? "");
+  setEditCustomerGst(customer?.gstNumber ?? "");
+  setEditCustomerAddress(customer?.address ?? "");
     setCustomerNameError("");
     setCustomerPhoneError("");
     setCustomerGstError("");
@@ -592,7 +452,7 @@ export function CustomerDetailsScreen() {
         name: updated.name,
         phoneNumber: updated.phone,
         address: updated.address,
-        gstNumber: updated.gst_number,
+        gstNumber: updated.gst_number ?? undefined,
       });
 
       setShowEditCustomerModal(false);
@@ -618,136 +478,112 @@ export function CustomerDetailsScreen() {
     setDateRangeError("");
   };
 
-  const handleDownloadExport = () => {
-    // Clear previous errors
-    setDateRangeError("");
+  const handleDownloadExport = async () => {
+  setDateRangeError("");
 
-    // Validate required fields
-    if (!exportFromDate || !exportToDate) {
-      return;
-    }
+  if (!exportFromDate || !exportToDate) return;
 
-    // Validate date range
-    const fromDate = new Date(exportFromDate);
-    const toDate = new Date(exportToDate);
+  const fromDate = new Date(exportFromDate);
+  const toDate = new Date(exportToDate);
 
-    if (fromDate > toDate) {
-      setDateRangeError("From date cannot be greater than To date.");
-      return;
-    }
+  if (fromDate > toDate) {
+    setDateRangeError("From date cannot be greater than To date.");
+    return;
+  }
 
-    // Filter orders and payments within date range
-    // const ordersInRange = MOCK_CUSTOMER_ORDERS.filter((order) => {
-    //   const orderDate = new Date(order.date);
-    //   return orderDate >= fromDate && orderDate <= toDate;
-    // });
+  // 🔎 Filter orders
+  const ordersInRange = orders.filter((order) => {
+    const d = new Date(order.date);
+    return d >= fromDate && d <= toDate;
+  });
 
-    // const paymentsInRange = MOCK_PAYMENTS.filter((payment) => {
-    //   const paymentDate = new Date(payment.date);
-    //   return paymentDate >= fromDate && paymentDate <= toDate;
-    // });
+  // 🔎 Filter payments
+  const paymentsInRange = payments.filter((payment) => {
+    const d = new Date(payment.date);
+    return d >= fromDate && d <= toDate;
+  });
 
-    const ordersInRange = orders.filter((order) => {
-      const orderDate = new Date(order.date);
-      return orderDate >= fromDate && orderDate <= toDate;
-    });
+  if (ordersInRange.length === 0 && paymentsInRange.length === 0) {
+    setShowExportModal(false);
+    setShowNoTransactionsPopup(true);
+    return;
+  }
 
-    const paymentsInRange = payments.filter((payment) => {
-      const d = new Date(payment.date);
-      return d >= fromDate && d <= toDate;
-    });
+  // 🔥 Store in state
+  setExportOrders(ordersInRange);
+  setExportPayments(paymentsInRange);
 
-    // Check if transactions exist
-    if (ordersInRange.length === 0 && paymentsInRange.length === 0) {
-      setShowExportModal(false);
-      setShowNoTransactionsPopup(true);
-      return;
-    }
-
-    // Simulate export generation
+  // Wait for component render
+  setTimeout(async () => {
     try {
-      // Calculate totals
-      const totalOrderAmount = ordersInRange.reduce(
-        (sum, order) => sum + order.finalPrice,
-        0,
-      );
-      const totalPaidAmount = paymentsInRange.reduce(
-        (sum, payment) => sum + payment.amount,
-        0,
-      );
-      const closingBalance = customer?.unpaidAmount;
+      const element = exportRef.current;
+      if (!element) return;
 
-      // In a real app, this would generate a PDF or Image file
-      console.log("Exporting ledger:", {
-        customerName: customer?.name,
-        customerPhone: customer?.phoneNumber,
-        dateRange: `${exportFromDate} to ${exportToDate}`,
-        openingBalance: customer?.unpaidAmount,
-        orders: ordersInRange,
-        payments: paymentsInRange,
-        totalOrderAmount,
-        totalPaidAmount,
-        closingBalance,
-        format: exportFormat,
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
       });
 
-      // Simulate successful download
-      setSuccessMessage(
-        `Customer ledger exported successfully as ${exportFormat}`,
-      );
+      const imgData = canvas.toDataURL("image/png");
+
+      if (exportFormat === "Image") {
+        const link = document.createElement("a");
+        link.href = imgData;
+        link.download = `Arka_Ledger_${customer?.name}.png`;
+        link.click();
+      } else {
+        const pdf = new jsPDF("p", "mm", "a4");
+        const imgProps = pdf.getImageProperties(imgData);
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight =
+          (imgProps.height * pdfWidth) / imgProps.width;
+
+        pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+        pdf.save(`Arka_Ledger_${customer?.name}.pdf`);
+      }
+
       setShowExportModal(false);
+      setSuccessMessage(
+        `Customer ledger exported successfully as ${exportFormat}`
+      );
       setShowSuccessPopup(true);
-    } catch (error) {
+    } catch (err) {
+      console.error(err);
       setShowExportModal(false);
       setShowExportErrorPopup(true);
     }
-  };
+  }, 400);
+};
 
   // const displayedOrders = MOCK_CUSTOMER_ORDERS.slice(0, displayCount);
-  const displayedOrders = orders;
+  const displayedOrders: CustomerOrder[] = orders;
 
   const displayedPayments = payments;
 
   const loadMoreOrders = async () => {
+    if (!customer) return;
     const nextPage = page + 1;
     const res = await getCustomerOrdersWithSettlement(customer.id, nextPage);
-
     const mappedOrders = res.data.map((o: any) => ({
-      id: o.order_id,
-      date: o.order_date,
-      deliveryDate: o.delivery_date,
-
-      customerName: customer.name,
-      customerNumber: customer.phoneNumber,
-      customerId: o.customer_id,
-
-      quantity: o.brick_quantity,
-      finalPrice: o.final_price,
-
-      amountPaid: o.total_paid,
-      unpaidAmount: o.remaining_balance,
-
-      gstNumber: o.gst_number,
-      deliveryChallanNumber: o.dc_number,
-
+      ...o,
       paymentStatus:
         o.payment_status === "FULLY_PAID"
           ? "Fully Paid"
           : o.payment_status === "PARTIALLY_PAID"
             ? "Partially Paid"
             : "Not Paid",
+      customerName: customer.name,
+      customerNumber: customer.phoneNumber,
     }));
-
     setOrders((prev) => [...prev, ...mappedOrders]);
     setHasMoreOrders(res.hasMore);
     setPage(nextPage);
   };
 
   const loadMorePayments = async () => {
+    if (!customer) return;
     const nextPage = paymentsPage + 1;
-
     const res = await getCustomerPayments(customer.id, nextPage);
-
     setPayments((prev) => [
       ...prev,
       ...res.data.map((p: any) => ({
@@ -759,7 +595,6 @@ export function CustomerDetailsScreen() {
         receiverAccountInfo: p.receiver_account ?? "-",
       })),
     ]);
-
     setPaymentsPage(nextPage);
     setHasMorePayments(res.hasMore);
   };
@@ -907,10 +742,10 @@ export function CustomerDetailsScreen() {
           <div className="bg-white rounded-lg shadow-lg p-6">
             <h3 className="text-gray-700 mb-2">Unpaid Amount</h3>
             <p
-              className={`${customer.outstandingAmount > 0 ? "text-red-600" : "text-green-600"}`}
+              className={`${customer.unpaidAmount > 0 ? "text-red-600" : "text-green-600"}`}
             >
-              {customer.outstandingAmount > 0
-                ? `₹${customer.outstandingAmount.toLocaleString()}`
+              {customer.unpaidAmount > 0
+                ? `₹${customer.unpaidAmount.toLocaleString()}`
                 : "₹0"}
             </p>
           </div>
@@ -999,44 +834,23 @@ export function CustomerDetailsScreen() {
                           onClick={() => goTo(`/admin/orders/${order.id}`)}
                           className="cursor-pointer hover:bg-gray-50 transition-colors"
                         >
+                          <td className="px-4 py-4 text-gray-900">{order.id}</td>
+                          <td className="px-4 py-4 text-gray-600">
+                            {order.date ? new Date(order.date).toLocaleDateString() : "-"}
+                          </td>
+                          <td className="px-4 py-4 text-gray-600">
+                            {order.deliveryDate ? new Date(order.deliveryDate).toLocaleDateString() : "-"}
+                          </td>
+                          <td className="px-4 py-4 text-gray-900">{customer.name}</td>
+                          <td className="px-4 py-4 text-gray-600">{customer.phoneNumber}</td>
                           <td className="px-4 py-4 text-gray-900">
-                            {order.id}
-                          </td>
-                          <td className="px-4 py-4 text-gray-600">
-                            {order.date
-                              ? new Date(order.date).toLocaleDateString()
-                              : "-"}
-                          </td>
-                          <td className="px-4 py-4 text-gray-600">
-                            {order.deliveryDate
-                              ? new Date(
-                                  order.deliveryDate,
-                                ).toLocaleDateString()
-                              : "-"}
+                            {typeof order.quantity === "number" ? order.quantity.toLocaleString() : "-"}
                           </td>
                           <td className="px-4 py-4 text-gray-900">
-                            {order.customerName}
+                            ₹{typeof order.finalPrice === "number" ? order.finalPrice.toLocaleString() : "0"}
                           </td>
-                          <td className="px-4 py-4 text-gray-600">
-                            {order.customerNumber}
-                          </td>
-                          <td className="px-4 py-4 text-gray-900">
-                            {typeof order.quantity === "number"
-                              ? order.quantity.toLocaleString()
-                              : "-"}
-                          </td>
-                          <td className="px-4 py-4 text-gray-900">
-                            ₹
-                            {typeof order.finalPrice === "number"
-                              ? order.finalPrice.toLocaleString()
-                              : "0"}
-                          </td>
-                          <td className="px-4 py-4 text-gray-600">
-                            {order.gstNumber || "-"}
-                          </td>
-                          <td className="px-4 py-4 text-gray-600">
-                            {order.deliveryChallanNumber || "-"}
-                          </td>
+                          <td className="px-4 py-4 text-gray-600">{order.gstNumber || "-"}</td>
+                          <td className="px-4 py-4 text-gray-600">{order.deliveryChallanNumber || "-"}</td>
                           <td className="px-4 py-4">
                             <span
                               className={`px-2 py-1 rounded-full text-sm ${
@@ -1683,6 +1497,16 @@ export function CustomerDetailsScreen() {
           onClose={() => setShowExportErrorPopup(false)}
         />
       )}
+      <div style={{ position: "absolute", left: "-9999px", top: 0 }}>
+        <CustomerLedgerExport
+          ref={exportRef}
+          customer={customer}
+          orders={exportOrders}
+          payments={exportPayments.length > 0 ? exportPayments : payments}
+          fromDate={exportFromDate}
+          toDate={exportToDate}
+        />
+      </div>
     </div>
   );
 }
