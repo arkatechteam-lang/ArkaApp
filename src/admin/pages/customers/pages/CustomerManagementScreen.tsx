@@ -21,7 +21,7 @@ type CustomerUI = {
   name: string;
   phoneNumber: string;
   address: string;
-  unpaidAmount: number;
+  outstanding_amount: number;
   totalSales: number;
 };
 
@@ -87,7 +87,7 @@ export function CustomerManagementScreen() {
         phoneNumber: c.phone,
         address: c.address ?? "-",
         totalSales: c.total_sales,
-        unpaidAmount: c.unpaid_amount, // Fix: use correct field from API
+        outstanding_amount: c.outstanding_amount, // Fix: use correct field from API
       }));
       setCustomers((prev) => (reset ? mapped : [...prev, ...mapped]));
       setHasMore(res.hasMore);
@@ -254,7 +254,7 @@ export function CustomerManagementScreen() {
                 <p className="text-gray-900 mt-1">
                   ₹
                   {customers
-                    .reduce((sum, c) => sum + c.unpaidAmount, 0)
+                    .reduce((sum, c) => sum + c.outstanding_amount, 0)
                     .toLocaleString()}
                 </p>
               </div>
@@ -363,13 +363,13 @@ export function CustomerManagementScreen() {
                           <td className="px-4 py-4">
                             <span
                               className={`px-2 py-1 rounded-full text-sm ${
-                                customer.unpaidAmount > 0
+                                customer.outstanding_amount > 0
                                   ? "bg-red-100 text-red-800"
                                   : "bg-green-100 text-green-800"
                               }`}
                             >
-                              {customer.unpaidAmount > 0
-                                ? `₹${customer.unpaidAmount.toLocaleString()}`
+                              {customer.outstanding_amount > 0
+                                ? `₹${customer.outstanding_amount.toLocaleString()}`
                                 : "Paid"}
                             </span>
                           </td>
@@ -394,13 +394,13 @@ export function CustomerManagementScreen() {
                         </div>
                         <span
                           className={`px-2 py-1 rounded-full text-sm ${
-                            customer.unpaidAmount > 0
+                            customer.outstanding_amount > 0
                               ? "bg-red-100 text-red-800"
                               : "bg-green-100 text-green-800"
                           }`}
                         >
-                          {customer.unpaidAmount > 0
-                            ? `₹${customer.unpaidAmount.toLocaleString()}`
+                          {customer.outstanding_amount > 0
+                            ? `₹${customer.outstanding_amount.toLocaleString()}`
                             : "Paid"}
                         </span>
                       </div>

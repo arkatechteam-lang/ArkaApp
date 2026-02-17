@@ -1,4 +1,5 @@
 import React from "react";
+
 interface ExportCustomer {
   name: string;
   phoneNumber: string;
@@ -52,11 +53,14 @@ const totalPayments = (payments ?? []).reduce(
           color: "#000",
         }}
       >
-        {/* Header */}
-        <h1 style={{ textAlign: "center", marginBottom: "5px" }}>
-          ARKA BRICKS
-        </h1>
-
+        {/* Header with logo */}
+          <div style={{ position: 'relative', marginBottom: '5px', height: 48 }}>
+            <h1 style={{ textAlign: 'center', margin: 0, fontSize: 32, fontWeight: 700, position: 'absolute', left: 0, right: 0, top: 0 }}>ARKA BRICKS</h1>
+            <img src=""
+                alt="Company Logo" 
+                style={{ position: 'absolute', right: 0, top: 0, height: 48, width: 120, objectFit: 'contain' }} 
+                onError={e => { e.currentTarget.style.display = 'none'; }} />
+          </div>
         <hr />
 
         {/* Customer Info */}
@@ -69,58 +73,56 @@ const totalPayments = (payments ?? []).reduce(
 
         {/* Split Section */}
         <div style={{ display: "flex", gap: "30px" }}>
-          
           {/* Orders */}
           <div style={{ flex: 1 }}>
-            <h3>Orders</h3>
-            <table width="100%" border={1} cellPadding={6} style={{ borderCollapse: "collapse" }}>
+            <h3 style={{ marginBottom: 8 }}>Orders</h3>
+            <table width="100%" style={{ borderCollapse: "collapse", marginBottom: 16, fontSize: 15 }}>
               <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>ID</th>
-                  <th>Qty</th>
-                  <th>Amount</th>
+                <tr style={{ background: '#f5f5f5' }}>
+                  <th style={{ border: '1px solid #bbb', padding: 8 }}>Date</th>
+                  <th style={{ border: '1px solid #bbb', padding: 8 }}>ID</th>
+                  <th style={{ border: '1px solid #bbb', padding: 8, textAlign: 'right' }}>Qty</th>
+                  <th style={{ border: '1px solid #bbb', padding: 8, textAlign: 'right' }}>Amount</th>
                 </tr>
               </thead>
               <tbody>
                 {orders.map((o) => (
                   <tr key={o.id}>
-                    <td>{new Date(o.date).toLocaleDateString()}</td>
-                    <td>{o.id.slice(0, 8)}</td>
-                    <td>{o.quantity}</td>
-                    <td>₹{o.finalPrice.toLocaleString()}</td>
+                    <td style={{ border: '1px solid #bbb', padding: 8 }}>{new Date(o.date).toLocaleDateString()}</td>
+                    <td style={{ border: '1px solid #bbb', padding: 8 }}>{o.id.slice(0, 8)}</td>
+                    <td style={{ border: '1px solid #bbb', padding: 8, textAlign: 'right' }}>{o.quantity}</td>
+                    <td style={{ border: '1px solid #bbb', padding: 8, textAlign: 'right' }}>₹{o.finalPrice.toLocaleString()}</td>
                   </tr>
                 ))}
-                <tr>
-                  <td colSpan={3}><strong>Total</strong></td>
-                  <td><strong>₹{totalOrders.toLocaleString()}</strong></td>
+                <tr style={{ background: '#f5f5f5' }}>
+                  <td colSpan={3} style={{ border: '1px solid #bbb', padding: 8, textAlign: 'right' }}><strong>Total</strong></td>
+                  <td style={{ border: '1px solid #bbb', padding: 8, textAlign: 'right' }}><strong>₹{totalOrders.toLocaleString()}</strong></td>
                 </tr>
               </tbody>
             </table>
           </div>
-
           {/* Payments */}
           <div style={{ flex: 1 }}>
-            <h3>Payments</h3>
-            <table width="100%" border={1} cellPadding={6} style={{ borderCollapse: "collapse" }}>
+            <h3 style={{ marginBottom: 8 }}>Payments</h3>
+            <table width="100%" style={{ borderCollapse: "collapse", marginBottom: 16, fontSize: 15 }}>
               <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Mode</th>
-                  <th>Amount</th>
+                <tr style={{ background: '#f5f5f5' }}>
+                  <th style={{ border: '1px solid #bbb', padding: 8 }}>Date</th>
+                  <th style={{ border: '1px solid #bbb', padding: 8 }}>Mode</th>
+                  <th style={{ border: '1px solid #bbb', padding: 8, textAlign: 'right' }}>Amount</th>
                 </tr>
               </thead>
               <tbody>
                 {payments.map((p) => (
                   <tr key={p.id}>
-                    <td>{new Date(p.date).toLocaleDateString()}</td>
-                    <td>{p.modeOfPayment}</td>
-                    <td>₹{p.amount.toLocaleString()}</td>
+                    <td style={{ border: '1px solid #bbb', padding: 8 }}>{new Date(p.date).toLocaleDateString()}</td>
+                    <td style={{ border: '1px solid #bbb', padding: 8 }}>{p.modeOfPayment}</td>
+                    <td style={{ border: '1px solid #bbb', padding: 8, textAlign: 'right' }}>₹{p.amount.toLocaleString()}</td>
                   </tr>
                 ))}
-                <tr>
-                  <td colSpan={2}><strong>Total</strong></td>
-                  <td><strong>₹{totalPayments.toLocaleString()}</strong></td>
+                <tr style={{ background: '#f5f5f5' }}>
+                  <td colSpan={2} style={{ border: '1px solid #bbb', padding: 8, textAlign: 'right' }}><strong>Total</strong></td>
+                  <td style={{ border: '1px solid #bbb', padding: 8, textAlign: 'right' }}><strong>₹{totalPayments.toLocaleString()}</strong></td>
                 </tr>
               </tbody>
             </table>
