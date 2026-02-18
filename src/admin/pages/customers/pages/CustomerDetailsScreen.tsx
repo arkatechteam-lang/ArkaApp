@@ -1137,50 +1137,56 @@ export function CustomerDetailsScreen() {
                 </select>
               </div>
 
-              {/* Sender Account Info */}
-              {paymentMode !== "Cash" && (
-                <div>
-                  <label
-                    htmlFor="senderAccount"
-                    className="block text-gray-700 mb-2"
-                  >
-                    Sender Account Info <span className="text-red-600">*</span>
-                  </label>
-                  <input
-                    id="senderAccount"
-                    type="text"
-                    value={senderAccount}
-                    onChange={(e) => setSenderAccount(e.target.value)}
-                    placeholder="Enter sender account info"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                  />
-                </div>
-              )}
 
-              {/* Receiver Account Info */}
+              {/* Sender/Receiver Account Info or Account Missing Message */}
               {paymentMode !== "Cash" && (
-                <div>
-                  <label
-                    htmlFor="receiverAccount"
-                    className="block text-gray-700 mb-2"
-                  >
-                    Receiver Account Info{" "}
-                    <span className="text-red-600">*</span>
-                  </label>
-                  <select
-                    id="receiverAccount"
-                    value={receiverAccount}
-                    onChange={(e) => setReceiverAccount(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg"
-                  >
-                    <option value="">Select account</option>
-                    {nonCashAccounts.map((account) => (
-                      <option key={account.id} value={account.value}>
-                        {account.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                nonCashAccounts.length === 0 ? (
+                  <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded mb-2">
+                    <strong>Account Required:</strong> Please create a receiver account before proceeding to enter payment details. Without an account, the payment cannot be processed.
+                  </div>
+                ) : (
+                  <>
+                    {/* Sender Account Info */}
+                    <div>
+                      <label
+                        htmlFor="senderAccount"
+                        className="block text-gray-700 mb-2"
+                      >
+                        Sender Account Info <span className="text-red-600">*</span>
+                      </label>
+                      <input
+                        id="senderAccount"
+                        type="text"
+                        value={senderAccount}
+                        onChange={(e) => setSenderAccount(e.target.value)}
+                        placeholder="Enter sender account info"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                      />
+                    </div>
+                    {/* Receiver Account Info */}
+                    <div>
+                      <label
+                        htmlFor="receiverAccount"
+                        className="block text-gray-700 mb-2"
+                      >
+                        Receiver Account Info <span className="text-red-600">*</span>
+                      </label>
+                      <select
+                        id="receiverAccount"
+                        value={receiverAccount}
+                        onChange={(e) => setReceiverAccount(e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg"
+                      >
+                        <option value="">Select account</option>
+                        {nonCashAccounts.map((account) => (
+                          <option key={account.id} value={account.value}>
+                            {account.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </>
+                )
               )}
 
               {/* Buttons */}
@@ -1198,13 +1204,13 @@ export function CustomerDetailsScreen() {
                     !paymentDate ||
                     !paymentAmount ||
                     (paymentMode !== "Cash" &&
-                      (!senderAccount || !receiverAccount))
+                      (nonCashAccounts.length === 0 || !senderAccount || !receiverAccount))
                   }
                   className={`px-6 py-2 rounded-lg transition-colors ${
                     paymentDate &&
                     paymentAmount &&
                     (paymentMode === "Cash" ||
-                      (senderAccount && receiverAccount))
+                      (nonCashAccounts.length > 0 && senderAccount && receiverAccount))
                       ? "bg-blue-600 text-white hover:bg-blue-700"
                       : "bg-gray-300 text-gray-500 cursor-not-allowed"
                   }`}
