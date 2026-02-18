@@ -15,7 +15,6 @@ import {
   createCustomerPayment,
 } from "../../../../services/middleware.service";
 import { useAdminNavigation } from "../../../hooks/useAdminNavigation";
-import { Order } from "../../../../services/types";
 import { validateCustomer } from "../../../validators/customer.validator";
 
 interface Payment {
@@ -27,11 +26,9 @@ interface Payment {
   receiverAccountInfo: string;
 }
 
-
 export function CustomerDetailsScreen() {
   const { customerId } = useParams<{ customerId: string }>();
   const { goBack, goTo } = useAdminNavigation();
-  // const customer = MOCK_CUSTOMERS.find((c) => c.id === customerId);
   const [customer, setCustomer] = useState<Customer | null>(null);
   type CustomerOrder = {
     id: string;
@@ -103,8 +100,7 @@ export function CustomerDetailsScreen() {
     { id: string; label: string; value: string }[]
   >([]);
 
-  const cashAccountId =
-  receiverAccounts.find((a) =>
+  const cashAccountId = receiverAccounts.find((a) =>
     a.label.toUpperCase().includes("CASH"),
   )?.value;
 
@@ -362,10 +358,10 @@ export function CustomerDetailsScreen() {
   };
 
   const handleOpenEditCustomer = () => {
-  setEditCustomerName(customer?.name ?? "");
-  setEditCustomerPhone(customer?.phoneNumber ?? "");
-  setEditCustomerGst(customer?.gstNumber ?? "");
-  setEditCustomerAddress(customer?.address ?? "");
+    setEditCustomerName(customer?.name ?? "");
+    setEditCustomerPhone(customer?.phoneNumber ?? "");
+    setEditCustomerGst(customer?.gstNumber ?? "");
+    setEditCustomerAddress(customer?.address ?? "");
     setCustomerNameError("");
     setCustomerPhoneError("");
     setCustomerGstError("");
@@ -379,43 +375,6 @@ export function CustomerDetailsScreen() {
     setCustomerPhoneError("");
     setCustomerGstError("");
     setCustomerAddressError("");
-  };
-
-  const validateCustomerForm = () => {
-    let isValid = true;
-    setCustomerNameError("");
-    setCustomerPhoneError("");
-    setCustomerGstError("");
-    setCustomerAddressError("");
-
-    if (!editCustomerName.trim()) {
-      setCustomerNameError("Name is required");
-      isValid = false;
-    }
-
-    if (!editCustomerPhone.trim()) {
-      setCustomerPhoneError("Phone number is required");
-      isValid = false;
-    } else if (!/^[0-9]{10}$/.test(editCustomerPhone.trim())) {
-      setCustomerPhoneError("Phone number must be 10 digits");
-      isValid = false;
-    }
-
-    if (!editCustomerAddress.trim()) {
-      setCustomerAddressError("Address is required");
-      isValid = false;
-    } else if (editCustomerAddress.length > 200) {
-      setCustomerAddressError("Address cannot exceed 200 characters");
-      isValid = false;
-    }
-
-    // Validate GST Number - if entered, must be exactly 15 characters
-    if (editCustomerGst.trim() && editCustomerGst.trim().length !== 15) {
-      setCustomerGstError("Enter valid GST Number");
-      isValid = false;
-    }
-
-    return isValid;
   };
 
   const handleConfirmEditCustomer = async () => {
@@ -479,81 +438,80 @@ export function CustomerDetailsScreen() {
   };
 
   const handleDownloadExport = async () => {
-  setDateRangeError("");
+    setDateRangeError("");
 
-  if (!exportFromDate || !exportToDate) return;
+    if (!exportFromDate || !exportToDate) return;
 
-  const fromDate = new Date(exportFromDate);
-  const toDate = new Date(exportToDate);
+    const fromDate = new Date(exportFromDate);
+    const toDate = new Date(exportToDate);
 
-  if (fromDate > toDate) {
-    setDateRangeError("From date cannot be greater than To date.");
-    return;
-  }
-
-  // 🔎 Filter orders
-  const ordersInRange = orders.filter((order) => {
-    const d = new Date(order.date);
-    return d >= fromDate && d <= toDate;
-  });
-
-  // 🔎 Filter payments
-  const paymentsInRange = payments.filter((payment) => {
-    const d = new Date(payment.date);
-    return d >= fromDate && d <= toDate;
-  });
-
-  if (ordersInRange.length === 0 && paymentsInRange.length === 0) {
-    setShowExportModal(false);
-    setShowNoTransactionsPopup(true);
-    return;
-  }
-
-  // 🔥 Store in state
-  setExportOrders(ordersInRange);
-  setExportPayments(paymentsInRange);
-
-  // Wait for component render
-  setTimeout(async () => {
-    try {
-      const element = exportRef.current;
-      if (!element) return;
-
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-      });
-
-      const imgData = canvas.toDataURL("image/png");
-
-      if (exportFormat === "Image") {
-        const link = document.createElement("a");
-        link.href = imgData;
-        link.download = `Arka_Ledger_${customer?.name}.png`;
-        link.click();
-      } else {
-        const pdf = new jsPDF("p", "mm", "a4");
-        const imgProps = pdf.getImageProperties(imgData);
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight =
-          (imgProps.height * pdfWidth) / imgProps.width;
-
-        pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-        pdf.save(`Arka_Ledger_${customer?.name}.pdf`);
-      }
-
-      setShowExportModal(false);
-      setSuccessMessage(
-        `Customer ledger exported successfully as ${exportFormat}`
-      );
-      setShowSuccessPopup(true);
-    } catch (err) {
-      console.error(err);
-      setShowExportModal(false);
-      setShowExportErrorPopup(true);
+    if (fromDate > toDate) {
+      setDateRangeError("From date cannot be greater than To date.");
+      return;
     }
-  }, 400);
-};
+
+    // 🔎 Filter orders
+    const ordersInRange = orders.filter((order) => {
+      const d = new Date(order.date);
+      return d >= fromDate && d <= toDate;
+    });
+
+    // 🔎 Filter payments
+    const paymentsInRange = payments.filter((payment) => {
+      const d = new Date(payment.date);
+      return d >= fromDate && d <= toDate;
+    });
+
+    if (ordersInRange.length === 0 && paymentsInRange.length === 0) {
+      setShowExportModal(false);
+      setShowNoTransactionsPopup(true);
+      return;
+    }
+
+    // 🔥 Store in state
+    setExportOrders(ordersInRange);
+    setExportPayments(paymentsInRange);
+
+    // Wait for component render
+    setTimeout(async () => {
+      try {
+        const element = exportRef.current;
+        if (!element) return;
+
+        const canvas = await html2canvas(element, {
+          scale: 2,
+          useCORS: true,
+        });
+
+        const imgData = canvas.toDataURL("image/png");
+
+        if (exportFormat === "Image") {
+          const link = document.createElement("a");
+          link.href = imgData;
+          link.download = `Arka_Ledger_${customer?.name}.png`;
+          link.click();
+        } else {
+          const pdf = new jsPDF("p", "mm", "a4");
+          const imgProps = pdf.getImageProperties(imgData);
+          const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+          pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+          pdf.save(`Arka_Ledger_${customer?.name}.pdf`);
+        }
+
+        setShowExportModal(false);
+        setSuccessMessage(
+          `Customer ledger exported successfully as ${exportFormat}`,
+        );
+        setShowSuccessPopup(true);
+      } catch (err) {
+        console.error(err);
+        setShowExportModal(false);
+        setShowExportErrorPopup(true);
+      }
+    }, 400);
+  };
 
   // const displayedOrders = MOCK_CUSTOMER_ORDERS.slice(0, displayCount);
   const displayedOrders: CustomerOrder[] = orders;
@@ -600,9 +558,8 @@ export function CustomerDetailsScreen() {
   };
 
   const nonCashAccounts = receiverAccounts.filter(
-  (a) => !a.label.toUpperCase().includes("CASH")
-);
-
+    (a) => !a.label.toUpperCase().includes("CASH"),
+  );
 
   if (loading) {
     return (
@@ -834,23 +791,44 @@ export function CustomerDetailsScreen() {
                           onClick={() => goTo(`/admin/orders/${order.id}`)}
                           className="cursor-pointer hover:bg-gray-50 transition-colors"
                         >
-                          <td className="px-4 py-4 text-gray-900">{order.id}</td>
-                          <td className="px-4 py-4 text-gray-600">
-                            {order.date ? new Date(order.date).toLocaleDateString() : "-"}
-                          </td>
-                          <td className="px-4 py-4 text-gray-600">
-                            {order.deliveryDate ? new Date(order.deliveryDate).toLocaleDateString() : "-"}
-                          </td>
-                          <td className="px-4 py-4 text-gray-900">{customer.name}</td>
-                          <td className="px-4 py-4 text-gray-600">{customer.phoneNumber}</td>
                           <td className="px-4 py-4 text-gray-900">
-                            {typeof order.quantity === "number" ? order.quantity.toLocaleString() : "-"}
+                            {order.id}
+                          </td>
+                          <td className="px-4 py-4 text-gray-600">
+                            {order.date
+                              ? new Date(order.date).toLocaleDateString()
+                              : "-"}
+                          </td>
+                          <td className="px-4 py-4 text-gray-600">
+                            {order.deliveryDate
+                              ? new Date(
+                                  order.deliveryDate,
+                                ).toLocaleDateString()
+                              : "-"}
                           </td>
                           <td className="px-4 py-4 text-gray-900">
-                            ₹{typeof order.finalPrice === "number" ? order.finalPrice.toLocaleString() : "0"}
+                            {customer.name}
                           </td>
-                          <td className="px-4 py-4 text-gray-600">{order.gstNumber || "-"}</td>
-                          <td className="px-4 py-4 text-gray-600">{order.deliveryChallanNumber || "-"}</td>
+                          <td className="px-4 py-4 text-gray-600">
+                            {customer.phoneNumber}
+                          </td>
+                          <td className="px-4 py-4 text-gray-900">
+                            {typeof order.quantity === "number"
+                              ? order.quantity.toLocaleString()
+                              : "-"}
+                          </td>
+                          <td className="px-4 py-4 text-gray-900">
+                            ₹
+                            {typeof order.finalPrice === "number"
+                              ? order.finalPrice.toLocaleString()
+                              : "0"}
+                          </td>
+                          <td className="px-4 py-4 text-gray-600">
+                            {order.gstNumber || "-"}
+                          </td>
+                          <td className="px-4 py-4 text-gray-600">
+                            {order.deliveryChallanNumber || "-"}
+                          </td>
                           <td className="px-4 py-4">
                             <span
                               className={`px-2 py-1 rounded-full text-sm ${
@@ -1107,6 +1085,7 @@ export function CustomerDetailsScreen() {
                   type="date"
                   value={paymentDate}
                   onChange={(e) => setPaymentDate(e.target.value)}
+                  max={new Date().toISOString().split('T')[0]}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 />
               </div>
