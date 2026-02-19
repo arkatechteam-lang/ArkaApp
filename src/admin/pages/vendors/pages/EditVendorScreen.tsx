@@ -1,22 +1,18 @@
-import React, { useState } from 'react';
-import { AdminScreen, Vendor } from '../../AdminApp';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { Popup } from '../Popup';
+import { Popup } from '../../../../components/Popup';
+import { useEditVendor } from '../../../hooks/useEditVendor';
 
-interface EditVendorScreenProps {
-  vendor: Vendor;
-  onNavigate: (screen: AdminScreen) => void;
-}
+export function EditVendorScreen() {
+  const { vendor, vendorId, loading, goBack } = useEditVendor();
 
-export function EditVendorScreen({ vendor, onNavigate }: EditVendorScreenProps) {
   const [formData, setFormData] = useState({
-    name: vendor.name,
-    phoneNumber: vendor.phoneNumber,
-    alternatePhone: vendor.alternatePhone || '',
-    materialsSupplied: vendor.materialsSupplied,
-    address: vendor.address,
-    gstNumber: vendor.gstNumber || '',
-    notes: vendor.notes || '',
+    name: '',
+    phone: '',
+    alternate_phone: '',
+    address: '',
+    gst_number: '',
+    notes: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -24,31 +20,30 @@ export function EditVendorScreen({ vendor, onNavigate }: EditVendorScreenProps) 
   const [popupStatus, setPopupStatus] = useState<'success' | 'error'>('success');
   const [popupMessage, setPopupMessage] = useState('');
 
-  const materialOptions = ['Wet Ash', 'Granite Powder', 'Crusher Powder', 'Fly Ash Powder', 'Cement'];
-
-  const handleMaterialToggle = (material: string) => {
-    setFormData(prev => ({
-      ...prev,
-      materialsSupplied: prev.materialsSupplied.includes(material)
-        ? prev.materialsSupplied.filter(m => m !== material)
-        : [...prev.materialsSupplied, material]
-    }));
-  };
+  useEffect(() => {
+    if (vendor) {
+      setFormData({
+        name: vendor.name || '',
+        phone: vendor.phone || '',
+        alternate_phone: vendor.alternate_phone || '',
+        address: vendor.address || '',
+        gst_number: vendor.gst_number || '',
+        notes: vendor.notes || '',
+      });
+    }
+  }, [vendor]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) newErrors.name = 'Vendor name is required';
-    if (!formData.phoneNumber.trim()) {
-      newErrors.phoneNumber = 'Phone number is required';
-    } else if (!/^[0-9]{10}$/.test(formData.phoneNumber)) {
-      newErrors.phoneNumber = 'Phone number must be 10 digits';
+    if (!formData.phone.trim()) {
+      newErrors.phone = 'Phone number is required';
+    } else if (!/^[0-9]{10}$/.test(formData.phone)) {
+      newErrors.phone = 'Phone number must be 10 digits';
     }
-    if (formData.alternatePhone && !/^[0-9]{10}$/.test(formData.alternatePhone)) {
-      newErrors.alternatePhone = 'Alternate phone must be 10 digits';
-    }
-    if (formData.materialsSupplied.length === 0) {
-      newErrors.materialsSupplied = 'Select at least one material';
+    if (formData.alternate_phone && !/^[0-9]{10}$/.test(formData.alternate_phone)) {
+      newErrors.alternate_phone = 'Alternate phone must be 10 digits';
     }
     if (!formData.address.trim()) newErrors.address = 'Address is required';
 
@@ -60,6 +55,8 @@ export function EditVendorScreen({ vendor, onNavigate }: EditVendorScreenProps) 
     e.preventDefault();
     
     if (validateForm()) {
+      // TODO: Implement update vendor API call
+      // const success = await updateVendor(vendorId, formData);
       const success = Math.random() > 0.1;
       setPopupStatus(success ? 'success' : 'error');
       setPopupMessage(success ? 'Vendor details updated successfully.' : 'Failed to update vendor. Please try again.');
@@ -70,9 +67,25 @@ export function EditVendorScreen({ vendor, onNavigate }: EditVendorScreenProps) 
   const handlePopupClose = () => {
     setShowPopup(false);
     if (popupStatus === 'success') {
-      onNavigate('vendors');
+      goBack('/admin/vendors');
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <p className="text-gray-600">Loading vendor details...</p>
+      </div>
+    );
+  }
+
+  if (!vendor) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <p className="text-gray-600">Vendor not found</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -80,14 +93,14 @@ export function EditVendorScreen({ vendor, onNavigate }: EditVendorScreenProps) 
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => onNavigate('vendors')}
+            onClick={() => goBack('/admin/vendors')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />
             Back to Vendors
           </button>
           <h1 className="text-gray-900">Edit Vendor</h1>
-          <p className="text-gray-600 mt-1">Update vendor information - {vendor.id}</p>
+          <p className="text-gray-600 mt-1">Update vendor information - {vendorId}</p>
         </div>
 
         {/* Form */}
@@ -123,62 +136,41 @@ export function EditVendorScreen({ vendor, onNavigate }: EditVendorScreenProps) 
                 </label>
                 <input
                   type="tel"
-                  value={formData.phoneNumber}
+                  value={formData.phone}
                   onChange={(e) => {
                     const value = e.target.value;
                     // Only allow digits and limit to 10
                     if (/^\d*$/.test(value) && value.length <= 10) {
-                      setFormData({ ...formData, phoneNumber: value });
+                      setFormData({ ...formData, phone: value });
                     }
                   }}
                   className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    errors.phoneNumber ? 'border-red-500' : 'border-gray-300'
+                    errors.phone ? 'border-red-500' : 'border-gray-300'
                   }`}
                   maxLength={10}
                 />
-                {errors.phoneNumber && <p className="text-red-600 text-sm mt-1">{errors.phoneNumber}</p>}
+                {errors.phone && <p className="text-red-600 text-sm mt-1">{errors.phone}</p>}
               </div>
 
               <div>
                 <label className="block text-gray-700 mb-2">Alternate Phone</label>
                 <input
                   type="tel"
-                  value={formData.alternatePhone}
+                  value={formData.alternate_phone}
                   onChange={(e) => {
                     const value = e.target.value;
                     // Only allow digits and limit to 10
                     if (/^\d*$/.test(value) && value.length <= 10) {
-                      setFormData({ ...formData, alternatePhone: value });
+                      setFormData({ ...formData, alternate_phone: value });
                     }
                   }}
                   className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    errors.alternatePhone ? 'border-red-500' : 'border-gray-300'
+                    errors.alternate_phone ? 'border-red-500' : 'border-gray-300'
                   }`}
                   maxLength={10}
                 />
-                {errors.alternatePhone && <p className="text-red-600 text-sm mt-1">{errors.alternatePhone}</p>}
+                {errors.alternate_phone && <p className="text-red-600 text-sm mt-1">{errors.alternate_phone}</p>}
               </div>
-            </div>
-
-            {/* Materials Supplied */}
-            <div>
-              <label className="block text-gray-700 mb-2">
-                Materials Supplied <span className="text-red-600">*</span>
-              </label>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {materialOptions.map(material => (
-                  <label key={material} className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.materialsSupplied.includes(material)}
-                      onChange={() => handleMaterialToggle(material)}
-                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                    />
-                    <span className="text-gray-700">{material}</span>
-                  </label>
-                ))}
-              </div>
-              {errors.materialsSupplied && <p className="text-red-600 text-sm mt-1">{errors.materialsSupplied}</p>}
             </div>
 
             {/* Address */}
@@ -204,8 +196,8 @@ export function EditVendorScreen({ vendor, onNavigate }: EditVendorScreenProps) 
               <label className="block text-gray-700 mb-2">GST / Tax Registration Number</label>
               <input
                 type="text"
-                value={formData.gstNumber}
-                onChange={(e) => setFormData({ ...formData, gstNumber: e.target.value })}
+                value={formData.gst_number}
+                onChange={(e) => setFormData({ ...formData, gst_number: e.target.value })}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>

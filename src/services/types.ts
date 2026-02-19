@@ -30,7 +30,6 @@ export interface Vendor {
   name: string;
   phone: string | null;
   alternate_phone: string | null;
-  materials_supplied: string[] | null;
   address: string | null;
   gst_number: string | null;
   notes: string | null;

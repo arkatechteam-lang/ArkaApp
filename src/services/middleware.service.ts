@@ -1104,3 +1104,55 @@ export async function createVendorWithMaterials(
   --------------------------------------------------------------*/
   return { vendorId };
 }
+
+/* ------------------------------------------------------------------
+   33. SEARCH VENDORS
+-------------------------------------------------------------------*/
+
+export async function searchVendors(
+  searchTerm: string,
+  page: number
+): Promise<PaginatedResult<Vendor>> {
+  const { from, to } = getRange(page);
+
+  const trimmed = searchTerm?.trim() ?? "";
+
+  let query = supabase
+    .from("vendors")
+    .select(
+      `
+      id,
+      name,
+      phone,
+      alternate_phone,
+      gst_number,
+      address,
+      notes,
+      created_at
+      `,
+      { count: "exact" }
+    );
+
+  /* -------------------------------------------------------------
+     Apply search only if string is not empty
+  --------------------------------------------------------------*/
+  if (trimmed.length > 0) {
+    query = query.or(`name.ilike.%${trimmed}%,phone.ilike.%${trimmed}%,alternate_phone.ilike.%${trimmed}%`);
+  }
+
+  query = query
+    .order("created_at", { ascending: false })
+    .range(from, to);
+
+  const { data, count, error } = await query;
+
+  if (error) throw error;
+
+  return {
+    data: data ?? [],
+    total: count ?? 0,
+    hasMore: from + PAGE_SIZE < (count ?? 0),
+  };
+}
+
+

@@ -1,20 +1,7 @@
 import React, { useState } from 'react';
-import { AdminScreen } from '../../AdminApp';
 import { ArrowLeft, Calendar, X } from 'lucide-react';
-import { Popup } from '../Popup';
-
-interface VendorLedgerScreenProps {
-  onNavigate: (screen: AdminScreen) => void;
-}
-
-// Mock vendor details
-const MOCK_VENDOR = {
-  id: 'VEN-001',
-  name: 'ABC Suppliers',
-  phoneNumber: '9876543210',
-  materialsSupplied: ['Wet Ash', 'Crusher Powder'],
-  gstNumber: 'GST123456',
-};
+import { Popup } from '../../../../components/Popup';
+import { useVendorLedger } from '../../../hooks/useVendorLedger';
 
 // Mock procurement data
 const MOCK_PROCUREMENTS = [
@@ -36,7 +23,8 @@ const MOCK_PAYMENTS = [
 
 type TabType = 'procurements' | 'payments';
 
-export function VendorLedgerScreen({ onNavigate }: VendorLedgerScreenProps) {
+export function VendorLedgerScreen() {
+  const { vendor, vendorId, loading, goBack, goTo } = useVendorLedger();
   const [activeTab, setActiveTab] = useState<TabType>('procurements');
   const [displayCount, setDisplayCount] = useState(20);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
@@ -164,20 +152,20 @@ export function VendorLedgerScreen({ onNavigate }: VendorLedgerScreenProps) {
       const totalPaymentAmount = paymentsInRange.reduce((sum, payment) => sum + payment.amount, 0);
       const closingBalance = outstandingBalance;
       
-      // In a real app, this would generate a PDF or Image file
-      console.log('Exporting vendor ledger:', {
-        vendorName: MOCK_VENDOR.name,
-        vendorPhone: MOCK_VENDOR.phoneNumber,
-        materialsSupplied: MOCK_VENDOR.materialsSupplied,
-        dateRange: `${exportFromDate} to ${exportToDate}`,
-        openingBalance: outstandingBalance,
-        procurements: procurementsInRange,
-        payments: paymentsInRange,
-        totalProcurementAmount,
-        totalPaymentAmount,
-        closingBalance,
-        format: exportFormat
-      });
+      // // In a real app, this would generate a PDF or Image file
+      // console.log('Exporting vendor ledger:', {
+      //   vendorName: MOCK_VENDOR.name,
+      //   vendorPhone: MOCK_VENDOR.phoneNumber,
+      //   materialsSupplied: MOCK_VENDOR.materialsSupplied,
+      //   dateRange: `${exportFromDate} to ${exportToDate}`,
+      //   openingBalance: outstandingBalance,
+      //   procurements: procurementsInRange,
+      //   payments: paymentsInRange,
+      //   totalProcurementAmount,
+      //   totalPaymentAmount,
+      //   closingBalance,
+      //   format: exportFormat
+      // });
       
       // Simulate successful download
       setSuccessMessage(`Vendor ledger exported successfully as ${exportFormat}`);
@@ -189,13 +177,29 @@ export function VendorLedgerScreen({ onNavigate }: VendorLedgerScreenProps) {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <p className="text-gray-600">Loading vendor details...</p>
+      </div>
+    );
+  }
+
+  if (!vendor) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <p className="text-gray-600">Vendor not found</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => onNavigate('vendors')}
+            onClick={() => goBack('/admin/vendors')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -205,7 +209,7 @@ export function VendorLedgerScreen({ onNavigate }: VendorLedgerScreenProps) {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-gray-900">Vendor Ledger</h1>
-              <p className="text-gray-600 mt-1">Transaction history for {MOCK_VENDOR.name}</p>
+              <p className="text-gray-600 mt-1">Transaction history for {vendor.name}</p>
             </div>
             <button
               onClick={handleOpenExportModal}
@@ -221,19 +225,19 @@ export function VendorLedgerScreen({ onNavigate }: VendorLedgerScreenProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div>
               <p className="text-gray-600 text-sm">Vendor Name</p>
-              <p className="text-gray-900">{MOCK_VENDOR.name}</p>
+              <p className="text-gray-900">{vendor.name}</p>
             </div>
             <div>
               <p className="text-gray-600 text-sm">Phone Number</p>
-              <p className="text-gray-900">{MOCK_VENDOR.phoneNumber}</p>
+              <p className="text-gray-900">{vendor.phone || '-'}</p>
             </div>
             <div>
-              <p className="text-gray-600 text-sm">Materials Supplied</p>
-              <p className="text-gray-900">{MOCK_VENDOR.materialsSupplied.join(', ')}</p>
+              <p className="text-gray-600 text-sm">Address</p>
+              <p className="text-gray-900">{vendor.address || '-'}</p>
             </div>
             <div>
               <p className="text-gray-600 text-sm">GST Number</p>
-              <p className="text-gray-900">{MOCK_VENDOR.gstNumber || '-'}</p>
+              <p className="text-gray-900">{vendor.gst_number || '-'}</p>
             </div>
           </div>
         </div>
@@ -263,7 +267,7 @@ export function VendorLedgerScreen({ onNavigate }: VendorLedgerScreenProps) {
             </div>
             <div>
               <button
-                onClick={() => onNavigate('vendor-payment')}
+                onClick={() => goTo(`/admin/vendors/${vendorId}/payment`)}
                 className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
               >
                 Add Payment
