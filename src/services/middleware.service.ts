@@ -1203,7 +1203,7 @@ export async function getVendorByIdWithMaterials(
 }
 
 /* ------------------------------------------------------------------
-   34. UPDATE VENDOR WITH MATERIALS
+   35. UPDATE VENDOR WITH MATERIALS
 -------------------------------------------------------------------*/
 
 export async function updateVendorWithMaterials(
@@ -1272,4 +1272,124 @@ export async function updateVendorWithMaterials(
   }
 }
 
+/* ------------------------------------------------------------------
+   36. GET EXPENSE TYPES
+-------------------------------------------------------------------*/
+export async function getExpenseTypes() {
+  const { data, error } = await supabase
+    .from("expense_types")
+    .select("*")
+    .order("name");
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+/* ------------------------------------------------------------------
+   37. CREATE EXPENSE TYPE
+-------------------------------------------------------------------*/
+export async function createExpenseType(name: string) {
+  const { data, error } = await supabase
+    .from("expense_types")
+    .insert([{ name }])
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+/* ------------------------------------------------------------------
+   38. GET EXPENSE SUBTYPES
+-------------------------------------------------------------------*/
+export async function getExpenseSubtypes(typeId: string) {
+  const { data, error } = await supabase
+    .from("expense_subtypes")
+    .select("*")
+    .eq("type_id", typeId)
+    .order("name");
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+/* ------------------------------------------------------------------
+   39. CREATE EXPENSE SUBTYPE
+-------------------------------------------------------------------*/
+export async function createExpenseSubtype(
+  typeId: string,
+  name: string
+) {
+  const { data, error } = await supabase
+    .from("expense_subtypes")
+    .insert([{ type_id: typeId, name }])
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+/* ------------------------------------------------------------------
+   40. CREATE EXPENSE
+-------------------------------------------------------------------*/
+export async function createExpense(payload: {
+  expense_date: string;
+  type_id: string;
+  subtype_id: string;
+  amount: number;
+  payment_mode: "CASH" | "UPI" | "BANK" | "CHEQUE";
+  sender_account_id?: string;
+  comments?: string;
+}) {
+  // 1️⃣ Insert expense
+  const { data, error } = await supabase
+    .from("expenses")
+    .insert([payload])
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  let accountIdToDeduct: string | undefined;
+
+  // 2️⃣ Decide which account to deduct from
+  if (payload.payment_mode === "CASH") {
+    const cashAccount = await getCashAccount();
+    accountIdToDeduct = cashAccount.id;
+  } else {
+    accountIdToDeduct = payload.sender_account_id;
+  }
+
+  if (!accountIdToDeduct) {
+    throw new Error("Account not found for deduction");
+  }
+
+  // 3️⃣ Deduct balance
+  const { error: rpcError } = await supabase.rpc(
+    "decrement_account_balance",
+    {
+      p_account_id: accountIdToDeduct,
+      p_amount: payload.amount,
+    }
+  );
+
+  if (rpcError) throw rpcError;
+
+  return data;
+}
+
+/* ------------------------------------------------------------------
+   41. GET CASH ACCOUNT SAI
+-------------------------------------------------------------------*/
+export async function getCashAccount() {
+  const { data, error } = await supabase
+    .from("accounts")
+    .select("id")
+    .ilike("account_number", "Cash")
+    .single();
+
+  if (error) throw error;
+  return data;
+}
 

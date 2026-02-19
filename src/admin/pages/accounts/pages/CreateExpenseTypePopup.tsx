@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { Popup } from '../../../../components/Popup';
+import { createExpenseType } from '../../../../services/middleware.service';
 
 interface CreateExpenseTypePopupProps {
   onClose: () => void;
@@ -11,9 +12,10 @@ interface CreateExpenseTypePopupProps {
 export function CreateExpenseTypePopup({ onClose, onTypeCreated, existingTypes }: CreateExpenseTypePopupProps) {
   const [typeName, setTypeName] = useState('');
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     // Validation
     if (!typeName.trim()) {
       setError('Type name is required');
@@ -26,8 +28,21 @@ export function CreateExpenseTypePopup({ onClose, onTypeCreated, existingTypes }
       return;
     }
 
-    // Success
-    setShowSuccessPopup(true);
+    try {
+      setIsSubmitting(true);
+      const newType = await createExpenseType(typeName.trim());
+
+      if (newType) {
+        setShowSuccessPopup(true);
+      } else {
+        setError('Failed to create type');
+      }
+    } catch (err) {
+      console.error('Error creating type:', err);
+      setError('Failed to create type. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSuccessClose = () => {
@@ -68,17 +83,25 @@ export function CreateExpenseTypePopup({ onClose, onTypeCreated, existingTypes }
                   error ? 'border-red-500' : 'border-gray-300'
                 }`}
                 placeholder="Enter expense type name"
+                autoFocus
               />
               {error && <p className="text-red-600 text-sm mt-1">{error}</p>}
             </div>
 
             {/* Create Button */}
-            <div className="flex justify-end pt-4">
+            <div className="flex justify-end gap-3 pt-4">
+              <button
+                onClick={onClose}
+                className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Cancel
+              </button>
               <button
                 onClick={handleCreate}
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                disabled={isSubmitting}
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
-                Create
+                {isSubmitting ? 'Creating...' : 'Create'}
               </button>
             </div>
           </div>

@@ -488,7 +488,7 @@ export function CustomerDetailsScreen() {
         if (exportFormat === "Image") {
           const link = document.createElement("a");
           link.href = imgData;
-          link.download = `Arka_Ledger_${customer?.name}.png`;
+          link.download = `Arka_Invoice_${customer?.name}.png`;
           link.click();
         } else {
           const pdf = new jsPDF("p", "mm", "a4");
@@ -497,12 +497,12 @@ export function CustomerDetailsScreen() {
           const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
 
           pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-          pdf.save(`Arka_Ledger_${customer?.name}.pdf`);
+          pdf.save(`Arka_Invoice_${customer?.name}.pdf`);
         }
 
         setShowExportModal(false);
         setSuccessMessage(
-          `Customer ledger exported successfully as ${exportFormat}`,
+          `Customer invoice exported successfully as ${exportFormat}`,
         );
         setShowSuccessPopup(true);
       } catch (err) {
