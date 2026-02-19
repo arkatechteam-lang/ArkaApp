@@ -219,3 +219,15 @@ export interface CreateLoanLedgerInput {
   receiver_account_info?: string | null;
   notes?: string | null;
 }
+
+export interface VendorWithMaterials {
+  id: string;
+  name: string;
+  phone: string | null;
+  alternate_phone: string | null;
+  gst_number: string | null;
+  address: string | null;
+  notes: string | null;
+  created_at: string;
+  materials: Material[];
+}
