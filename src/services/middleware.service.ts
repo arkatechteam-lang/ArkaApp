@@ -1342,18 +1342,9 @@ export async function createExpense(payload: {
   sender_account_id?: string;
   comments?: string;
 }) {
-  // 1️⃣ Insert expense
-  const { data, error } = await supabase
-    .from("expenses")
-    .insert([payload])
-    .select()
-    .single();
-
-  if (error) throw error;
-
+  // 1️⃣ Decide which account to deduct from
   let accountIdToDeduct: string | undefined;
 
-  // 2️⃣ Decide which account to deduct from
   if (payload.payment_mode === "CASH") {
     const cashAccount = await getCashAccount();
     accountIdToDeduct = cashAccount.id;
@@ -1365,7 +1356,8 @@ export async function createExpense(payload: {
     throw new Error("Account not found for deduction");
   }
 
-  // 3️⃣ Deduct balance
+  // 2️⃣ Deduct balance FIRST (before inserting expense)
+  // This validates balance and throws error if insufficient
   const { error: rpcError } = await supabase.rpc(
     "decrement_account_balance",
     {
@@ -1375,6 +1367,15 @@ export async function createExpense(payload: {
   );
 
   if (rpcError) throw rpcError;
+
+  // 3️⃣ Only insert expense if balance deduction was successful
+  const { data, error } = await supabase
+    .from("expenses")
+    .insert([payload])
+    .select()
+    .single();
+
+  if (error) throw error;
 
   return data;
 }
