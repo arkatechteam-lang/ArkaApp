@@ -1,43 +1,19 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { ArrowLeft, Plus, Search, Store, Edit2, Book } from 'lucide-react';
-import { useAdminNavigation } from '../../../hooks/useAdminNavigation';
-
-type Vendor = {
-  id: string;
-  name: string;
-  phoneNumber: string;
-  alternatePhone?: string;
-  materialsSupplied: string[];
-  address: string;
-  gstNumber?: string;
-  notes?: string;
-  isActive: boolean;
-};
-
-const MOCK_VENDORS: Vendor[] = [
-  { id: 'VEN-001', name: 'ABC Suppliers', phoneNumber: '9876501234', alternatePhone: '9876501235', materialsSupplied: ['Wet Ash', 'Crusher Powder'], address: '123 Industrial Area, Phase 2, Bangalore, Karnataka - 560001', gstNumber: 'GST123456', notes: 'Reliable supplier, payment on delivery', isActive: true },
-  { id: 'VEN-002', name: 'XYZ Materials', phoneNumber: '9876502234', materialsSupplied: ['Crusher Powder', 'Cement'], address: '456 Factory Road, Industrial Estate, Bangalore, Karnataka - 560002', gstNumber: 'GST234567', isActive: true },
-  { id: 'VEN-003', name: 'DEF Industries', phoneNumber: '9876503234', alternatePhone: '9876503235', materialsSupplied: ['Cement', 'Fly Ash Powder'], address: '789 Market Street, Commercial Hub, Bangalore, Karnataka - 560003', notes: 'Credit available up to 30 days', isActive: true },
-  { id: 'VEN-004', name: 'GHI Traders', phoneNumber: '9876504234', materialsSupplied: ['Wet Ash', 'Granite Powder'], address: '321 Commerce Lane, Business District, Bangalore, Karnataka - 560004', gstNumber: 'GST345678', isActive: true },
-  { id: 'VEN-005', name: 'JKL Enterprises', phoneNumber: '9876505234', materialsSupplied: ['Wet Ash', 'Fly Ash Powder', 'Cement'], address: '654 Business Park, Technology Zone, Bangalore, Karnataka - 560005', gstNumber: 'GST456789', notes: 'Best prices for bulk orders', isActive: true },
-];
+import { useVendorManagement } from '../../../hooks/useVendorManagement';
 
 export function VendorManagementScreen() {
-  const { goBack, goTo } = useAdminNavigation();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [displayCount, setDisplayCount] = useState(10);
-
-  const filteredVendors = MOCK_VENDORS.filter(vendor => {
-    const matchesSearch = vendor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      vendor.phoneNumber.includes(searchQuery) ||
-      vendor.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      vendor.materialsSupplied.some(m => m.toLowerCase().includes(searchQuery.toLowerCase()));
-
-    return matchesSearch;
-  });
-
-  const displayedVendors = filteredVendors.slice(0, displayCount);
-  const hasMore = displayCount < filteredVendors.length;
+  const {
+    vendors,
+    loading,
+    hasMore,
+    searchQuery,
+    totalVendors,
+    handleSearchChange,
+    handleLoadMore,
+    goBack,
+    goTo,
+  } = useVendorManagement();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -73,9 +49,9 @@ export function VendorManagementScreen() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Search by name, phone, materials, or vendor ID..."
+              placeholder="Search by name or phone..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
@@ -87,7 +63,7 @@ export function VendorManagementScreen() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm">Total Vendors</p>
-                <p className="text-gray-900 mt-1">{MOCK_VENDORS.length}</p>
+                <p className="text-gray-900 mt-1">{totalVendors}</p>
               </div>
               <div className="bg-blue-100 p-3 rounded-lg">
                 <Store className="w-6 h-6 text-blue-600" />
@@ -98,7 +74,7 @@ export function VendorManagementScreen() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm">Search Results</p>
-                <p className="text-gray-900 mt-1">{filteredVendors.length}</p>
+                <p className="text-gray-900 mt-1">{vendors.length}</p>
               </div>
               <div className="bg-green-100 p-3 rounded-lg">
                 <Store className="w-6 h-6 text-green-600" />
@@ -111,7 +87,11 @@ export function VendorManagementScreen() {
         <div className="bg-white rounded-lg shadow-md">
           <div className="p-6">
             <div className="space-y-4">
-              {filteredVendors.length === 0 ? (
+              {loading && vendors.length === 0 ? (
+                <div className="p-12 text-center">
+                  <p className="text-gray-600">Loading vendors...</p>
+                </div>
+              ) : vendors.length === 0 ? (
                 <div className="p-12 text-center">
                   <p className="text-gray-600">No vendors found matching your search criteria.</p>
                 </div>
@@ -123,7 +103,6 @@ export function VendorManagementScreen() {
                       <thead className="bg-gray-50">
                         <tr>
                           <th className="px-4 py-3 text-left text-gray-700">Vendor Name</th>
-                          <th className="px-4 py-3 text-left text-gray-700">Materials Supplied</th>
                           <th className="px-4 py-3 text-left text-gray-700">Phone Number</th>
                           <th className="px-4 py-3 text-left text-gray-700">Address</th>
                           <th className="px-4 py-3 text-left text-gray-700">GST / Tax Number</th>
@@ -131,13 +110,12 @@ export function VendorManagementScreen() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
-                        {displayedVendors.map((vendor) => (
+                        {vendors.map((vendor) => (
                           <tr key={vendor.id} className="hover:bg-gray-50">
                             <td className="px-4 py-4 text-gray-900">{vendor.name}</td>
-                            <td className="px-4 py-4 text-gray-900 text-sm">{vendor.materialsSupplied.join(', ')}</td>
-                            <td className="px-4 py-4 text-gray-900">{vendor.phoneNumber}</td>
-                            <td className="px-4 py-4 text-gray-900 text-sm truncate max-w-xs" title={vendor.address}>{vendor.address}</td>
-                            <td className="px-4 py-4 text-gray-900">{vendor.gstNumber || '-'}</td>
+                            <td className="px-4 py-4 text-gray-900">{vendor.phone || '-'}</td>
+                            <td className="px-4 py-4 text-gray-900 text-sm truncate max-w-xs" title={vendor.address || ''}>{vendor.address || '-'}</td>
+                            <td className="px-4 py-4 text-gray-900">{vendor.gst_number || '-'}</td>
                             <td className="px-4 py-4">
                               <div className="flex gap-2">
                                 <button
@@ -164,7 +142,7 @@ export function VendorManagementScreen() {
 
                   {/* Mobile View - Cards */}
                   <div className="lg:hidden space-y-4">
-                    {displayedVendors.map((vendor) => (
+                    {vendors.map((vendor) => (
                       <div key={vendor.id} className="bg-white border border-gray-200 rounded-lg p-4">
                         <div className="space-y-3">
                           <div>
@@ -172,20 +150,22 @@ export function VendorManagementScreen() {
                             <p className="text-gray-900">{vendor.name}</p>
                           </div>
                           <div>
-                            <p className="text-gray-600 text-sm">Materials Supplied</p>
-                            <p className="text-gray-900 text-sm">{vendor.materialsSupplied.join(', ')}</p>
-                          </div>
-                          <div>
                             <p className="text-gray-600 text-sm">Phone Number</p>
-                            <p className="text-gray-900">{vendor.phoneNumber}</p>
+                            <p className="text-gray-900">{vendor.phone || '-'}</p>
                           </div>
+                          {vendor.alternate_phone && (
+                            <div>
+                              <p className="text-gray-600 text-sm">Alternate Phone</p>
+                              <p className="text-gray-900">{vendor.alternate_phone}</p>
+                            </div>
+                          )}
                           <div>
                             <p className="text-gray-600 text-sm">Address</p>
-                            <p className="text-gray-900 text-sm">{vendor.address}</p>
+                            <p className="text-gray-900 text-sm">{vendor.address || '-'}</p>
                           </div>
                           <div>
                             <p className="text-gray-600 text-sm">GST / Tax Number</p>
-                            <p className="text-gray-900">{vendor.gstNumber || '-'}</p>
+                            <p className="text-gray-900">{vendor.gst_number || '-'}</p>
                           </div>
                           <div className="flex gap-2 pt-2 border-t border-gray-200">
                             <button
@@ -200,7 +180,7 @@ export function VendorManagementScreen() {
                               className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                             >
                               <Book className="w-4 h-4" />
-                              Open Ledger
+                              Ledger
                             </button>
                           </div>
                         </div>
@@ -212,10 +192,11 @@ export function VendorManagementScreen() {
                   {hasMore && (
                     <div className="flex justify-center pt-4">
                       <button
-                        onClick={() => setDisplayCount(displayCount + 10)}
-                        className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                        onClick={handleLoadMore}
+                        disabled={loading}
+                        className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                       >
-                        Load More
+                        {loading ? 'Loading...' : 'Load More'}
                       </button>
                     </div>
                   )}
