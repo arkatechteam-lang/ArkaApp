@@ -22,6 +22,7 @@ import {
   Loan,
   LoanLedgerItem,
   CreateLoanLedgerInput,
+  VendorWithMaterials,
 } from './types'
 import { MaterialPurchaseInput, ProductionInput } from "../employee/types";
 import { getRange, getRangeForProductionStatistics, PAGE_SIZE , mapPaymentModeToDb } from "../utils/reusables";
@@ -1153,6 +1154,122 @@ export async function searchVendors(
     total: count ?? 0,
     hasMore: from + PAGE_SIZE < (count ?? 0),
   };
+}
+
+/* ------------------------------------------------------------------
+   34. GET VENDOR BY ID WITH MATERIALS
+-------------------------------------------------------------------*/
+
+export async function getVendorByIdWithMaterials(
+  vendorId: string
+): Promise<VendorWithMaterials> {
+  const { data, error } = await supabase
+    .from("vendors")
+    .select(`
+      id,
+      name,
+      phone,
+      alternate_phone,
+      gst_number,
+      address,
+      notes,
+      created_at,
+      vendor_materials (
+        materials (
+          id,
+          name,
+          unit
+        )
+      )
+    `)
+    .eq("id", vendorId)
+    .single();
+
+  if (error) throw error;
+
+  return {
+    id: data.id,
+    name: data.name,
+    phone: data.phone,
+    alternate_phone: data.alternate_phone,
+    gst_number: data.gst_number,
+    address: data.address,
+    notes: data.notes,
+    created_at: data.created_at,
+    materials: (data.vendor_materials ?? []).map(
+      (vm: any) => vm.materials
+    ),
+  };
+}
+
+/* ------------------------------------------------------------------
+   34. UPDATE VENDOR WITH MATERIALS
+-------------------------------------------------------------------*/
+
+export async function updateVendorWithMaterials(
+  vendorId: string,
+  vendorInput: CreateVendorInput,
+  materialIds: string[]
+): Promise<void> {
+  /* -------------------------------------------------------------
+     1. UPDATE VENDOR
+  --------------------------------------------------------------*/
+  const { error: vendorError } = await supabase
+    .from("vendors")
+    .update({
+      name: vendorInput.name,
+      phone: vendorInput.phone ?? null,
+      alternate_phone: vendorInput.alternate_phone ?? null,
+      gst_number: vendorInput.gst_number ?? null,
+      address: vendorInput.address ?? null,
+      notes: vendorInput.notes ?? null,
+    })
+    .eq("id", vendorId);
+
+  if (vendorError) throw vendorError;
+
+  /* -------------------------------------------------------------
+     2. GET EXISTING MATERIALS
+  --------------------------------------------------------------*/
+  const { data: existingMaterials } = await supabase
+    .from("vendor_materials")
+    .select("material_id")
+    .eq("vendor_id", vendorId);
+
+  const existingIds = (existingMaterials ?? []).map((vm) => vm.material_id);
+
+  /* -------------------------------------------------------------
+     3. DETERMINE CHANGES
+  --------------------------------------------------------------*/
+  const toDelete = existingIds.filter((id) => !materialIds.includes(id));
+  const toInsert = materialIds.filter((id) => !existingIds.includes(id));
+
+  /* -------------------------------------------------------------
+     4. DELETE REMOVED MATERIALS
+  --------------------------------------------------------------*/
+  if (toDelete.length > 0) {
+    await supabase
+      .from("vendor_materials")
+      .delete()
+      .eq("vendor_id", vendorId)
+      .in("material_id", toDelete);
+  }
+
+  /* -------------------------------------------------------------
+     5. INSERT NEW MATERIALS
+  --------------------------------------------------------------*/
+  if (toInsert.length > 0) {
+    const rows = toInsert.map((material_id) => ({
+      vendor_id: vendorId,
+      material_id,
+    }));
+
+    const { error: insertError } = await supabase
+      .from("vendor_materials")
+      .insert(rows);
+
+    if (insertError) throw insertError;
+  }
 }
 
 
