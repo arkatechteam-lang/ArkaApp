@@ -60,6 +60,11 @@ export function CreateExpenseScreen() {
   const [expenseSubtypes, setExpenseSubtypesData] = useState<ExpenseSubtype[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
 
+  // Filter accounts to exclude CASH for non-cash payment modes
+  const nonCashAccounts = accounts.filter(
+    (a) => !a.account_number.toUpperCase().includes("CASH"),
+  );
+
   // Load expense types and accounts on mount
   useEffect(() => {
     const loadInitialData = async () => {
@@ -134,7 +139,7 @@ export function CreateExpenseScreen() {
 
     // SAI is only required when mode is not Cash
     if (formData.modeOfPayment !== 'Cash') {
-      if (!formData.saiId) newErrors.sai = 'SAI is required';
+      if (!formData.saiId) newErrors.sai = 'Account is required for non-cash payment';
     }
 
     setErrors(newErrors);
@@ -518,30 +523,36 @@ export function CreateExpenseScreen() {
                 <label className="block text-gray-700 mb-2">
                   Sender Account (SAI) <span className="text-red-600">*</span>
                 </label>
-                <select
-                  value={formData.saiId}
-                  onChange={(e) => {
-                    const selectedAccount = accounts.find(
-                      (a) => a.id === e.target.value
-                    );
-                    setFormData({
-                      ...formData,
-                      saiId: e.target.value,
-                      sai: selectedAccount?.account_number || '',
-                    });
-                    setErrors({ ...errors, sai: '' });
-                  }}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    errors.sai ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                >
-                  <option value="">Select Account</option>
-                  {accounts.map((account) => (
-                    <option key={account.id} value={account.id}>
-                      {account.account_number}
-                    </option>
-                  ))}
-                </select>
+                {nonCashAccounts.length === 0 ? (
+                  <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded mb-2">
+                    <strong>Account Required:</strong> Please create a non-cash account before proceeding with {formData.modeOfPayment} payment.
+                  </div>
+                ) : (
+                  <select
+                    value={formData.saiId}
+                    onChange={(e) => {
+                      const selectedAccount = nonCashAccounts.find(
+                        (a) => a.id === e.target.value
+                      );
+                      setFormData({
+                        ...formData,
+                        saiId: e.target.value,
+                        sai: selectedAccount?.account_number || '',
+                      });
+                      setErrors({ ...errors, sai: '' });
+                    }}
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      errors.sai ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                  >
+                    <option value="">Select Account</option>
+                    {nonCashAccounts.map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {account.account_number}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 {errors.sai && (
                   <p className="text-red-600 text-sm mt-1">{errors.sai}</p>
                 )}
