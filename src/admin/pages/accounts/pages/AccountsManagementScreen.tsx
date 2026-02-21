@@ -3,6 +3,7 @@ import { AdminScreen, Expense, AdminOrder } from '../../../../AdminApp';
 import { ArrowLeft, Plus, Wallet, X } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { useAdminNavigation } from '../../../hooks/useAdminNavigation';
+import { useAccountsIncome } from '../../../hooks/useAccountsIncome';
 
 
 const MOCK_EXPENSES: Expense[] = [
@@ -73,15 +74,22 @@ const MOCK_ORDERS: AdminOrder[] = [
   },
 ];
 
-type FilterType = 'Last month' | 'Last year' | 'Custom range';
+type FilterType = 'Current Month' | 'Last month' | 'Last year' | 'Custom range';
 
 export function AccountsManagementScreen() {
   const { goBack, goTo } = useAdminNavigation();
-  const [filterType, setFilterType] = useState<FilterType>('Last month');
+  const [filterType, setFilterType] = useState<FilterType>('Current Month');
   const [showCustomRangeModal, setShowCustomRangeModal] = useState(false);
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
   const [selectedExpenseType, setSelectedExpenseType] = useState<string>('Overall');
+
+  // Fetch income data based on filter
+  const { orders, loading: incomeLoading, error: incomeError, totalIncome, showError, closeError } = useAccountsIncome(
+    filterType,
+    filterType === 'Custom range' ? customStartDate : undefined,
+    filterType === 'Custom range' ? customEndDate : undefined
+  );
 
   // Get unique expense types from expenses
   const expenseTypes = ['Overall', ...Array.from(new Set(MOCK_EXPENSES.map(e => e.type)))];
@@ -92,7 +100,6 @@ export function AccountsManagementScreen() {
     : MOCK_EXPENSES.filter(e => e.type === selectedExpenseType);
 
   // Calculate totals
-  const totalIncome = MOCK_ORDERS.reduce((sum, order) => sum + (order.amountPaid || 0), 0);
   const totalExpenses = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
   const profit = totalIncome - totalExpenses;
 
@@ -131,6 +138,8 @@ export function AccountsManagementScreen() {
       setShowCustomRangeModal(true);
     } else {
       setFilterType(value);
+      setCustomStartDate('');
+      setCustomEndDate('');
     }
   };
 
@@ -143,6 +152,8 @@ export function AccountsManagementScreen() {
 
   const handleCloseCustomRangeModal = () => {
     setShowCustomRangeModal(false);
+    setCustomStartDate('');
+    setCustomEndDate('');
   };
 
   return (
@@ -170,6 +181,7 @@ export function AccountsManagementScreen() {
                 onChange={(e) => handleFilterChange(e.target.value as FilterType)}
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
               >
+                <option value="Current Month">Current Month</option>
                 <option value="Last month">Last month</option>
                 <option value="Last year">Last year</option>
                 <option value="Custom range">Custom range</option>
@@ -200,73 +212,87 @@ export function AccountsManagementScreen() {
         </div>
 
         {/* Income and Expenses Split Container */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-96">
           {/* Income Section */}
-          <div className="bg-white rounded-lg shadow-lg">
-            <div className="p-6 border-b border-gray-200">
+          <div className="bg-white rounded-lg shadow-lg flex flex-col">
+            <div className="p-6 border-b border-gray-200 flex-shrink-0">
               <h2 className="text-gray-900">Income</h2>
             </div>
             
             {/* Income Top Half - Total Income with Icon */}
-            <div className="p-6 border-b border-gray-200 bg-green-50">
+            <div className="p-6 border-b border-gray-200 bg-green-50 flex-shrink-0">
               <div className="flex flex-col items-center justify-center">
                 <div className="bg-green-100 p-4 rounded-full mb-4">
                   <Wallet className="w-10 h-10 text-green-600" />
                 </div>
                 <p className="text-gray-700 mb-2">Total Income</p>
-                <p className="text-green-600">₹{totalIncome.toLocaleString()}</p>
+                {incomeLoading ? (
+                  <p className="text-green-600 text-lg">Loading...</p>
+                ) : (
+                  <p className="text-green-600 text-lg">₹{totalIncome.toLocaleString()}</p>
+                )}
               </div>
             </div>
 
             {/* Income Bottom Half - Orders List */}
-            <div className="p-6">
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {MOCK_ORDERS.map((order) => (
-                  <div
-                    key={order.id}
-                    onClick={() => goTo(`/admin/orders/${order.id}`)}
-                    className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors"
-                  >
-                    <div className="grid grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <p className="text-gray-500 mb-1">Name</p>
-                        <p className="text-gray-900">{order.customerName}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500 mb-1">Bricks</p>
-                        <p className="text-gray-900">{order.quantity.toLocaleString()}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500 mb-1">Amount</p>
-                        <p className="text-gray-900">₹{(order.amountPaid || 0).toLocaleString()}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500 mb-1">Status</p>
-                        <span className={`inline-block px-2 py-1 rounded-full text-xs ${
-                          order.paymentStatus === 'Fully Paid'
-                            ? 'bg-green-100 text-green-800'
-                            : order.paymentStatus === 'Partially Paid'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {order.paymentStatus}
-                        </span>
+            <div className="p-6 flex flex-col flex-grow overflow-hidden">
+              {incomeLoading ? (
+                <div className="flex justify-center items-center flex-grow">
+                  <p className="text-gray-500">Loading orders...</p>
+                </div>
+              ) : orders.length === 0 ? (
+                <div className="flex justify-center items-center flex-grow">
+                  <p className="text-gray-500">No orders found for this period</p>
+                </div>
+              ) : (
+                <div className="space-y-3 overflow-y-auto flex-grow">
+                  {orders.map((order) => (
+                    <div
+                      key={order.id}
+                      onClick={() => goTo(`/admin/orders/${order.id}`)}
+                      className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors flex-shrink-0"
+                    >
+                      <div className="grid grid-cols-4 gap-4 text-sm">
+                        <div>
+                          <p className="text-gray-500 mb-1">Name</p>
+                          <p className="text-gray-900">{order.customers?.name || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500 mb-1">Bricks</p>
+                          <p className="text-gray-900">{order.brick_quantity.toLocaleString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500 mb-1">Revenue</p>
+                          <p className="text-gray-900">₹{(order.final_price || 0).toLocaleString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500 mb-1">Status</p>
+                          <span className={`inline-block px-2 py-1 rounded-full text-xs ${
+                            order.payment_status === 'FULLY_PAID'
+                              ? 'bg-green-100 text-green-800'
+                              : order.payment_status === 'PARTIALLY_PAID'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {order.payment_status === 'FULLY_PAID' ? 'Fully Paid' : order.payment_status === 'PARTIALLY_PAID' ? 'Partially Paid' : 'Not Paid'}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
           {/* Expenses Section */}
-          <div className="bg-white rounded-lg shadow-lg">
-            <div className="p-6 border-b border-gray-200">
+          <div className="bg-white rounded-lg shadow-lg flex flex-col">
+            <div className="p-6 border-b border-gray-200 flex-shrink-0">
               <h2 className="text-gray-900">Expenses</h2>
             </div>
 
             {/* Expense Type Filter */}
-            <div className="px-6 pt-4 pb-2 bg-red-50 border-b border-gray-200">
+            <div className="px-6 pt-4 pb-2 bg-red-50 border-b border-gray-200 flex-shrink-0">
               <label className="block text-gray-700 text-sm mb-2">Filter by Expense Type</label>
               <select
                 value={selectedExpenseType}
@@ -284,7 +310,7 @@ export function AccountsManagementScreen() {
             </div>
 
             {/* Expenses Top Half - Pie Chart */}
-            <div className="p-6 border-b border-gray-200 bg-red-50">
+            <div className="p-6 border-b border-gray-200 bg-red-50 flex-shrink-0">
               <div className="flex flex-col items-center">
                 <ResponsiveContainer width="100%" height={200}>
                   <PieChart>
@@ -311,13 +337,13 @@ export function AccountsManagementScreen() {
             </div>
 
             {/* Expenses Bottom Half - Expenses List */}
-            <div className="p-6">
-              <div className="space-y-3 max-h-96 overflow-y-auto">
+            <div className="p-6 flex flex-col flex-grow overflow-hidden">
+              <div className="space-y-3 overflow-y-auto flex-grow">
                 {filteredExpenses.map((expense) => (
                   <div
                     key={expense.id}
                     onClick={() => goTo(`/admin/accounts/expense/${expense.id}`)}
-                    className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                    className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors flex-shrink-0"
                   >
                     <div className="grid grid-cols-5 gap-3 text-sm">
                       <div>
@@ -354,6 +380,39 @@ export function AccountsManagementScreen() {
           </div>
         </div>
       </div>
+
+      {/* Error Popup */}
+      {showError && incomeError && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 relative">
+            <button
+              onClick={closeError}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+              aria-label="Close error"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0">
+                <div className="flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                  <X className="h-6 w-6 text-red-600" />
+                </div>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Error Loading Income Data</h3>
+                <p className="text-gray-600 text-sm mb-4">{incomeError}</p>
+                <button
+                  onClick={closeError}
+                  className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Custom Range Modal */}
       {showCustomRangeModal && (
