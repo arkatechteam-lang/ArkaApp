@@ -1,57 +1,126 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AdminScreen } from '../../../../AdminApp';
 import { ArrowLeft, Save } from 'lucide-react';
 import { Popup } from '../../../../components/Popup';
 import { CreateExpenseTypePopup } from './CreateExpenseTypePopup';
 import { useAdminNavigation } from '../../../hooks/useAdminNavigation';
+import {
+  getExpenseTypes,
+  getExpenseSubtypes,
+  getAccounts,
+  createExpense,
+} from '../../../../services/middleware.service';
 
-// Mock account numbers from Cash Flow Management
-const MOCK_ACCOUNTS = [
-  { id: 'ACC-001', accountNumber: '3455332' },
-  { id: 'ACC-002', accountNumber: '7894561' },
-];
+interface ExpenseType {
+  id: string;
+  name: string;
+}
+
+interface ExpenseSubtype {
+  id: string;
+  name: string;
+  type_id: string;
+}
+
+interface Account {
+  id: string;
+  account_number: string;
+}
 
 export function CreateExpenseScreen() {
-  const { goBack, exitTo , goTo } = useAdminNavigation();
+  const { goBack, exitTo, goTo } = useAdminNavigation();
+
+  // Form data
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     type: '',
+    typeId: '',
     subtype: '',
+    subtypeId: '',
     amount: '',
     comments: '',
     modeOfPayment: 'UPI' as 'UPI' | 'Bank Transfer' | 'Cheque' | 'Cash',
     sai: '',
-    rai: '',
+    saiId: '',
   });
 
+  // UI states
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showPopup, setShowPopup] = useState(false);
   const [popupStatus, setPopupStatus] = useState<'success' | 'error'>('success');
+  const [popupMessage, setPopupMessage] = useState('');
   const [showCreateTypePopup, setShowCreateTypePopup] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [noTypesWarning, setNoTypesWarning] = useState(false);
+  const [noSubtypesWarning, setNoSubtypesWarning] = useState(false);
 
-  const expenseTypes = [
-  'Procurement',
-  'Salary',
-  'Fuel',
-  'Equipment Service',
-  'Others',
-];
+  // DB data
+  const [expenseTypes, setExpenseTypes] = useState<ExpenseType[]>([]);
+  const [expenseSubtypes, setExpenseSubtypesData] = useState<ExpenseSubtype[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
 
-const expenseSubtypes: Record<string, string[]> = {
-  Procurement: ['Fly Ash', 'Crusher Powder'],
-  Salary: ['Production Workers', 'Office Staff'],
-  Fuel: ['Diesel', 'Petrol'],
-  'Equipment Service': ['Machine Maintenance'],
-  Others: ['Office Supplies'],
-};
+  // Load expense types and accounts on mount
+  useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        setLoading(true);
+        const [typesData, accountsData] = await Promise.all([
+          getExpenseTypes(),
+          getAccounts(),
+        ]);
+        setExpenseTypes(typesData);
+        setAccounts(accountsData);
 
+        // Check if there are no types
+        if (typesData.length === 0) {
+          setNoTypesWarning(true);
+        }
+      } catch (err) {
+        console.error('Failed to load initial data:', err);
+        setPopupMessage('Failed to load form data');
+        setPopupStatus('error');
+        setShowPopup(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadInitialData();
+  }, []);
+
+  // Load subtypes when type changes
+  useEffect(() => {
+    const loadSubtypes = async () => {
+      if (!formData.typeId) {
+        setExpenseSubtypesData([]);
+        setNoSubtypesWarning(false);
+        return;
+      }
+      try {
+        const subtypesData = await getExpenseSubtypes(formData.typeId);
+        setExpenseSubtypesData(subtypesData);
+
+        // Check if there are no subtypes for this type
+        if (subtypesData.length === 0) {
+          setNoSubtypesWarning(true);
+        } else {
+          setNoSubtypesWarning(false);
+        }
+      } catch (err) {
+        console.error('Failed to load subtypes:', err);
+      }
+    };
+
+    loadSubtypes();
+  }, [formData.typeId]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.date) newErrors.date = 'Date is required';
-    if (!formData.type) newErrors.type = 'Type is required';
-    if (!formData.subtype) newErrors.subtype = 'Subtype is required';
+    if (!formData.typeId) newErrors.type = 'Type is required';
+    if (!formData.subtypeId) newErrors.subtype = 'Subtype is required';
     if (!formData.amount.trim()) {
       newErrors.amount = 'Amount is required';
     } else if (isNaN(Number(formData.amount)) || Number(formData.amount) <= 0) {
@@ -62,24 +131,58 @@ const expenseSubtypes: Record<string, string[]> = {
       newErrors.comments = 'Comments cannot exceed 100 characters';
     }
     if (!formData.modeOfPayment) newErrors.modeOfPayment = 'Mode of Payment is required';
-    
-    // SAI and RAI are only required when mode is not Cash
+
+    // SAI is only required when mode is not Cash
     if (formData.modeOfPayment !== 'Cash') {
-      if (!formData.sai) newErrors.sai = 'SAI is required';
-      if (!formData.rai.trim()) newErrors.rai = 'RAI is required';
+      if (!formData.saiId) newErrors.sai = 'SAI is required';
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (validateForm()) {
-      const success = Math.random() > 0.1;
-      setPopupStatus(success ? 'success' : 'error');
-      setShowPopup(true);
+      try {
+        setSaving(true);
+
+        // Map payment mode to DB format
+        const paymentModeMap: Record<
+          string,
+          'CASH' | 'UPI' | 'BANK' | 'CHEQUE'
+        > = {
+          Cash: 'CASH',
+          UPI: 'UPI',
+          'Bank Transfer': 'BANK',
+          Cheque: 'CHEQUE',
+        };
+
+        const payload = {
+          expense_date: formData.date,
+          type_id: formData.typeId,
+          subtype_id: formData.subtypeId,
+          amount: Number(formData.amount),
+          payment_mode: paymentModeMap[formData.modeOfPayment],
+          sender_account_id:
+            formData.modeOfPayment === 'Cash' ? undefined : formData.saiId,
+          comments: formData.comments,
+        };
+
+        await createExpense(payload);
+
+        setPopupMessage('Expense successfully added!');
+        setPopupStatus('success');
+        setShowPopup(true);
+      } catch (err) {
+        console.error('Error creating expense:', err);
+        setPopupMessage('Failed to add expense. Please try again.');
+        setPopupStatus('error');
+        setShowPopup(true);
+      } finally {
+        setSaving(false);
+      }
     }
   };
 
@@ -90,18 +193,77 @@ const expenseSubtypes: Record<string, string[]> = {
     }
   };
 
-  const handleTypeChange = (newType: string) => {
-    setFormData({ ...formData, type: newType, subtype: '' });
+  const handleTypeChange = (typeId: string) => {
+    const selectedType = expenseTypes.find((t) => t.id === typeId);
+    setFormData({
+      ...formData,
+      typeId: typeId,
+      type: selectedType?.name || '',
+      subtypeId: '',
+      subtype: '',
+    });
     setErrors({ ...errors, type: '' });
   };
 
-  const handleTypeCreatedFromPopup = (typeName: string) => {
-    // onTypeCreated(typeName);
-    setFormData({ ...formData, type: typeName, subtype: '' });
+  const handleSubtypeChange = (subtypeId: string) => {
+    const selectedSubtype = expenseSubtypes.find((s) => s.id === subtypeId);
+    setFormData({
+      ...formData,
+      subtypeId: subtypeId,
+      subtype: selectedSubtype?.name || '',
+    });
+    setErrors({ ...errors, subtype: '' });
   };
 
-  // Get subtypes for selected type
-  const availableSubtypes = formData.type ? (expenseSubtypes[formData.type] || []) : [];
+  const handleTypeCreatedFromPopup = (typeName: string) => {
+    // Reload types after new one is created
+    const loadTypes = async () => {
+      try {
+        const typesData = await getExpenseTypes();
+        setExpenseTypes(typesData);
+        setNoTypesWarning(false);
+        const newType = typesData.find((t) => t.name === typeName);
+        if (newType) {
+          handleTypeChange(newType.id);
+        }
+      } catch (err) {
+        console.error('Failed to reload types:', err);
+      }
+    };
+    loadTypes();
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="flex flex-col items-center gap-4">
+          <svg
+            className="animate-spin h-8 w-8 text-blue-600"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            ></circle>
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+            ></path>
+          </svg>
+          <span className="text-lg text-gray-700 font-medium">
+            Loading form...
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -121,6 +283,44 @@ const expenseSubtypes: Record<string, string[]> = {
 
         {/* Form */}
         <div className="bg-white rounded-lg shadow-md p-6">
+          {/* Warning: No Types */}
+          {noTypesWarning && (
+            <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-yellow-800 font-medium mb-3">
+                ⚠️ No Expense Types Found
+              </p>
+              <p className="text-yellow-700 text-sm mb-3">
+                You need to create at least one expense type before you can add an expense.
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowCreateTypePopup(true)}
+                className="inline-block px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors text-sm font-medium"
+              >
+                Create First Type
+              </button>
+            </div>
+          )}
+
+          {/* Warning: No Subtypes for Selected Type */}
+          {noSubtypesWarning && formData.typeId && (
+            <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-yellow-800 font-medium mb-3">
+                ⚠️ No Subtypes for "{formData.type}"
+              </p>
+              <p className="text-yellow-700 text-sm mb-3">
+                You need to create at least one subtype before you can add an expense for this type.
+              </p>
+              <button
+                type="button"
+                onClick={() => goTo('/admin/accounts/expense-subtype')}
+                className="inline-block px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors text-sm font-medium"
+              >
+                Create First Subtype
+              </button>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Date */}
             <div>
@@ -130,13 +330,17 @@ const expenseSubtypes: Record<string, string[]> = {
               <input
                 type="date"
                 value={formData.date}
-                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, date: e.target.value })
+                }
                 className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                   errors.date ? 'border-red-500' : 'border-gray-300'
                 }`}
                 style={{ colorScheme: 'light' }}
               />
-              {errors.date && <p className="text-red-600 text-sm mt-1">{errors.date}</p>}
+              {errors.date && (
+                <p className="text-red-600 text-sm mt-1">{errors.date}</p>
+              )}
             </div>
 
             {/* Type */}
@@ -154,7 +358,7 @@ const expenseSubtypes: Record<string, string[]> = {
                 </button>
               </div>
               <select
-                value={formData.type}
+                value={formData.typeId}
                 onChange={(e) => handleTypeChange(e.target.value)}
                 className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                   errors.type ? 'border-red-500' : 'border-gray-300'
@@ -162,12 +366,14 @@ const expenseSubtypes: Record<string, string[]> = {
               >
                 <option value="">Select Type</option>
                 {expenseTypes.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
+                  <option key={type.id} value={type.id}>
+                    {type.name}
                   </option>
                 ))}
               </select>
-              {errors.type && <p className="text-red-600 text-sm mt-1">{errors.type}</p>}
+              {errors.type && (
+                <p className="text-red-600 text-sm mt-1">{errors.type}</p>
+              )}
             </div>
 
             {/* Subtype */}
@@ -176,35 +382,52 @@ const expenseSubtypes: Record<string, string[]> = {
                 <label className="block text-gray-700">
                   Subtype <span className="text-red-600">*</span>
                 </label>
-                <button
-                  type="button"
-                  onClick={() => goTo('/admin/accounts/expense-subtype')}
-                  className="text-blue-600 hover:text-blue-700 text-sm underline"
-                >
-                  Create Subtype
-                </button>
+                {formData.typeId && expenseSubtypes.length === 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => goTo('/admin/accounts/expense-subtype')}
+                    className="text-green-600 hover:text-green-700 text-sm font-medium underline"
+                  >
+                    + Create Subtype
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => goTo('/admin/accounts/expense-subtype')}
+                    className="text-blue-600 hover:text-blue-700 text-sm underline"
+                  >
+                    Create Subtype
+                  </button>
+                )}
               </div>
               <select
-                value={formData.subtype}
-                onChange={(e) => {
-                  setFormData({ ...formData, subtype: e.target.value });
-                  setErrors({ ...errors, subtype: '' });
-                }}
-                disabled={!formData.type}
+                value={formData.subtypeId}
+                onChange={(e) => handleSubtypeChange(e.target.value)}
+                disabled={!formData.typeId || expenseSubtypes.length === 0}
                 className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                   errors.subtype ? 'border-red-500' : 'border-gray-300'
-                } ${!formData.type ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                } ${
+                  !formData.typeId || expenseSubtypes.length === 0
+                    ? 'bg-gray-100 cursor-not-allowed'
+                    : ''
+                }`}
               >
                 <option value="">
-                  {formData.type ? 'Select Subtype' : 'Select a type first'}
+                  {!formData.typeId
+                    ? 'Select a type first'
+                    : expenseSubtypes.length === 0
+                    ? 'No subtypes available - Create one first'
+                    : 'Select Subtype'}
                 </option>
-                {availableSubtypes.map((subtype) => (
-                  <option key={subtype} value={subtype}>
-                    {subtype}
+                {expenseSubtypes.map((subtype) => (
+                  <option key={subtype.id} value={subtype.id}>
+                    {subtype.name}
                   </option>
                 ))}
               </select>
-              {errors.subtype && <p className="text-red-600 text-sm mt-1">{errors.subtype}</p>}
+              {errors.subtype && (
+                <p className="text-red-600 text-sm mt-1">{errors.subtype}</p>
+              )}
             </div>
 
             {/* Amount */}
@@ -215,7 +438,9 @@ const expenseSubtypes: Record<string, string[]> = {
               <input
                 type="number"
                 value={formData.amount}
-                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, amount: e.target.value })
+                }
                 onWheel={(e) => e.currentTarget.blur()}
                 className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                   errors.amount ? 'border-red-500' : 'border-gray-300'
@@ -224,7 +449,9 @@ const expenseSubtypes: Record<string, string[]> = {
                 min="0"
                 step="0.01"
               />
-              {errors.amount && <p className="text-red-600 text-sm mt-1">{errors.amount}</p>}
+              {errors.amount && (
+                <p className="text-red-600 text-sm mt-1">{errors.amount}</p>
+              )}
             </div>
 
             {/* Comments */}
@@ -234,7 +461,9 @@ const expenseSubtypes: Record<string, string[]> = {
               </label>
               <textarea
                 value={formData.comments}
-                onChange={(e) => setFormData({ ...formData, comments: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, comments: e.target.value })
+                }
                 className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                   errors.comments ? 'border-red-500' : 'border-gray-300'
                 }`}
@@ -243,8 +472,12 @@ const expenseSubtypes: Record<string, string[]> = {
                 maxLength={100}
               />
               <div className="flex justify-between items-center mt-1">
-                {errors.comments && <p className="text-red-600 text-sm">{errors.comments}</p>}
-                <p className="text-gray-500 text-sm ml-auto">{formData.comments.length}/100</p>
+                {errors.comments && (
+                  <p className="text-red-600 text-sm">{errors.comments}</p>
+                )}
+                <p className="text-gray-500 text-sm ml-auto">
+                  {formData.comments.length}/100
+                </p>
               </div>
             </div>
 
@@ -255,7 +488,14 @@ const expenseSubtypes: Record<string, string[]> = {
               </label>
               <select
                 value={formData.modeOfPayment}
-                onChange={(e) => setFormData({ ...formData, modeOfPayment: e.target.value as any, sai: '', rai: '' })}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    modeOfPayment: e.target.value as any,
+                    sai: '',
+                    saiId: '',
+                  })
+                }
                 className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                   errors.modeOfPayment ? 'border-red-500' : 'border-gray-300'
                 }`}
@@ -265,49 +505,46 @@ const expenseSubtypes: Record<string, string[]> = {
                 <option value="Cheque">Cheque</option>
                 <option value="Cash">Cash</option>
               </select>
-              {errors.modeOfPayment && <p className="text-red-600 text-sm mt-1">{errors.modeOfPayment}</p>}
+              {errors.modeOfPayment && (
+                <p className="text-red-600 text-sm mt-1">
+                  {errors.modeOfPayment}
+                </p>
+              )}
             </div>
 
             {/* SAI - Only show if mode is not Cash */}
             {formData.modeOfPayment !== 'Cash' && (
               <div>
                 <label className="block text-gray-700 mb-2">
-                  SAI <span className="text-red-600">*</span>
+                  Sender Account (SAI) <span className="text-red-600">*</span>
                 </label>
                 <select
-                  value={formData.sai}
-                  onChange={(e) => setFormData({ ...formData, sai: e.target.value })}
+                  value={formData.saiId}
+                  onChange={(e) => {
+                    const selectedAccount = accounts.find(
+                      (a) => a.id === e.target.value
+                    );
+                    setFormData({
+                      ...formData,
+                      saiId: e.target.value,
+                      sai: selectedAccount?.account_number || '',
+                    });
+                    setErrors({ ...errors, sai: '' });
+                  }}
                   className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                     errors.sai ? 'border-red-500' : 'border-gray-300'
                   }`}
                 >
-                  <option value="">Select Account Number</option>
-                  {MOCK_ACCOUNTS.map((account) => (
-                    <option key={account.id} value={account.accountNumber}>
-                      {account.accountNumber}
+                  <option value="">Select Account</option>
+                  {accounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.account_number}
                     </option>
                   ))}
                 </select>
-                {errors.sai && <p className="text-red-600 text-sm mt-1">{errors.sai}</p>}
-              </div>
-            )}
-
-            {/* RAI - Only show if mode is not Cash */}
-            {formData.modeOfPayment !== 'Cash' && (
-              <div>
-                <label className="block text-gray-700 mb-2">
-                  RAI <span className="text-red-600">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.rai}
-                  onChange={(e) => setFormData({ ...formData, rai: e.target.value })}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    errors.rai ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  placeholder="Enter RAI"
-                />
-                {errors.rai && <p className="text-red-600 text-sm mt-1">{errors.rai}</p>}
+                {errors.sai && (
+                  <p className="text-red-600 text-sm mt-1">{errors.sai}</p>
+                )}
               </div>
             )}
 
@@ -322,10 +559,18 @@ const expenseSubtypes: Record<string, string[]> = {
               </button>
               <button
                 type="submit"
-                className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                disabled={saving || noTypesWarning || noSubtypesWarning}
+                title={
+                  noTypesWarning
+                    ? 'Create an expense type first'
+                    : noSubtypesWarning
+                    ? 'Create a subtype first'
+                    : ''
+                }
+                className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
                 <Save className="w-5 h-5" />
-                Create
+                {saving ? 'Creating...' : 'Create'}
               </button>
             </div>
           </form>
@@ -337,7 +582,7 @@ const expenseSubtypes: Record<string, string[]> = {
         <CreateExpenseTypePopup
           onClose={() => setShowCreateTypePopup(false)}
           onTypeCreated={handleTypeCreatedFromPopup}
-          existingTypes={expenseTypes}
+          existingTypes={expenseTypes.map((t) => t.name)}
         />
       )}
 
@@ -345,11 +590,7 @@ const expenseSubtypes: Record<string, string[]> = {
       {showPopup && (
         <Popup
           title={popupStatus === 'success' ? 'Success' : 'Error'}
-          message={
-            popupStatus === 'success'
-              ? 'Expense successfully added!'
-              : 'Failed to add expense. Please try again.'
-          }
+          message={popupMessage}
           onClose={handlePopupClose}
           type={popupStatus}
         />
