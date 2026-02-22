@@ -1381,7 +1381,63 @@ export async function createExpense(payload: {
 }
 
 /* ------------------------------------------------------------------
-   41. GET CASH ACCOUNT SAI
+   41. GET ORDERS BY DATE RANGE (for Accounts/Income reporting)
+-------------------------------------------------------------------*/
+export async function getOrdersByDateRange(
+  startDate: string,
+  endDate: string
+): Promise<Order[]> {
+  const { data, error } = await supabase
+    .from("orders")
+    .select(`
+      *,
+      customers (
+        name,
+        phone
+      )
+    `)
+    .gte("order_date", startDate)
+    .lte("order_date", endDate)
+    .order("order_date", { ascending: false });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+/* ------------------------------------------------------------------
+   42. GET EXPENSES BY DATE RANGE (for Accounts/Expenses reporting)
+-------------------------------------------------------------------*/
+export async function getExpensesByDateRange(
+  startDate: string,
+  endDate: string
+): Promise<any[]> {
+  const { data, error } = await supabase
+    .from("expenses")
+    .select(`
+      *,
+      expense_types (
+        id,
+        name
+      ),
+      expense_subtypes (
+        id,
+        name
+      ),
+      accounts (
+        id,
+        account_number
+      )
+    `)
+    .gte("expense_date", startDate)
+    .lte("expense_date", endDate)
+    .order("expense_date", { ascending: false });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+/* ------------------------------------------------------------------
+   43. GET CASH ACCOUNT SAI
 -------------------------------------------------------------------*/
 export async function getCashAccount() {
   const { data, error } = await supabase
