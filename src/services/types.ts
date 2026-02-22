@@ -107,6 +107,8 @@ export interface OrderWithLoadmen extends Order {
 
 export interface EmployeeWithCategory extends Employee {
   roles: {
+    id: string;
+    name: string;
     category: EmployeeCategory;
   };
 }

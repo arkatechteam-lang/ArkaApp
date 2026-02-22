@@ -1450,3 +1450,114 @@ export async function getCashAccount() {
   return data;
 }
 
+/* ------------------------------------------------------------------
+   44. GET ACTIVE EMPLOYEES WITH ROLE AND CATEGORY
+-------------------------------------------------------------------*/
+export async function getActiveEmployees(
+  searchTerm: string,
+  page: number
+): Promise<PaginatedResult<EmployeeWithCategory>> {
+  const { from, to } = getRange(page);
+
+  const trimmed = searchTerm?.trim() ?? "";
+
+  let query = supabase
+    .from("employees")
+    .select(
+      `
+      id,
+      name,
+      phone,
+      role_id,
+      active,
+      roles ( id, name, category )
+      `,
+      { count: "exact" }
+    )
+    .eq("active", true);
+
+  /* Apply search only if string is not empty */
+  if (trimmed.length > 0) {
+    query = query.or(
+      `name.ilike.%${trimmed}%,phone.ilike.%${trimmed}%`
+    );
+  }
+
+  query = query
+    .order("created_at", { ascending: false })
+    .range(from, to);
+
+  const { data, count, error } = await query;
+
+  if (error) throw error;
+
+  return {
+    data: (data ?? []) as unknown as EmployeeWithCategory[],
+    total: count ?? 0,
+    hasMore: from + PAGE_SIZE < (count ?? 0),
+  };
+}
+
+/* ------------------------------------------------------------------
+   45. GET INACTIVE EMPLOYEES WITH ROLE AND CATEGORY
+-------------------------------------------------------------------*/
+export async function getInactiveEmployees(
+  searchTerm: string,
+  page: number
+): Promise<PaginatedResult<EmployeeWithCategory>> {
+  const { from, to } = getRange(page);
+
+  const trimmed = searchTerm?.trim() ?? "";
+
+  let query = supabase
+    .from("employees")
+    .select(
+      `
+      id,
+      name,
+      phone,
+      role_id,
+      active,
+      roles ( id, name, category )
+      `,
+      { count: "exact" }
+    )
+    .eq("active", false);
+
+  /* Apply search only if string is not empty */
+  if (trimmed.length > 0) {
+    query = query.or(
+      `name.ilike.%${trimmed}%,phone.ilike.%${trimmed}%`
+    );
+  }
+
+  query = query
+    .order("created_at", { ascending: false })
+    .range(from, to);
+
+  const { data, count, error } = await query;
+
+  if (error) throw error;
+
+  return {
+    data: (data ?? []) as unknown as EmployeeWithCategory[],
+    total: count ?? 0,
+    hasMore: from + PAGE_SIZE < (count ?? 0),
+  };
+}
+
+/* ------------------------------------------------------------------
+   46. UPDATE EMPLOYEE STATUS (ACTIVE/INACTIVE)
+-------------------------------------------------------------------*/
+export async function updateEmployeeStatus(
+  employeeId: string,
+  isActive: boolean
+): Promise<void> {
+  const { error } = await supabase
+    .from("employees")
+    .update({ active: isActive })
+    .eq("id", employeeId);
+
+  if (error) throw error;
+}
+
