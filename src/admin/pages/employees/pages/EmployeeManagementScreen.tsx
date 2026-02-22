@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Plus, Search, Users, Edit2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { ArrowLeft, Plus, Search, Users, Edit2, ToggleLeft, ToggleRight, UserCog, Calendar } from 'lucide-react';
 import { useEmployeeManagement } from '../../../hooks/useEmployeeManagement';
 
 export function EmployeeManagementScreen() {
@@ -69,6 +69,20 @@ export function EmployeeManagementScreen() {
               <p className="text-gray-600 mt-1">Manage employee records and information</p>
             </div>
             <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => goTo('/admin/employees/role-setup')}
+                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors whitespace-nowrap"
+              >
+                <UserCog className="w-5 h-5" />
+                Role & Salary Setup
+              </button>
+              <button
+                onClick={() => goTo('/admin/employees/attendance')}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors whitespace-nowrap"
+              >
+                <Calendar className="w-5 h-5" />
+                Attendance
+              </button>
               <button
                 onClick={() => goTo('/admin/employees/create')}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
