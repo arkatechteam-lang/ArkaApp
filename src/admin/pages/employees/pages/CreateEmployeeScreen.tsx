@@ -1,86 +1,27 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Save } from 'lucide-react';
-import { useAdminNavigation } from '../../../hooks/useAdminNavigation';
+import React from 'react';
+import { ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Popup } from '../../../../components/Popup';
-
-const MOCK_ROLES = [
-  { code: 'DW', name: 'Daily Wages - General', category: 'Daily Wages' },
-  { code: 'FX-MM', name: 'Fixed - Machine Operator', category: 'Fixed Salary' },
-  { code: 'FX-OP', name: 'Fixed - Operator', category: 'Fixed Salary' },
-  { code: 'FX-L', name: 'Fixed - Loadman', category: 'Fixed Salary' },
-  { code: 'FX-L-W', name: 'Fixed - Loadman Worker', category: 'Fixed Salary' },
-  { code: 'FX-L-W-C', name: 'Fixed - Loadman Worker Contractor', category: 'Fixed Salary' },
-  { code: 'DW-D', name: 'Daily Wages - Driver', category: 'Daily Wages' },
-];
+import { useCreateEmployee, CATEGORY_LABELS } from '../../../hooks/useCreateEmployee';
 
 export function CreateEmployeeScreen() {
-  const { goBack, goTo } = useAdminNavigation();
+  const {
+    createEmployeeInput,
+    updateCreateEmployeeInput,
+    selectedRole,
+    roles,
+    rolesLoading,
+    errors,
+    showSuccessPopup,
+    showFailurePopup,
+    loading,
+    handleCreate,
+    handleSuccessClose,
+    handleFailureClose,
+    goBack,
+  } = useCreateEmployee();
 
-  const [formData, setFormData] = useState({
-    name: '',
-    phoneNumber: '',
-    alternatePhone: '',
-    bloodGroup: '',
-    aadharNumber: '',
-    permanentAddress: '',
-    localAddress: '',
-    role: '',
-    category: '',
-    emergencyContactName: '',
-    emergencyContactNumber: '',
-  });
-
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [showPopup, setShowPopup] = useState(false);
-  const [popupStatus, setPopupStatus] = useState<'success' | 'error'>('success');
-
-  const handleRoleChange = (roleCode: string) => {
-    const selectedRole = MOCK_ROLES.find(r => r.code === roleCode);
-    setFormData({
-      ...formData,
-      role: roleCode,
-      category: selectedRole?.category || '',
-    });
-  };
-
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.name.trim()) newErrors.name = 'Employee name is required';
-    if (!formData.phoneNumber.trim()) {
-      newErrors.phoneNumber = 'Phone number is required';
-    } else if (!/^[0-9]{10}$/.test(formData.phoneNumber)) {
-      newErrors.phoneNumber = 'Phone number must be 10 digits';
-    }
-    if (!formData.bloodGroup.trim()) newErrors.bloodGroup = 'Blood group is required';
-    if (!formData.aadharNumber.trim()) {
-      newErrors.aadharNumber = 'Aadhar number is required';
-    } else if (!/^[0-9]{12}$/.test(formData.aadharNumber.replace(/[-\s]/g, ''))) {
-      newErrors.aadharNumber = 'Aadhar number must be 12 digits';
-    }
-    if (!formData.permanentAddress.trim()) newErrors.permanentAddress = 'Permanent address is required';
-    if (!formData.role) newErrors.role = 'Employee role is required';
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (validateForm()) {
-      const success = Math.random() > 0.1;
-      setPopupStatus(success ? 'success' : 'error');
-      setShowPopup(true);
-    }
-  };
-
-  const handlePopupClose = () => {
-    setShowPopup(false);
-    if (popupStatus === 'success') {
-      goBack('/admin/employees');
-    }
-  };
+  const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -99,26 +40,24 @@ export function CreateEmployeeScreen() {
         </div>
 
         {/* Form */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="bg-white rounded-lg shadow-lg p-6 sm:p-8">
+          <div className="space-y-6">
             {/* Employee Name */}
             <div>
-              <label className="block text-gray-700 mb-2">
+              <label htmlFor="employeeName" className="block text-gray-700 mb-2">
                 Employee Name <span className="text-red-600">*</span>
               </label>
               <input
+                id="employeeName"
                 type="text"
-                value={formData.name}
+                value={createEmployeeInput.name}
                 onChange={(e) => {
                   const value = e.target.value;
-                  // Only allow letters and spaces
                   if (/^[a-zA-Z\s]*$/.test(value)) {
-                    setFormData({ ...formData, name: value });
+                    updateCreateEmployeeInput('name', value);
                   }
                 }}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  errors.name ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 placeholder="Enter employee name"
               />
               {errors.name && <p className="text-red-600 text-sm mt-1">{errors.name}</p>}
@@ -127,61 +66,60 @@ export function CreateEmployeeScreen() {
             {/* Phone Numbers */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-gray-700 mb-2">
+                <label htmlFor="phoneNumber" className="block text-gray-700 mb-2">
                   Phone Number <span className="text-red-600">*</span>
                 </label>
                 <input
+                  id="phoneNumber"
                   type="tel"
-                  value={formData.phoneNumber}
+                  value={createEmployeeInput.phone}
                   onChange={(e) => {
                     const value = e.target.value;
-                    // Only allow digits and limit to 10
                     if (/^\d*$/.test(value) && value.length <= 10) {
-                      setFormData({ ...formData, phoneNumber: value });
+                      updateCreateEmployeeInput('phone', value);
                     }
                   }}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    errors.phoneNumber ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                   maxLength={10}
                   placeholder="Enter 10-digit phone number"
                 />
-                {errors.phoneNumber && <p className="text-red-600 text-sm mt-1">{errors.phoneNumber}</p>}
+                {errors.phone && <p className="text-red-600 text-sm mt-1">{errors.phone}</p>}
               </div>
 
               <div>
-                <label className="block text-gray-700 mb-2">Alternate Phone</label>
+                <label htmlFor="alternatePhone" className="block text-gray-700 mb-2">
+                  Alternate Phone <span className="text-gray-500 text-sm">(Optional)</span>
+                </label>
                 <input
+                  id="alternatePhone"
                   type="tel"
-                  value={formData.alternatePhone}
+                  value={createEmployeeInput.alternate_phone || ''}
                   onChange={(e) => {
                     const value = e.target.value;
-                    // Only allow digits and limit to 10
                     if (/^\d*$/.test(value) && value.length <= 10) {
-                      setFormData({ ...formData, alternatePhone: value });
+                      updateCreateEmployeeInput('alternate_phone', value || null);
                     }
                   }}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    errors.alternatePhone ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                   maxLength={10}
                   placeholder="Enter 10-digit phone number"
                 />
-                {errors.alternatePhone && <p className="text-red-600 text-sm mt-1">{errors.alternatePhone}</p>}
+                {errors.alternate_phone && (
+                  <p className="text-red-600 text-sm mt-1">{errors.alternate_phone}</p>
+                )}
               </div>
             </div>
 
             {/* Blood Group */}
             <div>
-              <label className="block text-gray-700 mb-2">
+              <label htmlFor="bloodGroup" className="block text-gray-700 mb-2">
                 Blood Group <span className="text-red-600">*</span>
               </label>
               <select
-                value={formData.bloodGroup}
-                onChange={(e) => setFormData({ ...formData, bloodGroup: e.target.value })}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  errors.bloodGroup ? 'border-red-500' : 'border-gray-300'
-                }`}
+                id="bloodGroup"
+                value={createEmployeeInput.blood_group}
+                onChange={(e) => updateCreateEmployeeInput('blood_group', e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
               >
                 <option value="">Select blood group</option>
                 <option value="A+">A+</option>
@@ -193,163 +131,202 @@ export function CreateEmployeeScreen() {
                 <option value="O+">O+</option>
                 <option value="O-">O-</option>
               </select>
-              {errors.bloodGroup && <p className="text-red-600 text-sm mt-1">{errors.bloodGroup}</p>}
+              {errors.blood_group && <p className="text-red-600 text-sm mt-1">{errors.blood_group}</p>}
             </div>
 
             {/* Aadhar Number */}
             <div>
-              <label className="block text-gray-700 mb-2">
+              <label htmlFor="aadharNumber" className="block text-gray-700 mb-2">
                 Aadhar Number <span className="text-red-600">*</span>
               </label>
               <input
+                id="aadharNumber"
                 type="text"
-                value={formData.aadharNumber}
-                onChange={(e) => setFormData({ ...formData, aadharNumber: e.target.value })}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  errors.aadharNumber ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="12-digit Aadhar number"
+                value={createEmployeeInput.aadhar_number}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (/^\d*$/.test(value) && value.length <= 12) {
+                    updateCreateEmployeeInput('aadhar_number', value);
+                  }
+                }}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 maxLength={12}
+                placeholder="Enter 12-digit Aadhar number"
               />
-              {errors.aadharNumber && <p className="text-red-600 text-sm mt-1">{errors.aadharNumber}</p>}
+              {errors.aadhar_number && (
+                <p className="text-red-600 text-sm mt-1">{errors.aadhar_number}</p>
+              )}
             </div>
 
             {/* Permanent Address */}
             <div>
-              <label className="block text-gray-700 mb-2">
+              <label htmlFor="permanentAddress" className="block text-gray-700 mb-2">
                 Permanent Address <span className="text-red-600">*</span>
               </label>
               <textarea
-                value={formData.permanentAddress}
-                onChange={(e) => setFormData({ ...formData, permanentAddress: e.target.value })}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  errors.permanentAddress ? 'border-red-500' : 'border-gray-300'
-                }`}
+                id="permanentAddress"
+                value={createEmployeeInput.permanent_address}
+                onChange={(e) => updateCreateEmployeeInput('permanent_address', e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 rows={3}
                 placeholder="Enter permanent address"
               />
-              {errors.permanentAddress && <p className="text-red-600 text-sm mt-1">{errors.permanentAddress}</p>}
+              {errors.permanent_address && (
+                <p className="text-red-600 text-sm mt-1">{errors.permanent_address}</p>
+              )}
             </div>
 
             {/* Local Address */}
             <div>
-              <label className="block text-gray-700 mb-2">Local Address</label>
+              <label htmlFor="localAddress" className="block text-gray-700 mb-2">
+                Local Address <span className="text-gray-500 text-sm">(Optional)</span>
+              </label>
               <textarea
-                value={formData.localAddress}
-                onChange={(e) => setFormData({ ...formData, localAddress: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                id="localAddress"
+                value={createEmployeeInput.local_address || ''}
+                onChange={(e) =>
+                  updateCreateEmployeeInput('local_address', e.target.value || null)
+                }
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 rows={3}
-                placeholder="Enter local address (optional)"
+                placeholder="Enter local address"
               />
             </div>
 
             {/* Employee Role */}
             <div>
-              <label className="block text-gray-700 mb-2">
+              <label htmlFor="employeeRole" className="block text-gray-700 mb-2">
                 Employee Role <span className="text-red-600">*</span>
               </label>
-              <div className="flex items-center gap-2">
-                <select
-                  value={formData.role}
-                  onChange={(e) => handleRoleChange(e.target.value)}
-                  className={`flex-1 px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    errors.role ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                >
-                  <option value="">Select role</option>
-                  {MOCK_ROLES.map(role => (
-                    <option key={role.code} value={role.code}>{role.name}</option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={() => goTo('/admin/role-setup')}
-                  className="text-blue-600 hover:text-blue-700 text-sm whitespace-nowrap underline"
-                >
-                  Create New Role
-                </button>
-              </div>
-              {errors.role && <p className="text-red-600 text-sm mt-1">{errors.role}</p>}
+              {rolesLoading ? (
+                <p className="text-gray-500 text-sm">Loading roles...</p>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <select
+                    id="employeeRole"
+                    value={createEmployeeInput.role_id}
+                    onChange={(e) => updateCreateEmployeeInput('role_id', e.target.value)}
+                    className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  >
+                    <option value="">Select role</option>
+                    {roles.map(role => (
+                      <option key={role.id} value={role.id}>
+                        {role.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/admin/employees/role-setup')}
+                    className="text-blue-600 hover:text-blue-700 text-sm whitespace-nowrap underline"
+                  >
+                    Create New Role
+                  </button>
+                </div>
+              )}
+              {errors.role_id && <p className="text-red-600 text-sm mt-1">{errors.role_id}</p>}
             </div>
 
             {/* Category (Auto-filled) */}
             <div>
-              <label className="block text-gray-700 mb-2">Category</label>
+              <label htmlFor="category" className="block text-gray-700 mb-2">
+                Category
+              </label>
               <input
+                id="category"
                 type="text"
-                value={formData.category}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
+                value={selectedRole ? CATEGORY_LABELS[selectedRole.category] ?? selectedRole.category : ''}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed outline-none"
                 disabled
-                placeholder="Auto-filled based on role"
+                placeholder="Auto-filled based on selected role"
               />
             </div>
 
             {/* Emergency Contact */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-gray-700 mb-2">Emergency Contact Name</label>
+                <label htmlFor="emergencyContactName" className="block text-gray-700 mb-2">
+                  Emergency Contact Name <span className="text-gray-500 text-sm">(Optional)</span>
+                </label>
                 <input
+                  id="emergencyContactName"
                   type="text"
-                  value={formData.emergencyContactName}
-                  onChange={(e) => setFormData({ ...formData, emergencyContactName: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  value={createEmployeeInput.emergency_contact_name || ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (/^[a-zA-Z\s]*$/.test(value)) {
+                      updateCreateEmployeeInput('emergency_contact_name', value || null);
+                    }
+                  }}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                   placeholder="Enter emergency contact name"
                 />
               </div>
 
               <div>
-                <label className="block text-gray-700 mb-2">Emergency Contact Number</label>
+                <label htmlFor="emergencyContactPhone" className="block text-gray-700 mb-2">
+                  Emergency Contact Number <span className="text-gray-500 text-sm">(Optional)</span>
+                </label>
                 <input
+                  id="emergencyContactPhone"
                   type="tel"
-                  value={formData.emergencyContactNumber}
+                  value={createEmployeeInput.emergency_contact_phone || ''}
                   onChange={(e) => {
                     const value = e.target.value;
-                    // Only allow digits and limit to 10
                     if (/^\d*$/.test(value) && value.length <= 10) {
-                      setFormData({ ...formData, emergencyContactNumber: value });
+                      updateCreateEmployeeInput('emergency_contact_phone', value || null);
                     }
                   }}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                   maxLength={10}
                   placeholder="Enter 10-digit phone number"
                 />
+                {errors.emergency_contact_phone && (
+                  <p className="text-red-600 text-sm mt-1">{errors.emergency_contact_phone}</p>
+                )}
               </div>
             </div>
 
-            {/* Submit Button */}
-            <div className="flex gap-4">
-              <button
-                type="submit"
-                className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <Save className="w-5 h-5" />
-                Create Employee
-              </button>
+            {/* Buttons */}
+            <div className="flex gap-3 pt-4">
               <button
                 type="button"
                 onClick={() => goBack('/admin/employees')}
-                className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Cancel
               </button>
+              <button
+                type="button"
+                onClick={handleCreate}
+                disabled={loading}
+                className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Creating...' : 'Create'}
+              </button>
             </div>
-          </form>
+          </div>
         </div>
       </div>
 
-      {/* Popup */}
-      {showPopup && (
+      {/* Success Popup */}
+      {showSuccessPopup && (
         <Popup
-          title={popupStatus === 'success' ? 'Success' : 'Error'}
-          message={
-            popupStatus === 'success'
-              ? 'Employee created successfully!'
-              : 'Failed to create employee. Please try again.'
-          }
-          onClose={handlePopupClose}
-          type={popupStatus}
+          title="Employee Created Successfully"
+          message="The employee has been created successfully."
+          onClose={handleSuccessClose}
+          type="success"
+        />
+      )}
+
+      {/* Failure Popup */}
+      {showFailurePopup && (
+        <Popup
+          title="Creation Failed"
+          message={errors.form || 'Failed to create employee. Please try again.'}
+          onClose={handleFailureClose}
+          type="error"
         />
       )}
     </div>
-  );
-}
+  );}

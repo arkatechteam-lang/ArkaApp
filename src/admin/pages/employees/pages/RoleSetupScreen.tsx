@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RoleSalarySetupScreen } from '../../../../components/admin/RoleSalarySetupScreen';
-import { CreateRoleScreen } from '../../../../components/admin/CreateRoleScreen';
+import { CreateRoleScreen } from './CreateRoleScreen';
 import { EditRoleScreen } from '../../../../components/admin/EditRoleScreen';
 import type { AdminScreen, Role } from '../../../../AdminApp';
 
