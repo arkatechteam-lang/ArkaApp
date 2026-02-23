@@ -3,34 +3,32 @@ import { ArrowLeft, X } from 'lucide-react';
 
 import { Popup } from '../../../../components/Popup';
 import { useAdminNavigation } from '../../../hooks/useAdminNavigation';
-
-
-interface UnapprovedProcurement {
-  id: string;
-  material: string;
-  date: string;
-  vendor: string;
-  quantityValue: number;
-  quantityUnit: string;
-}
-
-const UNAPPROVED_PROCUREMENTS: UnapprovedProcurement[] = [
-  { id: 'UP-001', material: 'Wet Ash', date: '2025-12-09', vendor: 'ABC Suppliers', quantityValue: 4, quantityUnit: 'tons' },
-  { id: 'UP-002', material: 'Marble Powder', date: '2025-12-09', vendor: 'Stone Suppliers', quantityValue: 2, quantityUnit: 'tons' },
-  { id: 'UP-003', material: 'Fly Ash', date: '2025-12-08', vendor: 'XYZ Materials', quantityValue: 3.5, quantityUnit: 'tons' },
-];
+import { useAllUnapprovedProcurements } from '../../../hooks/useProcurementsWithFilters';
+import { approveProcurement } from '../../../../services/middleware.service';
+import { ProcurementWithDetails } from '../../../../services/middleware.service';
 
 export function UnapprovedProcurementsScreen() {
-  const {goBack,goTo} = useAdminNavigation();
-  const [selectedProcurement, setSelectedProcurement] = useState<UnapprovedProcurement | null>(null);
+  const {goBack} = useAdminNavigation();
+  const [selectedProcurement, setSelectedProcurement] = useState<ProcurementWithDetails | null>(null);
   const [rate, setRate] = useState('');
   const [showApprovalPopup, setShowApprovalPopup] = useState(false);
   const [showRejectionPopup, setShowRejectionPopup] = useState(false);
   const [approvalMessage, setApprovalMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleToggleClick = (procurement: UnapprovedProcurement) => {
+  // Fetch ALL unapproved procurements (no date filter)
+  const { 
+    procurements, 
+    loading, 
+    error, 
+    showError, 
+    closeError, 
+    refetch 
+  } = useAllUnapprovedProcurements();
+
+  const handleToggleClick = (procurement: ProcurementWithDetails) => {
     setSelectedProcurement(procurement);
-    setRate(''); // Reset rate when opening modal
+    setRate('');
   };
 
   const handleCloseModal = () => {
@@ -38,18 +36,35 @@ export function UnapprovedProcurementsScreen() {
     setRate('');
   };
 
-  const handleApprove = () => {
-    if (selectedProcurement && rate) {
-      setApprovalMessage(`Procurement ${selectedProcurement.id} has been approved successfully.`);
-      setShowApprovalPopup(true);
-      setSelectedProcurement(null);
-      setRate('');
+  const handleApprove = async () => {
+    if (selectedProcurement && rate && !isSubmitting) {
+      setIsSubmitting(true);
+      try {
+        const totalPrice = calculateTotalPrice();
+        await approveProcurement(selectedProcurement.id, parseFloat(rate), parseFloat(totalPrice));
+        
+        setApprovalMessage(`Procurement has been approved successfully.`);
+        setShowApprovalPopup(true);
+        setSelectedProcurement(null);
+        setRate('');
+        
+        // Refetch the procurements list to remove the approved item
+        if (refetch) {
+          await refetch();
+        }
+      } catch (err) {
+        console.error('Failed to approve procurement', err);
+        setApprovalMessage('Failed to approve procurement. Please try again.');
+        setShowApprovalPopup(true);
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
   const handleReject = () => {
     if (selectedProcurement) {
-      setApprovalMessage(`Procurement ${selectedProcurement.id} has been rejected and removed.`);
+      setApprovalMessage(`Procurement has been rejected.`);
       setShowRejectionPopup(true);
       setSelectedProcurement(null);
       setRate('');
@@ -63,7 +78,64 @@ export function UnapprovedProcurementsScreen() {
     
     if (isNaN(rateValue)) return '0.00';
     
-    return (selectedProcurement.quantityValue * rateValue).toFixed(2);
+    return (selectedProcurement.quantity * rateValue).toFixed(2);
+  };
+
+  const getDisplayUnit = () => {
+    const materialName = getMaterialName().toLowerCase();
+    
+    if (materialName.includes('cement')) {
+      return 'Bags';
+    } else if (materialName.includes('crusher')) {
+      return 'Units';
+    }
+    // Wet Ash, Marble Powder, Fly Ash
+    return 'Tons';
+  };
+
+  const getPriceLabel = () => {
+    const materialName = getMaterialName().toLowerCase();
+    
+    if (materialName.includes('cement')) {
+      return 'Price per Bag';
+    } else if (materialName.includes('crusher')) {
+      return 'Price per Unit';
+    }
+    // Wet Ash, Marble Powder, Fly Ash
+    return 'Price per Ton';
+  };
+
+  const getMaterialName = () => {
+    if (selectedProcurement?.materials) {
+      // Handle both object and array cases
+      const material = Array.isArray(selectedProcurement.materials) 
+        ? selectedProcurement.materials[0] 
+        : selectedProcurement.materials;
+      return material.name || 'N/A';
+    }
+    return 'N/A';
+  };
+
+  const getMaterialUnit = () => {
+    if (selectedProcurement?.materials) {
+      // Handle both object and array cases
+      const material = Array.isArray(selectedProcurement.materials) 
+        ? selectedProcurement.materials[0] 
+        : selectedProcurement.materials;
+      return material?.unit || '';
+    }
+    return '';
+  };
+
+  const getVendorName = () => {
+    if (selectedProcurement?.vendors) {
+      // Handle both object and array cases
+      const vendor = Array.isArray(selectedProcurement.vendors) 
+        ? selectedProcurement.vendors[0] 
+        : selectedProcurement.vendors;
+      return vendor?.name || 'N/A';
+    }
+    return 'N/A';
   };
 
   return (
@@ -88,44 +160,54 @@ export function UnapprovedProcurementsScreen() {
         {/* Procurement List */}
         <div className="bg-white rounded-lg shadow-lg">
           <div className="p-6">
-            <div className="space-y-4">
-              {UNAPPROVED_PROCUREMENTS.map((procurement) => (
-                <div
-                  key={procurement.id}
-                  className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50"
-                >
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 flex-1">
-                      <div>
-                        <p className="text-gray-500 text-sm">Material</p>
-                        <p className="text-gray-900">{procurement.material}</p>
+            {loading ? (
+              <div className="text-center py-8">
+                <p className="text-gray-600">Loading procurements...</p>
+              </div>
+            ) : procurements.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-600">No unapproved procurements for this period</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {procurements.map((procurement) => (
+                  <div
+                    key={procurement.id}
+                    className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50"
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 flex-1">
+                        <div>
+                          <p className="text-gray-500 text-sm">Material</p>
+                          <p className="text-gray-900">{procurement.materials?.name ? procurement.materials.name : 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500 text-sm">Date</p>
+                          <p className="text-gray-900">{new Date(procurement.date).toLocaleDateString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500 text-sm">Vendor</p>
+                          <p className="text-gray-900">{procurement.vendors?.name ? procurement.vendors.name : 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500 text-sm">Quantity</p>
+                          <p className="text-gray-900">{procurement.quantity} {procurement.materials?.unit || ''}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-gray-500 text-sm">Date</p>
-                        <p className="text-gray-900">{new Date(procurement.date).toLocaleDateString()}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500 text-sm">Vendor</p>
-                        <p className="text-gray-900">{procurement.vendor}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500 text-sm">Quantity</p>
-                        <p className="text-gray-900">{procurement.quantityValue} {procurement.quantityUnit}</p>
-                      </div>
-                    </div>
 
-                    {/* Toggle Button */}
-                    <button
-                      onClick={() => handleToggleClick(procurement)}
-                      className="relative inline-flex items-center h-6 w-11 rounded-full bg-gray-300 transition-colors hover:bg-gray-400"
-                      aria-label="Approve procurement"
-                    >
-                      <span className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1" />
-                    </button>
+                      {/* Toggle Button */}
+                      <button
+                        onClick={() => handleToggleClick(procurement)}
+                        className="relative inline-flex items-center h-6 w-11 rounded-full bg-gray-300 transition-colors hover:bg-gray-400"
+                        aria-label="Approve procurement"
+                      >
+                        <span className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform translate-x-1" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -151,7 +233,7 @@ export function UnapprovedProcurementsScreen() {
                 <label className="block text-gray-700 mb-2">Material</label>
                 <input
                   type="text"
-                  value={selectedProcurement.material}
+                  value={getMaterialName()}
                   disabled
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
                 />
@@ -162,7 +244,7 @@ export function UnapprovedProcurementsScreen() {
                 <label className="block text-gray-700 mb-2">Date</label>
                 <input
                   type="text"
-                  value={new Date(selectedProcurement.date).toLocaleDateString()}
+                  value={selectedProcurement ? new Date(selectedProcurement.date).toLocaleDateString() : ''}
                   disabled
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
                 />
@@ -173,7 +255,7 @@ export function UnapprovedProcurementsScreen() {
                 <label className="block text-gray-700 mb-2">Vendor</label>
                 <input
                   type="text"
-                  value={selectedProcurement.vendor}
+                  value={getVendorName()}
                   disabled
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
                 />
@@ -184,7 +266,7 @@ export function UnapprovedProcurementsScreen() {
                 <label className="block text-gray-700 mb-2">Quantity</label>
                 <input
                   type="text"
-                  value={`${selectedProcurement.quantityValue} ${selectedProcurement.quantityUnit}`}
+                  value={selectedProcurement ? `${selectedProcurement.quantity} ${getDisplayUnit()}` : ''}
                   disabled
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
                 />
@@ -193,18 +275,23 @@ export function UnapprovedProcurementsScreen() {
               {/* Rate - Input field */}
               <div>
                 <label htmlFor="rate" className="block text-gray-700 mb-2">
-                  Rate (per unit) <span className="text-red-600">*</span>
+                  {getPriceLabel()} <span className="text-red-600">*</span>
                 </label>
-                <input
-                  id="rate"
-                  type="number"
-                  value={rate}
-                  onChange={(e) => setRate(e.target.value)}
-                  placeholder="Enter rate per unit"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                  step="0.01"
-                  min="0.01"
-                />
+                <div className="flex gap-2">
+                  <span className="inline-flex items-center px-3 py-3 bg-gray-100 border border-gray-300 border-r-0 rounded-l-lg text-gray-700">
+                    ₹
+                  </span>
+                  <input
+                    id="rate"
+                    type="number"
+                    value={rate}
+                    onChange={(e) => setRate(e.target.value)}
+                    placeholder={`Enter price per ${getDisplayUnit().toLowerCase()}`}
+                    className="flex-1 px-4 py-3 border border-gray-300 rounded-r-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                    step="0.01"
+                    min="0.01"
+                  />
+                </div>
               </div>
 
               {/* Total Price - Calculated */}
@@ -228,14 +315,14 @@ export function UnapprovedProcurementsScreen() {
                 </button>
                 <button
                   onClick={handleApprove}
-                  disabled={!rate}
+                  disabled={!rate || isSubmitting}
                   className={`px-6 py-2 rounded-lg transition-colors ${
-                    rate
+                    rate && !isSubmitting
                       ? 'bg-green-600 text-white hover:bg-green-700'
                       : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   }`}
                 >
-                  Approve
+                  {isSubmitting ? 'Approving...' : 'Approve'}
                 </button>
               </div>
             </div>
@@ -259,6 +346,16 @@ export function UnapprovedProcurementsScreen() {
           title="Procurement Rejected"
           message={approvalMessage}
           onClose={() => setShowRejectionPopup(false)}
+          type="error"
+        />
+      )}
+
+      {/* Error Popup */}
+      {showError && error && (
+        <Popup
+          title="Error"
+          message={error}
+          onClose={closeError}
           type="error"
         />
       )}
