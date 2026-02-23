@@ -185,6 +185,18 @@ export async function createProductionEntry(
   });
 
   if (error) throw error;
+
+  // Update product inventory with the bricks quantity
+  await updateProductInventory(input.bricks);
+
+  // Reduce raw materials from inventory stock
+  await reduceInventoryStock(
+    input.wetAsh,
+    input.marblePowder,
+    input.crusherPowder,
+    input.flyAsh,
+    input.cement
+  );
 }
 
 /* ------------------------------------------------------------------
@@ -1792,11 +1804,11 @@ export async function getInventoryStockForMaterial(materialId: string): Promise<
   return data ?? null;
 }
 
-/**
+/**------------------------------------------------------------------------------
  * 47.8 Get all approved procurements
  * Fetch all procurements that have been approved with material and vendor details
  * Used in InventoryManagementScreen - Procurement tab
- */
+------------------------------------------------------------------------------ */
 export async function getProcurements(): Promise<any[]> {
   const { data, error } = await supabase
     .from("procurements")
@@ -1824,11 +1836,11 @@ export async function getProcurements(): Promise<any[]> {
   return data ?? [];
 }
 
-/**
+/**------------------------------------------------------------------------------
  * 47.9 Get all production entries
  * Fetch all production entries with material usage details
  * Used in InventoryManagementScreen - Usage tab
- */
+------------------------------------------------------------------------------*/
 export async function getProductionEntries(): Promise<any[]> {
   const { data, error } = await supabase
     .from("production_entries")
@@ -1852,4 +1864,154 @@ export async function getProductionEntries(): Promise<any[]> {
     throw error;
   }
   return data ?? [];
+}
+
+/**------------------------------------------------------------------------------
+ * 48.0 Get product inventory (Bricks)
+ * Fetch the current bricks quantity from product_inventory table
+ * Used in InventoryManagementScreen to display bricks ready count
+ ------------------------------------------------------------------------------*/
+export async function getProductInventory(): Promise<any> {
+  const { data, error } = await supabase
+    .from("product_inventory")
+    .select("id, product_type, quantity, updated_at")
+    .eq("product_type", "BRICKS")
+    .single();
+
+  if (error && error.code !== "PGRST116") {
+    // PGRST116 is "no rows returned" error, return default
+    console.error("Error fetching product inventory:", error);
+    throw error;
+  }
+
+  // Return data or default if no record exists
+  return data ?? { id: null, product_type: "BRICKS", quantity: 0, updated_at: null };
+}
+
+/**------------------------------------------------------------------------------
+ * 48.1 Update product inventory (Bricks)
+ * When an employee submits a production entry, update the product_inventory table
+ * Increments the quantity of bricks and updates the updated_at timestamp
+ * Used in ProductionEntry form submission
+ ------------------------------------------------------------------------------*/
+export async function updateProductInventory(quantity: number): Promise<void> {
+  try {
+    // First, try to fetch the existing BRICKS record
+    const { data: existingData, error: fetchError } = await supabase
+      .from("product_inventory")
+      .select("id, quantity")
+      .eq("product_type", "BRICKS")
+      .single();
+
+    if (fetchError && fetchError.code !== "PGRST116") {
+      // PGRST116 is "no rows returned" error, which is okay
+      throw fetchError;
+    }
+
+    if (existingData) {
+      // Update existing record
+      const { error: updateError } = await supabase
+        .from("product_inventory")
+        .update({
+          quantity: existingData.quantity + quantity,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existingData.id);
+
+      if (updateError) throw updateError;
+    } else {
+      // Insert new record if it doesn't exist
+      const { error: insertError } = await supabase
+        .from("product_inventory")
+        .insert({
+          product_type: "BRICKS",
+          quantity: quantity,
+          updated_at: new Date().toISOString(),
+        });
+
+      if (insertError) throw insertError;
+    }
+  } catch (error) {
+    console.error("Error updating product inventory:", error);
+    throw error;
+  }
+}
+
+/**------------------------------------------------------------------------------
+ * 48.2 Reduce inventory stock for raw materials used in production
+ * When an employee submits a production entry, reduce the used materials from inventory_stock
+ * Cement: converted from bags to KG (1 bag = 50 kg)
+ * Other materials: already in KG
+ * Used in ProductionEntry form submission
+ ------------------------------------------------------------------------------*/
+export async function reduceInventoryStock(
+  wetAshKg: number,
+  marblePowderKg: number,
+  crusherPowderKg: number,
+  flyAshKg: number,
+  cementBags: number
+): Promise<void> {
+  try {
+    // Convert cement from bags to KG (1 bag = 50 kg)
+    const cementKg = cementBags * 50;
+
+    // Get all materials to find their IDs
+    const materials = await getMaterials();
+
+    // Find material IDs by name
+    const wetAshMaterial = materials.find(m => m.name.toLowerCase().includes('wet ash'));
+    const marbleMaterial = materials.find(m => m.name.toLowerCase().includes('marble'));
+    const crusherMaterial = materials.find(m => m.name.toLowerCase().includes('crusher'));
+    const flyAshMaterial = materials.find(m => m.name.toLowerCase().includes('fly ash'));
+    const cementMaterial = materials.find(m => m.name.toLowerCase().includes('cement'));
+
+    // Array of material reductions to process
+    const reductions = [
+      { materialId: wetAshMaterial?.id, quantity: wetAshKg, name: 'Wet Ash' },
+      { materialId: marbleMaterial?.id, quantity: marblePowderKg, name: 'Marble Powder' },
+      { materialId: crusherMaterial?.id, quantity: crusherPowderKg, name: 'Crusher Powder' },
+      { materialId: flyAshMaterial?.id, quantity: flyAshKg, name: 'Fly Ash' },
+      { materialId: cementMaterial?.id, quantity: cementKg, name: 'Cement' },
+    ];
+
+    // Process each material reduction
+    for (const reduction of reductions) {
+      if (!reduction.materialId || reduction.quantity <= 0) continue;
+
+      // Fetch current stock
+      const { data: currentStock, error: fetchError } = await supabase
+        .from("inventory_stock")
+        .select("quantity")
+        .eq("material_id", reduction.materialId)
+        .single();
+
+      if (fetchError && fetchError.code !== "PGRST116") {
+        console.error(`Error fetching ${reduction.name} stock:`, fetchError);
+        throw fetchError;
+      }
+
+      if (currentStock) {
+        // Reduce the quantity
+        const newQuantity = Math.max(0, currentStock.quantity - reduction.quantity);
+        const { error: updateError } = await supabase
+          .from("inventory_stock")
+          .update({
+            quantity: newQuantity,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("material_id", reduction.materialId);
+
+        if (updateError) {
+          console.error(`Error updating ${reduction.name} stock:`, updateError);
+          throw updateError;
+        }
+      } else {
+        // If no stock exists, log warning but don't fail
+        console.warn(`No inventory stock found for ${reduction.name} (ID: ${reduction.materialId})`);
+      }
+    }
+  } catch (error) {
+    console.error("Error reducing inventory stock:", error);
+    throw error;
+  }
 }

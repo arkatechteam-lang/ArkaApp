@@ -6,21 +6,12 @@ import { useProcurementsCountWithFilter } from '../../../hooks/useProcurementsWi
 import { useAllInventoryStock } from '../../../hooks/useInventoryStock';
 import { useProcurements } from '../../../hooks/useProcurements';
 import { useProductionEntries } from '../../../hooks/useProductionEntries';
+import { useProductInventory } from '../../../hooks/useProductInventory';
 
 type FilterType = 'Current month' | 'Last month' | 'Last year' | 'Custom range';
 type TabType = 'Procurement' | 'Usage' | 'Adjustments';
 type MaterialFilter = 'All' | 'Wet Ash' | 'Marble Powder' | 'Crusher Powder' | 'Fly Ash' | 'Cement';
 
-interface UsageEntry {
-  date: string;
-  bricks: number;
-  round: number;
-  wetAshKg: number;
-  marblePowderKg: number;
-  crusherPowderKg: number;
-  flyAshKg: number;
-  cementKg: number;
-}
 
 interface AdjustmentEntry {
   date: string;
@@ -31,22 +22,6 @@ interface AdjustmentEntry {
   flyAshKg: { actual: number; adjustment: number };
   cementKg: { actual: number; adjustment: number };
 }
-
-// Mock data for Usage
-const USAGE_DATA: UsageEntry[] = [
-  { date: '2025-12-27', bricks: 22100, round: 6, wetAshKg: 3000, marblePowderKg: 1800, crusherPowderKg: 2200, flyAshKg: 2700, cementKg: 900 },
-  { date: '2025-12-26', bricks: 23500, round: 6, wetAshKg: 3200, marblePowderKg: 1900, crusherPowderKg: 2300, flyAshKg: 2900, cementKg: 950 },
-  { date: '2025-12-25', bricks: 19500, round: 5, wetAshKg: 2600, marblePowderKg: 1600, crusherPowderKg: 1900, flyAshKg: 2400, cementKg: 800 },
-  { date: '2025-12-24', bricks: 21700, round: 6, wetAshKg: 2900, marblePowderKg: 1750, crusherPowderKg: 2100, flyAshKg: 2650, cementKg: 880 },
-  { date: '2025-12-23', bricks: 22300, round: 6, wetAshKg: 3050, marblePowderKg: 1820, crusherPowderKg: 2180, flyAshKg: 2750, cementKg: 920 },
-  { date: '2025-12-22', bricks: 24000, round: 6, wetAshKg: 3300, marblePowderKg: 1950, crusherPowderKg: 2350, flyAshKg: 2950, cementKg: 980 },
-  { date: '2025-12-21', bricks: 20900, round: 5, wetAshKg: 2800, marblePowderKg: 1700, crusherPowderKg: 2050, flyAshKg: 2550, cementKg: 850 },
-  { date: '2025-12-20', bricks: 22800, round: 6, wetAshKg: 3100, marblePowderKg: 1850, crusherPowderKg: 2220, flyAshKg: 2800, cementKg: 930 },
-  { date: '2025-12-19', bricks: 21200, round: 5, wetAshKg: 2850, marblePowderKg: 1720, crusherPowderKg: 2080, flyAshKg: 2600, cementKg: 870 },
-  { date: '2025-12-18', bricks: 23000, round: 6, wetAshKg: 3150, marblePowderKg: 1880, crusherPowderKg: 2250, flyAshKg: 2850, cementKg: 950 },
-  { date: '2025-12-17', bricks: 20300, round: 5, wetAshKg: 2750, marblePowderKg: 1650, crusherPowderKg: 1980, flyAshKg: 2500, cementKg: 830 },
-  { date: '2025-12-16', bricks: 21800, round: 6, wetAshKg: 2950, marblePowderKg: 1780, crusherPowderKg: 2150, flyAshKg: 2680, cementKg: 890 },
-];
 
 const ADJUSTMENT_DATA: AdjustmentEntry[] = [
   { 
@@ -78,16 +53,6 @@ const ADJUSTMENT_DATA: AdjustmentEntry[] = [
   },
 ];
 
-// Current inventory metrics
-const INVENTORY_METRICS = {
-  bricksReady: 52000,
-  wetAshKg: 15000,
-  marblePowderKg: 8500,
-  crusherPowderKg: 10200,
-  flyAshKg: 12500,
-  cementKg: 4800,
-};
-
 export function InventoryManagementScreen() {
   const {goTo,goBack} = useAdminNavigation();
   const [filterType, setFilterType] = useState<FilterType>('Current month');
@@ -116,10 +81,13 @@ export function InventoryManagementScreen() {
   // Fetch production entries data
   const { entries: productionEntries, loading: productionLoading } = useProductionEntries();
 
+  // Fetch product inventory data (Bricks)
+  const { inventory: productInventory } = useProductInventory();
+
   // Build inventory metrics from database
   const buildInventoryMetrics = () => {
     const metrics: any = {
-      bricksReady: 52000, // This would come from a production table
+      bricksReady: productInventory?.quantity ?? 0, // Get from product_inventory table
       wetAshKg: 0,
       marblePowderKg: 0,
       crusherPowderKg: 0,
@@ -379,7 +347,7 @@ export function InventoryManagementScreen() {
               {/* Production Capacity */}
               <div className="text-center">
                 <p className="text-gray-600 text-sm mb-1">Potential Production Capacity</p>
-                <p className="text-blue-600">28,500 Bricks</p>
+                <p className="text-blue-600">Yet to integrate</p>
                 <p className="text-gray-500 text-xs mt-1">Based on current raw materials</p>
               </div>
             </div>
