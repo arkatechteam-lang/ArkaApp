@@ -4,19 +4,12 @@ import { Popup } from '../../../../components/Popup';
 import { useAdminNavigation } from '../../../hooks/useAdminNavigation';
 import { useProcurementsCountWithFilter } from '../../../hooks/useProcurementsWithFilters';
 import { useAllInventoryStock } from '../../../hooks/useInventoryStock';
+import { useProcurements } from '../../../hooks/useProcurements';
+import { useProductionEntries } from '../../../hooks/useProductionEntries';
 
 type FilterType = 'Current month' | 'Last month' | 'Last year' | 'Custom range';
 type TabType = 'Procurement' | 'Usage' | 'Adjustments';
 type MaterialFilter = 'All' | 'Wet Ash' | 'Marble Powder' | 'Crusher Powder' | 'Fly Ash' | 'Cement';
-
-interface ProcurementEntry {
-  material: string;
-  date: string;
-  vendor: string;
-  quantityValue: number;
-  quantityUnit: string;
-  finalPrice: number;
-}
 
 interface UsageEntry {
   date: string;
@@ -39,25 +32,7 @@ interface AdjustmentEntry {
   cementKg: { actual: number; adjustment: number };
 }
 
-// Mock data
-const PROCUREMENT_DATA: ProcurementEntry[] = [
-  { material: 'Wet Ash', date: '2025-12-27', vendor: 'ABC Suppliers', quantityValue: 5, quantityUnit: 'tons', finalPrice: 15000 },
-  { material: 'Fly Ash', date: '2025-12-26', vendor: 'XYZ Materials', quantityValue: 3.5, quantityUnit: 'tons', finalPrice: 12000 },
-  { material: 'Cement', date: '2025-12-26', vendor: 'DEF Industries', quantityValue: 40, quantityUnit: 'bags', finalPrice: 20000 },
-  { material: 'Crusher Powder', date: '2025-12-25', vendor: 'ABC Suppliers', quantityValue: 450, quantityUnit: 'units', finalPrice: 18000 },
-  { material: 'Marble Powder', date: '2025-12-25', vendor: 'Stone Suppliers', quantityValue: 2.5, quantityUnit: 'tons', finalPrice: 16000 },
-  { material: 'Wet Ash', date: '2025-12-24', vendor: 'ABC Suppliers', quantityValue: 6, quantityUnit: 'tons', finalPrice: 16500 },
-  { material: 'Fly Ash', date: '2025-12-23', vendor: 'XYZ Materials', quantityValue: 4, quantityUnit: 'tons', finalPrice: 13500 },
-  { material: 'Cement', date: '2025-12-22', vendor: 'DEF Industries', quantityValue: 36, quantityUnit: 'bags', finalPrice: 18000 },
-  { material: 'Crusher Powder', date: '2025-12-22', vendor: 'Stone Suppliers', quantityValue: 500, quantityUnit: 'units', finalPrice: 20000 },
-  { material: 'Marble Powder', date: '2025-12-21', vendor: 'Stone Suppliers', quantityValue: 2.8, quantityUnit: 'tons', finalPrice: 17000 },
-  { material: 'Wet Ash', date: '2025-12-20', vendor: 'ABC Suppliers', quantityValue: 5.5, quantityUnit: 'tons', finalPrice: 17000 },
-  { material: 'Fly Ash', date: '2025-12-19', vendor: 'XYZ Materials', quantityValue: 3.8, quantityUnit: 'tons', finalPrice: 12800 },
-  { material: 'Cement', date: '2025-12-18', vendor: 'DEF Industries', quantityValue: 45, quantityUnit: 'bags', finalPrice: 22500 },
-  { material: 'Crusher Powder', date: '2025-12-17', vendor: 'ABC Suppliers', quantityValue: 480, quantityUnit: 'units', finalPrice: 19200 },
-  { material: 'Marble Powder', date: '2025-12-16', vendor: 'Stone Suppliers', quantityValue: 3, quantityUnit: 'tons', finalPrice: 18000 },
-];
-
+// Mock data for Usage
 const USAGE_DATA: UsageEntry[] = [
   { date: '2025-12-27', bricks: 22100, round: 6, wetAshKg: 3000, marblePowderKg: 1800, crusherPowderKg: 2200, flyAshKg: 2700, cementKg: 900 },
   { date: '2025-12-26', bricks: 23500, round: 6, wetAshKg: 3200, marblePowderKg: 1900, crusherPowderKg: 2300, flyAshKg: 2900, cementKg: 950 },
@@ -134,6 +109,12 @@ export function InventoryManagementScreen() {
 
   // Fetch inventory stock data
   const { stock: inventoryStock } = useAllInventoryStock();
+
+  // Fetch approved procurements data
+  const { procurements: procurementsData, loading: procurementsLoading } = useProcurements();
+
+  // Fetch production entries data
+  const { entries: productionEntries, loading: productionLoading } = useProductionEntries();
 
   // Build inventory metrics from database
   const buildInventoryMetrics = () => {
@@ -214,12 +195,76 @@ export function InventoryManagementScreen() {
     setShowAdjustmentModal(false);
   };
 
-  // Filter procurement data based on selected material
+  // Filter procurement data based on selected material AND date range
   const getFilteredProcurementData = () => {
-    if (materialFilter === 'All') {
-      return PROCUREMENT_DATA;
+    let filtered = procurementsData;
+
+    // Filter by date range based on filterType
+    const now = new Date();
+    let startDate: Date | null = null;
+    let endDate: Date = now;
+
+    if (filterType === 'Current month') {
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else if (filterType === 'Last month') {
+      startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      endDate = new Date(now.getFullYear(), now.getMonth(), 0);
+    } else if (filterType === 'Last year') {
+      startDate = new Date(now.getFullYear() - 1, 0, 1);
+      endDate = new Date(now.getFullYear() - 1, 11, 31);
+    } else if (filterType === 'Custom range') {
+      if (customStartDate) startDate = new Date(customStartDate);
+      if (customEndDate) endDate = new Date(customEndDate);
     }
-    return PROCUREMENT_DATA.filter(entry => entry.material === materialFilter);
+
+    // Apply date filter
+    if (startDate) {
+      filtered = filtered.filter(entry => {
+        const procDate = new Date(entry.date);
+        return procDate >= startDate && procDate <= endDate;
+      });
+    }
+
+    // Apply material filter
+    if (materialFilter === 'All') {
+      return filtered;
+    }
+    return filtered.filter(entry => {
+      const materialName = entry.materials?.name?.toLowerCase() || '';
+      return materialName.includes(materialFilter.toLowerCase());
+    });
+  };
+
+  const getFilteredProductionData = () => {
+    let filtered = productionEntries;
+
+    // Filter by date range based on filterType
+    const now = new Date();
+    let startDate: Date | null = null;
+    let endDate: Date = now;
+
+    if (filterType === 'Current month') {
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else if (filterType === 'Last month') {
+      startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      endDate = new Date(now.getFullYear(), now.getMonth(), 0);
+    } else if (filterType === 'Last year') {
+      startDate = new Date(now.getFullYear() - 1, 0, 1);
+      endDate = new Date(now.getFullYear() - 1, 11, 31);
+    } else if (filterType === 'Custom range') {
+      if (customStartDate) startDate = new Date(customStartDate);
+      if (customEndDate) endDate = new Date(customEndDate);
+    }
+
+    // Apply date filter
+    if (startDate) {
+      filtered = filtered.filter(entry => {
+        const prodDate = new Date(entry.production_date);
+        return prodDate >= startDate && prodDate <= endDate;
+      });
+    }
+
+    return filtered;
   };
 
   const getCurrentData = () => {
@@ -227,7 +272,7 @@ export function InventoryManagementScreen() {
       case 'Procurement':
         return getFilteredProcurementData();
       case 'Usage':
-        return USAGE_DATA;
+        return getFilteredProductionData();
       case 'Adjustments':
         return ADJUSTMENT_DATA;
       default:
@@ -541,76 +586,96 @@ export function InventoryManagementScreen() {
             {/* Procurement Tab */}
             {activeTab === 'Procurement' && (
               <div className="space-y-4">
-                {getFilteredProcurementData().slice(0, displayCount).map((entry, index) => (
-                  <div key={index} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-                      <div>
-                        <p className="text-gray-500 text-sm">Material</p>
-                        <p className="text-gray-900">{entry.material}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500 text-sm">Date</p>
-                        <p className="text-gray-900">{formatDate(entry.date)}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500 text-sm">Vendor</p>
-                        <p className="text-gray-900">{entry.vendor}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500 text-sm">Quantity</p>
-                        <p className="text-gray-900">{entry.quantityValue} {entry.quantityUnit}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500 text-sm">Final Price</p>
-                        <p className="text-gray-900">₹{entry.finalPrice.toLocaleString()}</p>
+                {procurementsLoading ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-600">Loading procurements...</p>
+                  </div>
+                ) : getFilteredProcurementData().length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-600">No procurements found</p>
+                  </div>
+                ) : (
+                  getFilteredProcurementData().slice(0, displayCount).map((entry) => (
+                    <div key={entry.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                        <div>
+                          <p className="text-gray-500 text-sm">Material</p>
+                          <p className="text-gray-900">{entry.materials?.name || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500 text-sm">Date</p>
+                          <p className="text-gray-900">{formatDate(entry.date)}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500 text-sm">Vendor</p>
+                          <p className="text-gray-900">{entry.vendors?.name || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500 text-sm">Quantity</p>
+                          <p className="text-gray-900">{entry.quantity} {entry.materials?.unit || ''}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500 text-sm">Total Price</p>
+                          <p className="text-gray-900">₹{entry.total_price.toLocaleString()}</p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             )}
 
             {/* Usage Tab */}
             {activeTab === 'Usage' && (
               <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-gray-700 whitespace-nowrap">Date</th>
-                      <th className="px-4 py-3 text-left text-gray-700 whitespace-nowrap">No of Bricks</th>
-                      <th className="px-4 py-3 text-left text-gray-700 whitespace-nowrap">Round</th>
-                      <th className="px-4 py-3 text-left text-gray-700 whitespace-nowrap">Wet Ash</th>
-                      <th className="px-4 py-3 text-left text-gray-700 whitespace-nowrap">Marble Powder</th>
-                      <th className="px-4 py-3 text-left text-gray-700 whitespace-nowrap">Crusher Powder</th>
-                      <th className="px-4 py-3 text-left text-gray-700 whitespace-nowrap">Fly Ash</th>
-                      <th className="px-4 py-3 text-left text-gray-700 whitespace-nowrap">Cement</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {USAGE_DATA.slice(0, displayCount).map((entry, index) => (
-                      <tr key={index} className="hover:bg-gray-50">
-                        <td className="px-4 py-4 text-gray-900 whitespace-nowrap">{formatDate(entry.date)}</td>
-                        <td className="px-4 py-4 text-gray-900 whitespace-nowrap">{entry.bricks.toLocaleString()}</td>
-                        <td className="px-4 py-4 text-gray-900 whitespace-nowrap">{entry.round}</td>
-                        <td className="px-4 py-4 text-gray-900 whitespace-nowrap">
-                          {entry.wetAshKg.toLocaleString()} Kg ({convertToTons(entry.wetAshKg).toFixed(2)} Tons)
-                        </td>
-                        <td className="px-4 py-4 text-gray-900 whitespace-nowrap">
-                          {entry.marblePowderKg.toLocaleString()} Kg ({convertToTons(entry.marblePowderKg).toFixed(2)} Tons)
-                        </td>
-                        <td className="px-4 py-4 text-gray-900 whitespace-nowrap">
-                          {entry.crusherPowderKg.toLocaleString()} Kg ({convertToTons(entry.crusherPowderKg).toFixed(2)} Tons)
-                        </td>
-                        <td className="px-4 py-4 text-gray-900 whitespace-nowrap">
-                          {entry.flyAshKg.toLocaleString()} Kg ({convertToTons(entry.flyAshKg).toFixed(2)} Tons)
-                        </td>
-                        <td className="px-4 py-4 text-gray-900 whitespace-nowrap">
-                          {entry.cementKg.toLocaleString()} Kg ({convertToBags(entry.cementKg).toFixed(0)} Bags)
-                        </td>
+                {productionLoading ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-600">Loading production entries...</p>
+                  </div>
+                ) : getFilteredProductionData().length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-600">No production entries found</p>
+                  </div>
+                ) : (
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-gray-700 whitespace-nowrap">Date</th>
+                        <th className="px-4 py-3 text-left text-gray-700 whitespace-nowrap">No of Bricks</th>
+                        <th className="px-4 py-3 text-left text-gray-700 whitespace-nowrap">Round</th>
+                        <th className="px-4 py-3 text-left text-gray-700 whitespace-nowrap">Wet Ash</th>
+                        <th className="px-4 py-3 text-left text-gray-700 whitespace-nowrap">Marble Powder</th>
+                        <th className="px-4 py-3 text-left text-gray-700 whitespace-nowrap">Crusher Powder</th>
+                        <th className="px-4 py-3 text-left text-gray-700 whitespace-nowrap">Fly Ash</th>
+                        <th className="px-4 py-3 text-left text-gray-700 whitespace-nowrap">Cement</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {getFilteredProductionData().slice(0, displayCount).map((entry) => (
+                        <tr key={entry.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-4 text-gray-900 whitespace-nowrap">{formatDate(entry.production_date)}</td>
+                          <td className="px-4 py-4 text-gray-900 whitespace-nowrap">{entry.bricks.toLocaleString()}</td>
+                          <td className="px-4 py-4 text-gray-900 whitespace-nowrap">{entry.round}</td>
+                          <td className="px-4 py-4 text-gray-900 whitespace-nowrap">
+                            {(entry.wet_ash_kg ?? 0).toLocaleString()} Kg ({convertToTons(entry.wet_ash_kg ?? 0).toFixed(2)} Tons)
+                          </td>
+                          <td className="px-4 py-4 text-gray-900 whitespace-nowrap">
+                            {(entry.marble_powder_kg ?? 0).toLocaleString()} Kg ({convertToTons(entry.marble_powder_kg ?? 0).toFixed(2)} Tons)
+                          </td>
+                          <td className="px-4 py-4 text-gray-900 whitespace-nowrap">
+                            {(entry.crusher_powder_kg ?? 0).toLocaleString()} Kg ({convertToTons(entry.crusher_powder_kg ?? 0).toFixed(2)} Tons)
+                          </td>
+                          <td className="px-4 py-4 text-gray-900 whitespace-nowrap">
+                            {(entry.fly_ash_kg ?? 0).toLocaleString()} Kg ({convertToTons(entry.fly_ash_kg ?? 0).toFixed(2)} Tons)
+                          </td>
+                          <td className="px-4 py-4 text-gray-900 whitespace-nowrap">
+                            {(entry.cement_bags ?? 0).toLocaleString()} Bags ({((entry.cement_bags ?? 0) * 50).toLocaleString()} Kg)
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
             )}
 

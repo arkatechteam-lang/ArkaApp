@@ -1791,3 +1791,65 @@ export async function getInventoryStockForMaterial(materialId: string): Promise<
 
   return data ?? null;
 }
+
+/**
+ * 47.8 Get all approved procurements
+ * Fetch all procurements that have been approved with material and vendor details
+ * Used in InventoryManagementScreen - Procurement tab
+ */
+export async function getProcurements(): Promise<any[]> {
+  const { data, error } = await supabase
+    .from("procurements")
+    .select(`
+      id,
+      material_id,
+      vendor_id,
+      quantity,
+      rate_per_unit,
+      total_price,
+      date,
+      approved,
+      created_by,
+      created_at,
+      materials!material_id(id, name, unit),
+      vendors!vendor_id(id, name, phone)
+    `)
+    .eq("approved", true)
+    .order("date", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching procurements:", error);
+    throw error;
+  }
+  return data ?? [];
+}
+
+/**
+ * 47.9 Get all production entries
+ * Fetch all production entries with material usage details
+ * Used in InventoryManagementScreen - Usage tab
+ */
+export async function getProductionEntries(): Promise<any[]> {
+  const { data, error } = await supabase
+    .from("production_entries")
+    .select(`
+      id,
+      production_date,
+      bricks,
+      round,
+      wet_ash_kg,
+      marble_powder_kg,
+      crusher_powder_kg,
+      fly_ash_kg,
+      cement_bags,
+      created_by,
+      created_at
+    `)
+    .order("production_date", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching production entries:", error);
+    throw error;
+  }
+  return data ?? [];
+}

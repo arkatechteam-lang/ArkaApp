@@ -1,71 +1,69 @@
 import { useEffect, useState } from 'react';
-import { getProductionEntriesFromToday } from '../../services/middleware.service';
+import { getProductionEntries } from '../../services/middleware.service';
 
-interface ProductionEntry {
-  date: string;
+export interface ProductionEntryData {
+  id: string;
+  production_date: string;
   bricks: number;
   round: number;
-  wetAshKg: number;
-  marblePowderKg: number;
-  crusherPowderKg: number;
-  flyAshKg: number;
-  cementBags: number;
+  wet_ash_kg: number | null;
+  marble_powder_kg: number | null;
+  crusher_powder_kg: number | null;
+  fly_ash_kg: number | null;
+  cement_bags: number | null;
+  created_by: string;
+  created_at: string;
 }
 
-const INITIAL_PAGE = 0;
+interface UseProductionEntriesResult {
+  entries: ProductionEntryData[];
+  loading: boolean;
+  error: string | null;
+  showError: boolean;
+  closeError: () => void;
+}
 
-export function useProductionEntries() {
-  const [productionEntries, setProductionEntries] = useState<ProductionEntry[]>([]);
+/**
+ * Hook to fetch all production entries
+ * Used for InventoryManagementScreen - Usage tab
+ */
+export function useProductionEntries(): UseProductionEntriesResult {
+  const [entries, setEntries] = useState<ProductionEntryData[]>([]);
   const [loading, setLoading] = useState(false);
-  const [page, setPage] = useState<number>(INITIAL_PAGE);
-  const [hasMore, setHasMore] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [showError, setShowError] = useState(false);
 
-  // fetch specific page and optionally append
-  async function fetchPage(p: number, append = false) {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await getProductionEntriesFromToday(p);
-      const mapped: ProductionEntry[] = (res.data ?? []).map((d: any) => ({
-        date: d.production_date,
-        bricks: d.bricks,
-        round: d.round,
-        wetAshKg: d.wet_ash_kg ?? 0,
-        marblePowderKg: d.marble_powder_kg ?? 0,
-        crusherPowderKg: d.crusher_powder_kg ?? 0,
-        flyAshKg: d.fly_ash_kg ?? 0,
-        cementBags: d.cement_bags ?? 0,
-      }));
-
-      setHasMore(Boolean(res.hasMore));
-
-      if (append) {
-        setProductionEntries(prev => [...prev, ...mapped]);
-      } else {
-        setProductionEntries(mapped);
-      }
-    } catch (err) {
-      console.error('Failed to fetch production entries', err);
-      setError('Failed to load production data. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // initial load
   useEffect(() => {
-    fetchPage(INITIAL_PAGE, false);
-    setPage(INITIAL_PAGE);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const fetchEntries = async () => {
+      setLoading(true);
+      setError(null);
+      setShowError(false);
+
+      try {
+        const entriesData = await getProductionEntries();
+        setEntries(entriesData);
+      } catch (err) {
+        console.error('Failed to fetch production entries', err);
+        setError('Failed to load production entries. Please try again.');
+        setShowError(true);
+        setEntries([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEntries();
   }, []);
 
-  const loadMore = async () => {
-    if (loading || !hasMore) return;
-    const nextPage = page + 1;
-    await fetchPage(nextPage, true);
-    setPage(nextPage);
+  const closeError = () => {
+    setShowError(false);
   };
 
-  return { productionEntries, loading, loadMore, hasMore, error };
+  return {
+    entries,
+    loading,
+    error,
+    showError,
+    closeError,
+  };
 }
