@@ -23,6 +23,10 @@ import {
   LoanLedgerItem,
   CreateLoanLedgerInput,
   VendorWithMaterials,
+  RoleWithCategory,
+  CreateEmployeeInput,
+  UpdateEmployeeInput,
+  EmployeeDetail,
 } from './types'
 import { MaterialPurchaseInput, ProductionInput } from "../employee/types";
 import { getRange, getRangeForProductionStatistics, PAGE_SIZE , mapPaymentModeToDb } from "../utils/reusables";
@@ -1568,6 +1572,104 @@ export async function updateEmployeeStatus(
   const { error } = await supabase
     .from("employees")
     .update({ active: isActive })
+    .eq("id", employeeId);
+
+  if (error) throw error;
+}
+
+/* ------------------------------------------------------------------
+   47. GET ROLES WITH CATEGORY
+-------------------------------------------------------------------*/
+export async function getRoles(): Promise<RoleWithCategory[]> {
+  const { data, error } = await supabase
+    .from("roles")
+    .select("id, name, category")
+    .order("name");
+
+  if (error) throw error;
+  return data as RoleWithCategory[];
+}
+
+/* ------------------------------------------------------------------
+   48. CREATE EMPLOYEE
+-------------------------------------------------------------------*/
+export async function createEmployee(
+  input: CreateEmployeeInput
+): Promise<{ employeeId: string }> {
+  const { data, error } = await supabase
+    .from("employees")
+    .insert({
+      name: input.name,
+      phone: input.phone,
+      alternate_phone: input.alternate_phone || null,
+      blood_group: input.blood_group,
+      aadhar: input.aadhar_number,
+      permanent_address: input.permanent_address,
+      local_address: input.local_address || null,
+      role_id: input.role_id,
+      emergency_contact_name: input.emergency_contact_name || null,
+      emergency_contact_phone: input.emergency_contact_phone || null,
+      active: true,
+    })
+    .select("id")
+    .single();
+
+  if (error) throw error;
+  return { employeeId: data.id };
+}
+
+/* ------------------------------------------------------------------
+   49. GET EMPLOYEE BY ID
+-------------------------------------------------------------------*/
+export async function getEmployeeById(
+  employeeId: string
+): Promise<EmployeeDetail> {
+  const { data, error } = await supabase
+    .from("employees")
+    .select(`
+      id,
+      name,
+      phone,
+      alternate_phone,
+      blood_group,
+      aadhar,
+      permanent_address,
+      local_address,
+      role_id,
+      emergency_contact_name,
+      emergency_contact_phone,
+      active,
+      created_at,
+      roles ( id, name, category )
+    `)
+    .eq("id", employeeId)
+    .single();
+
+  if (error) throw error;
+  return data as unknown as EmployeeDetail;
+}
+
+/* ------------------------------------------------------------------
+   50. UPDATE EMPLOYEE
+-------------------------------------------------------------------*/
+export async function updateEmployee(
+  employeeId: string,
+  input: UpdateEmployeeInput
+): Promise<void> {
+  const { error } = await supabase
+    .from("employees")
+    .update({
+      name: input.name,
+      phone: input.phone,
+      alternate_phone: input.alternate_phone || null,
+      blood_group: input.blood_group,
+      aadhar: input.aadhar_number,
+      permanent_address: input.permanent_address,
+      local_address: input.local_address || null,
+      role_id: input.role_id,
+      emergency_contact_name: input.emergency_contact_name || null,
+      emergency_contact_phone: input.emergency_contact_phone || null,
+    })
     .eq("id", employeeId);
 
   if (error) throw error;

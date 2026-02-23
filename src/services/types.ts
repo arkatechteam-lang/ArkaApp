@@ -233,3 +233,56 @@ export interface VendorWithMaterials {
   created_at: string;
   materials: Material[];
 }
+
+export interface RoleWithCategory {
+  id: string;
+  name: string;
+  category: EmployeeCategory;
+}
+
+export interface CreateEmployeeInput {
+  name: string;
+  phone: string;
+  alternate_phone?: string | null;
+  blood_group: string;
+  aadhar_number: string;
+  permanent_address: string;
+  local_address?: string | null;
+  role_id: string;
+  emergency_contact_name?: string | null;
+  emergency_contact_phone?: string | null;
+}
+
+export interface UpdateEmployeeInput {
+  name: string;
+  phone: string;
+  alternate_phone?: string | null;
+  blood_group: string;
+  aadhar_number: string;
+  permanent_address: string;
+  local_address?: string | null;
+  role_id: string;
+  emergency_contact_name?: string | null;
+  emergency_contact_phone?: string | null;
+}
+
+export interface EmployeeDetail {
+  id: string;
+  name: string;
+  phone: string;
+  alternate_phone: string | null;
+  blood_group: string;
+  aadhar: string;
+  permanent_address: string;
+  local_address: string | null;
+  role_id: string;
+  emergency_contact_name: string | null;
+  emergency_contact_phone: string | null;
+  active: boolean;
+  created_at: string;
+  roles: {
+    id: string;
+    name: string;
+    category: EmployeeCategory;
+  };
+}
