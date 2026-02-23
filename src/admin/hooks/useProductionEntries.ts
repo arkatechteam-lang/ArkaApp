@@ -21,6 +21,7 @@ interface UseProductionEntriesResult {
   error: string | null;
   showError: boolean;
   closeError: () => void;
+  refetch: () => Promise<void>;
 }
 
 /**
@@ -33,25 +34,25 @@ export function useProductionEntries(): UseProductionEntriesResult {
   const [error, setError] = useState<string | null>(null);
   const [showError, setShowError] = useState(false);
 
+  const fetchEntries = async () => {
+    setLoading(true);
+    setError(null);
+    setShowError(false);
+
+    try {
+      const entriesData = await getProductionEntries();
+      setEntries(entriesData);
+    } catch (err) {
+      console.error('Failed to fetch production entries', err);
+      setError('Failed to load production entries. Please try again.');
+      setShowError(true);
+      setEntries([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchEntries = async () => {
-      setLoading(true);
-      setError(null);
-      setShowError(false);
-
-      try {
-        const entriesData = await getProductionEntries();
-        setEntries(entriesData);
-      } catch (err) {
-        console.error('Failed to fetch production entries', err);
-        setError('Failed to load production entries. Please try again.');
-        setShowError(true);
-        setEntries([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchEntries();
   }, []);
 
@@ -65,5 +66,6 @@ export function useProductionEntries(): UseProductionEntriesResult {
     error,
     showError,
     closeError,
+    refetch: fetchEntries,
   };
 }

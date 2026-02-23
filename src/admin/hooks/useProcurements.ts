@@ -30,6 +30,7 @@ interface UseProcurementsResult {
   error: string | null;
   showError: boolean;
   closeError: () => void;
+  refetch: () => Promise<void>;
 }
 
 /**
@@ -42,25 +43,25 @@ export function useProcurements(): UseProcurementsResult {
   const [error, setError] = useState<string | null>(null);
   const [showError, setShowError] = useState(false);
 
+  const fetchProcurements = async () => {
+    setLoading(true);
+    setError(null);
+    setShowError(false);
+
+    try {
+      const procurementsData = await getProcurements();
+      setProcurements(procurementsData);
+    } catch (err) {
+      console.error('Failed to fetch procurements', err);
+      setError('Failed to load procurements. Please try again.');
+      setShowError(true);
+      setProcurements([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchProcurements = async () => {
-      setLoading(true);
-      setError(null);
-      setShowError(false);
-
-      try {
-        const procurementsData = await getProcurements();
-        setProcurements(procurementsData);
-      } catch (err) {
-        console.error('Failed to fetch procurements', err);
-        setError('Failed to load procurements. Please try again.');
-        setShowError(true);
-        setProcurements([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchProcurements();
   }, []);
 
@@ -74,5 +75,6 @@ export function useProcurements(): UseProcurementsResult {
     error,
     showError,
     closeError,
+    refetch: fetchProcurements,
   };
 }

@@ -2015,3 +2015,193 @@ export async function reduceInventoryStock(
     throw error;
   }
 }
+
+/**------------------------------------------------------------------------------
+ * 48.3 Get all inventory adjustments
+ * Fetch all adjustment records from inventory_adjustments table
+ * Used in InventoryManagementScreen - Adjustments tab
+ ------------------------------------------------------------------------------*/
+export async function getAdjustments(): Promise<any[]> {
+  const { data, error } = await supabase
+    .from("inventory_adjustments")
+    .select(`
+      id,
+      adjustment_date,
+      actual_bricks,
+      actual_wet_ash_kg,
+      actual_marble_powder_kg,
+      actual_crusher_powder_kg,
+      actual_fly_ash_kg,
+      actual_cement_bags,
+      adjusted_bricks,
+      adjusted_wet_ash_kg,
+      adjusted_marble_powder_kg,
+      adjusted_crusher_powder_kg,
+      adjusted_fly_ash_kg,
+      adjusted_cement_bags,
+      reason,
+      created_by,
+      created_at
+    `)
+    .order("adjustment_date", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching adjustments:", error);
+    throw error;
+  }
+  return data ?? [];
+}
+
+/**------------------------------------------------------------------------------
+ * 48.4 Create inventory adjustment
+ * Create a new adjustment record and update inventory tables
+ * When admin adjusts inventory values, this updates:
+ * - Inserts record into inventory_adjustments table with actual and adjusted values
+ * - Updates product_inventory for bricks
+ * - Updates inventory_stock for all raw materials
+ * Used in InventoryManagementScreen - Make Adjustments modal
+ ------------------------------------------------------------------------------*/
+export async function createAdjustment(
+  adjustment_date: string,
+  actual_bricks: number,
+  actual_wet_ash_kg: number,
+  actual_marble_powder_kg: number,
+  actual_crusher_powder_kg: number,
+  actual_fly_ash_kg: number,
+  actual_cement_bags: number,
+  adjusted_bricks: number,
+  adjusted_wet_ash_kg: number,
+  adjusted_marble_powder_kg: number,
+  adjusted_crusher_powder_kg: number,
+  adjusted_fly_ash_kg: number,
+  adjusted_cement_bags: number,
+  reason: string | null,
+  userId: string
+): Promise<void> {
+  try {
+    // Step 1: Insert adjustment record into inventory_adjustments table
+    const { error: insertError } = await supabase
+      .from("inventory_adjustments")
+      .insert({
+        adjustment_date,
+        actual_bricks,
+        actual_wet_ash_kg,
+        actual_marble_powder_kg,
+        actual_crusher_powder_kg,
+        actual_fly_ash_kg,
+        actual_cement_bags,
+        adjusted_bricks,
+        adjusted_wet_ash_kg,
+        adjusted_marble_powder_kg,
+        adjusted_crusher_powder_kg,
+        adjusted_fly_ash_kg,
+        adjusted_cement_bags,
+        reason,
+        created_by: userId,
+      });
+
+    if (insertError) throw insertError;
+
+    // Step 2: Update product_inventory for bricks
+    const { data: existingBricks, error: fetchBricksError } = await supabase
+      .from("product_inventory")
+      .select("id, quantity")
+      .eq("product_type", "BRICKS")
+      .single();
+
+    if (fetchBricksError && fetchBricksError.code !== "PGRST116") {
+      throw fetchBricksError;
+    }
+
+    if (existingBricks) {
+      const { error: updateBricksError } = await supabase
+        .from("product_inventory")
+        .update({
+          quantity: adjusted_bricks,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existingBricks.id);
+
+      if (updateBricksError) throw updateBricksError;
+    } else {
+      const { error: insertBricksError } = await supabase
+        .from("product_inventory")
+        .insert({
+          product_type: "BRICKS",
+          quantity: adjusted_bricks,
+          updated_at: new Date().toISOString(),
+        });
+
+      if (insertBricksError) throw insertBricksError;
+    }
+
+    // Step 3: Get all materials to find their IDs
+    const materials = await getMaterials();
+
+    // Step 4: Update inventory_stock for each raw material
+    const wetAshMaterial = materials.find(m => m.name.toLowerCase().includes('wet ash'));
+    const marbleMaterial = materials.find(m => m.name.toLowerCase().includes('marble'));
+    const crusherMaterial = materials.find(m => m.name.toLowerCase().includes('crusher'));
+    const flyAshMaterial = materials.find(m => m.name.toLowerCase().includes('fly ash'));
+    const cementMaterial = materials.find(m => m.name.toLowerCase().includes('cement'));
+
+    // Array of material updates to process
+    const materialUpdates = [
+      { materialId: wetAshMaterial?.id, quantity: adjusted_wet_ash_kg, name: 'Wet Ash' },
+      { materialId: marbleMaterial?.id, quantity: adjusted_marble_powder_kg, name: 'Marble Powder' },
+      { materialId: crusherMaterial?.id, quantity: adjusted_crusher_powder_kg, name: 'Crusher Powder' },
+      { materialId: flyAshMaterial?.id, quantity: adjusted_fly_ash_kg, name: 'Fly Ash' },
+      { materialId: cementMaterial?.id, quantity: adjusted_cement_bags * 50, name: 'Cement' }, // Convert bags to KG
+    ];
+
+    // Process each material update
+    for (const update of materialUpdates) {
+      if (!update.materialId) continue;
+
+      // Fetch current stock (using material_id as primary key)
+      const { data: currentStock, error: fetchError } = await supabase
+        .from("inventory_stock")
+        .select("material_id, quantity")
+        .eq("material_id", update.materialId)
+        .single();
+
+      if (fetchError && fetchError.code !== "PGRST116") {
+        console.error(`Error fetching ${update.name} stock:`, fetchError);
+        throw fetchError;
+      }
+
+      if (currentStock) {
+        // Update the quantity to adjusted value
+        const { error: updateError } = await supabase
+          .from("inventory_stock")
+          .update({
+            quantity: update.quantity,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("material_id", currentStock.material_id);
+
+        if (updateError) {
+          console.error(`Error updating ${update.name} stock:`, updateError);
+          throw updateError;
+        }
+      } else {
+        // If no stock exists, create new record
+        const { error: insertError } = await supabase
+          .from("inventory_stock")
+          .insert({
+            material_id: update.materialId,
+            quantity: update.quantity,
+            updated_at: new Date().toISOString(),
+          });
+
+        if (insertError) {
+          console.error(`Error inserting ${update.name} stock:`, insertError);
+          throw insertError;
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error creating adjustment:", error);
+    throw error;
+  }
+}

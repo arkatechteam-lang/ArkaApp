@@ -14,25 +14,26 @@ export function useProductInventory() {
   const [error, setError] = useState<string | null>(null);
   const [showError, setShowError] = useState(false);
 
-  useEffect(() => {
-    const fetchInventory = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const data = await getProductInventory();
-        setInventory(data);
-      } catch (err: any) {
-        setError(err.message || "Failed to fetch product inventory");
-        setShowError(true);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchInventory = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await getProductInventory();
+      setInventory(data);
+    } catch (err: any) {
+      setError(err.message || "Failed to fetch product inventory");
+      setShowError(true);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchInventory();
   }, []);
 
   const closeError = () => setShowError(false);
+  const refetch = () => fetchInventory();
 
   return {
     inventory,
@@ -40,5 +41,6 @@ export function useProductInventory() {
     error,
     showError,
     closeError,
+    refetch,
   };
 }

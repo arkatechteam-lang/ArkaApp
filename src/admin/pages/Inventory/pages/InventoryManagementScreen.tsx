@@ -7,51 +7,13 @@ import { useAllInventoryStock } from '../../../hooks/useInventoryStock';
 import { useProcurements } from '../../../hooks/useProcurements';
 import { useProductionEntries } from '../../../hooks/useProductionEntries';
 import { useProductInventory } from '../../../hooks/useProductInventory';
+import { useAdjustments } from '../../../hooks/useAdjustments';
+import { validateSession } from '../../../../services/middleware.service';
+import { createAdjustment } from '../../../../services/middleware.service';
 
 type FilterType = 'Current month' | 'Last month' | 'Last year' | 'Custom range';
 type TabType = 'Procurement' | 'Usage' | 'Adjustments';
 type MaterialFilter = 'All' | 'Wet Ash' | 'Marble Powder' | 'Crusher Powder' | 'Fly Ash' | 'Cement';
-
-
-interface AdjustmentEntry {
-  date: string;
-  bricks: { actual: number; adjustment: number };
-  wetAshKg: { actual: number; adjustment: number };
-  marblePowderKg: { actual: number; adjustment: number };
-  crusherPowderKg: { actual: number; adjustment: number };
-  flyAshKg: { actual: number; adjustment: number };
-  cementKg: { actual: number; adjustment: number };
-}
-
-const ADJUSTMENT_DATA: AdjustmentEntry[] = [
-  { 
-    date: '2025-12-20', 
-    bricks: { actual: 52000, adjustment: -500 }, 
-    wetAshKg: { actual: 15000, adjustment: -200 }, 
-    marblePowderKg: { actual: 8500, adjustment: -150 }, 
-    crusherPowderKg: { actual: 10200, adjustment: -180 }, 
-    flyAshKg: { actual: 12500, adjustment: -250 }, 
-    cementKg: { actual: 4800, adjustment: -100 } 
-  },
-  { 
-    date: '2025-12-15', 
-    bricks: { actual: 48000, adjustment: -450 }, 
-    wetAshKg: { actual: 14000, adjustment: -180 }, 
-    marblePowderKg: { actual: 8000, adjustment: -120 }, 
-    crusherPowderKg: { actual: 9600, adjustment: -150 }, 
-    flyAshKg: { actual: 11800, adjustment: -200 }, 
-    cementKg: { actual: 4500, adjustment: -80 } 
-  },
-  { 
-    date: '2025-12-10', 
-    bricks: { actual: 50000, adjustment: 300 }, 
-    wetAshKg: { actual: 14500, adjustment: 100 }, 
-    marblePowderKg: { actual: 8200, adjustment: 80 }, 
-    crusherPowderKg: { actual: 9800, adjustment: 90 }, 
-    flyAshKg: { actual: 12000, adjustment: 120 }, 
-    cementKg: { actual: 4600, adjustment: 50 } 
-  },
-];
 
 export function InventoryManagementScreen() {
   const {goTo,goBack} = useAdminNavigation();
@@ -73,16 +35,19 @@ export function InventoryManagementScreen() {
   );
 
   // Fetch inventory stock data
-  const { stock: inventoryStock } = useAllInventoryStock();
+  const { stock: inventoryStock, refetch: refetchStock } = useAllInventoryStock();
 
   // Fetch approved procurements data
-  const { procurements: procurementsData, loading: procurementsLoading } = useProcurements();
+  const { procurements: procurementsData, loading: procurementsLoading, refetch: refetchProcurements } = useProcurements();
 
   // Fetch production entries data
-  const { entries: productionEntries, loading: productionLoading } = useProductionEntries();
+  const { entries: productionEntries, loading: productionLoading, refetch: refetchProductionEntries } = useProductionEntries();
 
   // Fetch product inventory data (Bricks)
-  const { inventory: productInventory } = useProductInventory();
+  const { inventory: productInventory, refetch: refetchProductInventory } = useProductInventory();
+
+  // Fetch adjustments data
+  const { adjustments: adjustmentsData, loading: adjustmentsLoading, refetch: refetchAdjustments } = useAdjustments();
 
   // Build inventory metrics from database
   const buildInventoryMetrics = () => {
@@ -116,6 +81,81 @@ export function InventoryManagementScreen() {
 
   const INVENTORY_METRICS = buildInventoryMetrics();
 
+  // Production Capacity Constants (per round)
+  const PRODUCTION_CONSTANTS = {
+    CEMENT_PER_ROUND: 25, // kg
+    FLY_ASH_PER_ROUND: 110, // kg
+    WET_ASH_PER_ROUND: 90, // kg
+    MARBLE_POWDER_PER_ROUND: 90, // kg
+    CRUSHER_POWDER_PER_ROUND: 1800, // kg
+    TOTAL_KG_PER_ROUND: 2115, // Total kg per round
+    BRICKS_PER_ROUND: 175, // bricks per round
+    COST_PER_ROUND: 640, // ₹ per round
+    PRODUCTION_COST_PER_BRICK: 3.65, // ₹ per brick
+  };
+
+  // Calculate production capacity based on available materials
+  const calculateProductionCapacity = () => {
+    // Calculate how many rounds can be produced from each material
+    const roundsFromCement = Math.floor((INVENTORY_METRICS.cementKg / PRODUCTION_CONSTANTS.CEMENT_PER_ROUND));
+    const roundsFromFlyAsh = Math.floor((INVENTORY_METRICS.flyAshKg / PRODUCTION_CONSTANTS.FLY_ASH_PER_ROUND));
+    const roundsFromWetAsh = Math.floor((INVENTORY_METRICS.wetAshKg / PRODUCTION_CONSTANTS.WET_ASH_PER_ROUND));
+    const roundsFromMarblePowder = Math.floor((INVENTORY_METRICS.marblePowderKg / PRODUCTION_CONSTANTS.MARBLE_POWDER_PER_ROUND));
+    const roundsFromCrusherPowder = Math.floor((INVENTORY_METRICS.crusherPowderKg / PRODUCTION_CONSTANTS.CRUSHER_POWDER_PER_ROUND));
+
+    // The limiting factor is the material that allows the fewest rounds
+    const maxRounds = Math.min(
+      roundsFromCement,
+      roundsFromFlyAsh,
+      roundsFromWetAsh,
+      roundsFromMarblePowder,
+      roundsFromCrusherPowder
+    );
+
+    // Calculate total bricks and cost
+    const totalBrickCapacity = maxRounds * PRODUCTION_CONSTANTS.BRICKS_PER_ROUND;
+    const totalProductionCost = totalBrickCapacity * PRODUCTION_CONSTANTS.PRODUCTION_COST_PER_BRICK;
+    const totalRoundCost = maxRounds * PRODUCTION_CONSTANTS.COST_PER_ROUND;
+
+    return {
+      maxRounds,
+      totalBricks: totalBrickCapacity,
+      totalProductionCost,
+      totalRoundCost,
+      limitingMaterial: getLimitingMaterial(
+        roundsFromCement,
+        roundsFromFlyAsh,
+        roundsFromWetAsh,
+        roundsFromMarblePowder,
+        roundsFromCrusherPowder
+      ),
+    };
+  };
+
+  const getLimitingMaterial = (
+    cement: number,
+    flyAsh: number,
+    wetAsh: number,
+    marblePowder: number,
+    crusherPowder: number
+  ): string => {
+    const materials = [
+      { name: 'Cement', rounds: cement },
+      { name: 'Fly Ash', rounds: flyAsh },
+      { name: 'Wet Ash', rounds: wetAsh },
+      { name: 'Marble Powder', rounds: marblePowder },
+      { name: 'Crusher Powder', rounds: crusherPowder },
+    ];
+
+    const limited = materials.reduce((min, current) =>
+      current.rounds < min.rounds ? current : min
+    );
+
+    return limited.name;
+  };
+
+  const PRODUCTION_CAPACITY = calculateProductionCapacity();
+
   // Adjustment form state
   const [adjBricksReady, setAdjBricksReady] = useState('');
   const [adjWetAsh, setAdjWetAsh] = useState('');
@@ -123,6 +163,9 @@ export function InventoryManagementScreen() {
   const [adjCrusherPowder, setAdjCrusherPowder] = useState('');
   const [adjFlyAsh, setAdjFlyAsh] = useState('');
   const [adjCement, setAdjCement] = useState('');
+  const [adjReason, setAdjReason] = useState('');
+  const [adjLoading, setAdjLoading] = useState(false);
+  const [adjError, setAdjError] = useState<string | null>(null);
 
   const handleFilterChange = (value: FilterType) => {
     if (value === 'Custom range') {
@@ -150,13 +193,63 @@ export function InventoryManagementScreen() {
     setAdjMarblePowder(INVENTORY_METRICS.marblePowderKg.toString());
     setAdjCrusherPowder(INVENTORY_METRICS.crusherPowderKg.toString());
     setAdjFlyAsh(INVENTORY_METRICS.flyAshKg.toString());
-    setAdjCement(INVENTORY_METRICS.cementKg.toString());
+    // Cement: convert from KG to bags for display
+    setAdjCement(convertToBags(INVENTORY_METRICS.cementKg).toString());
+    setAdjReason('');
     setShowAdjustmentModal(true);
   };
 
-  const handleSubmitAdjustment = () => {
-    setShowAdjustmentModal(false);
-    setShowSuccessPopup(true);
+  const handleSubmitAdjustment = async () => {
+    try {
+      setAdjLoading(true);
+      setAdjError(null);
+
+      const user = await validateSession();
+      if (!user) throw new Error("User not authenticated");
+
+      await createAdjustment(
+        new Date().toISOString().split('T')[0], // adjustment_date
+        INVENTORY_METRICS.bricksReady, // actual_bricks
+        INVENTORY_METRICS.wetAshKg, // actual_wet_ash_kg
+        INVENTORY_METRICS.marblePowderKg, // actual_marble_powder_kg
+        INVENTORY_METRICS.crusherPowderKg, // actual_crusher_powder_kg
+        INVENTORY_METRICS.flyAshKg, // actual_fly_ash_kg
+        convertToBags(INVENTORY_METRICS.cementKg), // actual_cement_bags
+        Number(adjBricksReady) || 0, // adjusted_bricks
+        Number(adjWetAsh) || 0, // adjusted_wet_ash_kg
+        Number(adjMarblePowder) || 0, // adjusted_marble_powder_kg
+        Number(adjCrusherPowder) || 0, // adjusted_crusher_powder_kg
+        Number(adjFlyAsh) || 0, // adjusted_fly_ash_kg
+        Number(adjCement) || 0, // adjusted_cement_bags
+        adjReason || null, // reason
+        user.id // userId
+      );
+
+      // Reset form
+      setAdjBricksReady('');
+      setAdjWetAsh('');
+      setAdjMarblePowder('');
+      setAdjCrusherPowder('');
+      setAdjFlyAsh('');
+      setAdjCement('');
+      setAdjReason('');
+      
+      setShowAdjustmentModal(false);
+      setShowSuccessPopup(true);
+
+      // Refetch all data to update UI
+      await Promise.all([
+        refetchStock(),
+        refetchProductInventory(),
+        refetchAdjustments(),
+        refetchProcurements(),
+        refetchProductionEntries()
+      ]);
+    } catch (error: any) {
+      setAdjError(error.message || "Failed to submit adjustment");
+    } finally {
+      setAdjLoading(false);
+    }
   };
 
   const handleCancelAdjustment = () => {
@@ -235,6 +328,38 @@ export function InventoryManagementScreen() {
     return filtered;
   };
 
+  const getFilteredAdjustmentData = () => {
+    let filtered = adjustmentsData;
+
+    // Filter by date range based on filterType
+    const now = new Date();
+    let startDate: Date | null = null;
+    let endDate: Date = now;
+
+    if (filterType === 'Current month') {
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else if (filterType === 'Last month') {
+      startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      endDate = new Date(now.getFullYear(), now.getMonth(), 0);
+    } else if (filterType === 'Last year') {
+      startDate = new Date(now.getFullYear() - 1, 0, 1);
+      endDate = new Date(now.getFullYear() - 1, 11, 31);
+    } else if (filterType === 'Custom range') {
+      if (customStartDate) startDate = new Date(customStartDate);
+      if (customEndDate) endDate = new Date(customEndDate);
+    }
+
+    // Apply date filter
+    if (startDate) {
+      filtered = filtered.filter(entry => {
+        const adjDate = new Date(entry.adjustment_date);
+        return adjDate >= startDate && adjDate <= endDate;
+      });
+    }
+
+    return filtered;
+  };
+
   const getCurrentData = () => {
     switch (activeTab) {
       case 'Procurement':
@@ -242,7 +367,7 @@ export function InventoryManagementScreen() {
       case 'Usage':
         return getFilteredProductionData();
       case 'Adjustments':
-        return ADJUSTMENT_DATA;
+        return getFilteredAdjustmentData();
       default:
         return [];
     }
@@ -266,6 +391,30 @@ export function InventoryManagementScreen() {
     const month = date.toLocaleString('en-US', { month: 'short' });
     const year = date.getFullYear();
     return `${day}-${month}-${year}`;
+  };
+
+  const getDifferenceColor = (difference: number): string => {
+    if (difference > 0) return '#22c55e'; // GREEN
+    if (difference < 0) return '#ef4444'; // RED
+    return '#999999'; // GRAY
+  };
+
+  const formatAdjustmentValueDisplay = (actual: number | null, adjusted: number | null) => {
+    if (actual === null || adjusted === null) {
+      return <span className="text-gray-500">N/A</span>;
+    }
+
+    const difference = adjusted - actual;
+    const diffColor = getDifferenceColor(difference);
+
+    return (
+      <span>
+        {actual.toLocaleString()} → {adjusted.toLocaleString()}
+        <span style={{ color: diffColor }}>
+          ({difference > 0 ? '+' : ''}{difference.toLocaleString()})
+        </span>
+      </span>
+    );
   };
 
   const formatAdjustmentValue = (actual: number, adjustment: number): string => {
@@ -346,9 +495,20 @@ export function InventoryManagementScreen() {
               
               {/* Production Capacity */}
               <div className="text-center">
-                <p className="text-gray-600 text-sm mb-1">Potential Production Capacity</p>
-                <p className="text-blue-600">Yet to integrate</p>
-                <p className="text-gray-500 text-xs mt-1">Based on current raw materials</p>
+                <p className="text-gray-600 text-sm mb-3">Potential Production Capacity</p>
+                <div className="space-y-2">
+                  <div>
+                    <p className="text-gray-700 font-semibold text-lg">{PRODUCTION_CAPACITY.totalBricks.toLocaleString()}</p>
+                    <p className="text-gray-500 text-xs">Bricks ({PRODUCTION_CAPACITY.maxRounds} rounds)</p>
+                  </div>
+                  <div className="pt-2 border-t border-gray-200">
+                    <p className="text-gray-700 font-semibold text-sm">₹{PRODUCTION_CAPACITY.totalProductionCost.toLocaleString('en-IN', {maximumFractionDigits: 0})}</p>
+                    <p className="text-gray-500 text-xs">Production Cost</p>
+                  </div>
+                  <div className="pt-2 border-t border-gray-200">
+                    <p className="text-amber-600 text-xs font-medium">Limited by: {PRODUCTION_CAPACITY.limitingMaterial}</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -650,44 +810,56 @@ export function InventoryManagementScreen() {
             {/* Adjustments Tab */}
             {activeTab === 'Adjustments' && (
               <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-gray-700 whitespace-nowrap">Date</th>
-                      <th className="px-4 py-3 text-left text-gray-700 whitespace-nowrap">No of Bricks</th>
-                      <th className="px-4 py-3 text-left text-gray-700 whitespace-nowrap">Wet Ash (Kg)</th>
-                      <th className="px-4 py-3 text-left text-gray-700 whitespace-nowrap">Marble Powder (Kg)</th>
-                      <th className="px-4 py-3 text-left text-gray-700 whitespace-nowrap">Crusher Powder (Kg)</th>
-                      <th className="px-4 py-3 text-left text-gray-700 whitespace-nowrap">Fly Ash (Kg)</th>
-                      <th className="px-4 py-3 text-left text-gray-700 whitespace-nowrap">Cement (Kg)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {ADJUSTMENT_DATA.slice(0, displayCount).map((entry, index) => (
-                      <tr key={index} className="hover:bg-gray-50">
-                        <td className="px-4 py-4 text-gray-900 whitespace-nowrap">{formatDate(entry.date)}</td>
-                        <td className="px-4 py-4 text-gray-900 whitespace-nowrap">
-                          {formatAdjustmentValue(entry.bricks.actual, entry.bricks.adjustment)}
-                        </td>
-                        <td className="px-4 py-4 text-gray-900 whitespace-nowrap">
-                          {formatAdjustmentValue(entry.wetAshKg.actual, entry.wetAshKg.adjustment)}
-                        </td>
-                        <td className="px-4 py-4 text-gray-900 whitespace-nowrap">
-                          {formatAdjustmentValue(entry.marblePowderKg.actual, entry.marblePowderKg.adjustment)}
-                        </td>
-                        <td className="px-4 py-4 text-gray-900 whitespace-nowrap">
-                          {formatAdjustmentValue(entry.crusherPowderKg.actual, entry.crusherPowderKg.adjustment)}
-                        </td>
-                        <td className="px-4 py-4 text-gray-900 whitespace-nowrap">
-                          {formatAdjustmentValue(entry.flyAshKg.actual, entry.flyAshKg.adjustment)}
-                        </td>
-                        <td className="px-4 py-4 text-gray-900 whitespace-nowrap">
-                          {formatAdjustmentValue(entry.cementKg.actual, entry.cementKg.adjustment)}
-                        </td>
+                {adjustmentsLoading ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-600">Loading adjustments...</p>
+                  </div>
+                ) : getFilteredAdjustmentData().length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-600">No adjustments found</p>
+                  </div>
+                ) : (
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-gray-700 whitespace-nowrap">Date</th>
+                        <th className="px-4 py-3 text-left text-gray-700 whitespace-nowrap">No of Bricks</th>
+                        <th className="px-4 py-3 text-left text-gray-700 whitespace-nowrap">Wet Ash (Kg)</th>
+                        <th className="px-4 py-3 text-left text-gray-700 whitespace-nowrap">Marble Powder (Kg)</th>
+                        <th className="px-4 py-3 text-left text-gray-700 whitespace-nowrap">Crusher Powder (Kg)</th>
+                        <th className="px-4 py-3 text-left text-gray-700 whitespace-nowrap">Fly Ash (Kg)</th>
+                        <th className="px-4 py-3 text-left text-gray-700 whitespace-nowrap">Cement (Kg)</th>
+                        <th className="px-4 py-3 text-left text-gray-700 whitespace-nowrap">Reason</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {getFilteredAdjustmentData().slice(0, displayCount).map((entry) => (
+                        <tr key={entry.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-4 text-gray-900 whitespace-nowrap">{formatDate(entry.adjustment_date)}</td>
+                          <td className="px-4 py-4 text-gray-900 whitespace-nowrap">
+                            {formatAdjustmentValueDisplay(entry.actual_bricks, entry.adjusted_bricks)}
+                          </td>
+                          <td className="px-4 py-4 text-gray-900 whitespace-nowrap">
+                            {formatAdjustmentValueDisplay(entry.actual_wet_ash_kg, entry.adjusted_wet_ash_kg)}
+                          </td>
+                          <td className="px-4 py-4 text-gray-900 whitespace-nowrap">
+                            {formatAdjustmentValueDisplay(entry.actual_marble_powder_kg, entry.adjusted_marble_powder_kg)}
+                          </td>
+                          <td className="px-4 py-4 text-gray-900 whitespace-nowrap">
+                            {formatAdjustmentValueDisplay(entry.actual_crusher_powder_kg, entry.adjusted_crusher_powder_kg)}
+                          </td>
+                          <td className="px-4 py-4 text-gray-900 whitespace-nowrap">
+                            {formatAdjustmentValueDisplay(entry.actual_fly_ash_kg, entry.adjusted_fly_ash_kg)}
+                          </td>
+                          <td className="px-4 py-4 text-gray-900 whitespace-nowrap">
+                            {formatAdjustmentValueDisplay(entry.actual_cement_bags, entry.adjusted_cement_bags)}
+                          </td>
+                          <td className="px-4 py-4 text-gray-900 text-sm">{entry.reason || 'N/A'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
             )}
 
@@ -848,7 +1020,7 @@ export function InventoryManagementScreen() {
               {/* Cement */}
               <div>
                 <label htmlFor="adjCement" className="block text-gray-700 mb-2">
-                  Cement (Kg)
+                  Cement (Bags)
                 </label>
                 <input
                   id="adjCement"
@@ -859,19 +1031,42 @@ export function InventoryManagementScreen() {
                 />
               </div>
 
+              {/* Reason (Optional) */}
+              <div>
+                <label htmlFor="adjReason" className="block text-gray-700 mb-2">
+                  Reason (Optional)
+                </label>
+                <textarea
+                  id="adjReason"
+                  value={adjReason}
+                  onChange={(e) => setAdjReason(e.target.value)}
+                  placeholder="e.g., Physical count discrepancy, theft, damage..."
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  rows={3}
+                />
+              </div>
+
               {/* Buttons */}
               <div className="flex gap-3 pt-4 justify-end">
                 <button
                   onClick={handleCancelAdjustment}
-                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  disabled={adjLoading}
+                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSubmitAdjustment}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  disabled={adjLoading}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed disabled:opacity-75 flex items-center gap-2"
                 >
-                  Submit
+                  {adjLoading && (
+                    <svg className="w-4 h-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  )}
+                  {adjLoading ? 'Submitting...' : 'Submit'}
                 </button>
               </div>
             </div>
