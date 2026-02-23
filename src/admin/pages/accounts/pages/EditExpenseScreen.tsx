@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AdminScreen, Expense } from '../../../../AdminApp';
 import { ArrowLeft, Save, Trash2 } from 'lucide-react';
 import { Popup } from '../../../../components/Popup';
 import { CreateExpenseTypePopup } from './CreateExpenseTypePopup';
 import { useParams } from 'react-router-dom';
 import { useAdminNavigation } from '../../../hooks/useAdminNavigation';
+import { getExpenseById, getExpenseTypes, getExpenseSubtypes } from '../../../../services/middleware.service';
 
 const expenseTypes = [
   'Procurement',
@@ -31,38 +32,21 @@ const MOCK_ACCOUNTS = [
 
 export function EditExpenseScreen() {
   const params = useParams();
-const expenseId = params.expenseId;
-const { goBack, exitTo ,goTo } = useAdminNavigation();
+  const expenseId = params.expenseId;
+  const { goBack, exitTo, goTo } = useAdminNavigation();
 
-const MOCK_EXPENSES: Expense[] = [
-  { id: 'EXP-001', date: '2025-12-08', type: 'Procurement', subtype: 'Fly Ash', amount: 50000, comments: 'Fly Ash purchase from ABC Suppliers', status: 'Paid', modeOfPayment: 'Bank Transfer', sai: '3455332', rai: 'ABC Suppliers - 9876543210' },
-  { id: 'EXP-002', date: '2025-12-08', type: 'Salary', subtype: 'Production Workers', amount: 35000, comments: 'Weekly salary for production workers', status: 'Paid', modeOfPayment: 'UPI', sai: '7894561', rai: 'Employees Salary Fund' },
-  { id: 'EXP-003', date: '2025-12-07', type: 'Equipment Service', subtype: 'Machine Maintenance', amount: 15000, comments: 'Brick making machine maintenance', status: 'Pending', modeOfPayment: 'Cheque', sai: '3455332', rai: 'Service Center - 1234567890' },
-  { id: 'EXP-004', date: '2025-12-07', type: 'Fuel', subtype: 'Diesel', amount: 8000, comments: 'Diesel for generator and vehicles', status: 'Paid', modeOfPayment: 'Cash' },
-  { id: 'EXP-005', date: '2025-12-06', type: 'Procurement', subtype: 'Crusher Powder', amount: 80000, comments: 'Crusher Powder from XYZ Materials', status: 'Paid', modeOfPayment: 'Bank Transfer', sai: '7894561', rai: 'XYZ Materials - 8765432109' },
-  { id: 'EXP-006', date: '2025-12-06', type: 'Others', subtype: 'Office Supplies', amount: 5000, comments: 'Office supplies and miscellaneous', status: 'Paid', modeOfPayment: 'Cash' },
-  { id: 'EXP-007', date: '2025-12-05', type: 'Salary', subtype: 'Production Workers', amount: 35000, comments: 'Weekly salary for production workers', status: 'Paid', modeOfPayment: 'UPI', sai: '3455332', rai: 'Employees Salary Fund' },
-  { id: 'EXP-008', date: '2025-12-05', type: 'Fuel', subtype: 'Diesel', amount: 7500, comments: 'Diesel and petrol for vehicles', status: 'Paid', modeOfPayment: 'Cash' },
-];
-
-const expense = MOCK_EXPENSES.find(e => e.id === expenseId);
-
-if (!expense) {
-  return (
-    <div className="p-6 text-center text-red-600">
-      Expense not found
-    </div>
-  );
-}
+  const [expense, setExpense] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    date: expense.date,
-    type: expense.type,
-    subtype: expense.subtype || '',
-    amount: expense.amount.toString(),
-    comments: expense.comments,
-    modeOfPayment: expense.modeOfPayment,
-    sai: expense.sai || '',
-    rai: expense.rai || '',
+    date: '',
+    type: '',
+    subtype: '',
+    amount: '',
+    comments: '',
+    modeOfPayment: '',
+    sai: '',
+    rai: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -71,6 +55,40 @@ if (!expense) {
   const [popupMessage, setPopupMessage] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showCreateTypePopup, setShowCreateTypePopup] = useState(false);
+
+  // Fetch expense on mount
+  useEffect(() => {
+    const fetchExpense = async () => {
+      try {
+        if (!expenseId) {
+          setError('No expense ID provided');
+          setLoading(false);
+          return;
+        }
+        const expenseData = await getExpenseById(expenseId);
+        setExpense(expenseData);
+
+        // Initialize form with fetched data
+        setFormData({
+          date: expenseData.expense_date || '',
+          type: expenseData.expense_types?.[0]?.name || '',
+          subtype: expenseData.expense_subtypes?.[0]?.name || '',
+          amount: (expenseData.amount || 0).toString(),
+          comments: expenseData.comments || '',
+          modeOfPayment: expenseData.payment_mode || '',
+          sai: expenseData.accounts?.[0]?.account_number || '',
+          rai: '',
+        });
+      } catch (err) {
+        console.error('Failed to fetch expense:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load expense');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchExpense();
+  }, [expenseId]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -137,6 +155,31 @@ if (!expense) {
 
   // Get subtypes for selected type
   const availableSubtypes = formData.type ? (expenseSubtypes[formData.type] || []) : [];
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <p className="text-gray-600">Loading expense...</p>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error || !expense) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">
+        <p className="text-red-600 mb-4">{error || 'Expense not found'}</p>
+        <button
+          onClick={() => goBack('/admin/accounts')}
+          className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          Back to Accounts
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -1,11 +1,9 @@
-import React, { useState } from 'react';
-import { AdminScreen, AdminOrder } from '../../../../AdminApp';
+import { useState } from 'react';
 import { ArrowLeft, Plus, Wallet, X } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { useAdminNavigation } from '../../../hooks/useAdminNavigation';
 import { useAccountsIncome } from '../../../hooks/useAccountsIncome';
 import { useAccountsExpenses } from '../../../hooks/useAccountsExpenses';
-import { Popup } from '../../../../components/Popup';
 
 type FilterType = 'Current Month' | 'Last month' | 'Last year' | 'Custom range';
 
@@ -34,10 +32,12 @@ export function AccountsManagementScreen() {
   // Fetch expenses data based on filter and selected type
   const {
     expenses,
+    procurements,
     expenseTypes,
     loading: expensesLoading,
     error: expensesError,
     totalExpenses,
+    totalProcurements,
     pieChartData,
     showError: showExpensesError,
     closeError: closeExpensesError,
@@ -48,8 +48,8 @@ export function AccountsManagementScreen() {
     selectedExpenseTypeId
   );
 
-  // Calculate profit
-  const profit = totalIncome - totalExpenses;
+  // Calculate profit (includes procurements)
+  const profit = totalIncome - totalExpenses - totalProcurements;
 
   const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
 
@@ -222,6 +222,7 @@ export function AccountsManagementScreen() {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
               >
                 <option value="Overall">Overall</option>
+                <option value="Procurement">📦 Procurement</option>
                 {expenseTypes.map((type) => (
                   <option key={type.id} value={type.id}>
                     {type.name}
@@ -275,52 +276,100 @@ export function AccountsManagementScreen() {
                 <div className="flex justify-center items-center flex-grow">
                   <p className="text-gray-500">Loading expenses...</p>
                 </div>
-              ) : expenses.length === 0 ? (
+              ) : expenses.length === 0 && procurements.length === 0 ? (
                 <div className="flex justify-center items-center flex-grow">
                   <p className="text-gray-500">No expenses found for this period</p>
                 </div>
               ) : (
                 <div className="space-y-3 overflow-y-auto flex-grow">
-                  {expenses.map((expense) => (
-                    <div
-                      key={expense.id}
-                      onClick={() => goTo(`/admin/accounts/expense/${expense.id}`)}
-                      className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors flex-shrink-0"
-                    >
-                      <div className="grid grid-cols-5 gap-3 text-sm">
-                        <div>
-                          <p className="text-gray-500 mb-1">Type</p>
-                          <p className="text-gray-900 truncate">{expense.expense_types?.name || '-'}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-500 mb-1">Subtype</p>
-                          <p className="text-gray-900 truncate">{expense.expense_subtypes?.name || '-'}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-500 mb-1">Comments</p>
-                          <p className="text-gray-900 truncate">{expense.comments || '-'}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-500 mb-1">Amount</p>
-                          <p className="text-gray-900">₹{(expense.amount || 0).toLocaleString()}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-500 mb-1">Payment Mode</p>
-                          <span className={`inline-block px-2 py-1 rounded-full text-xs ${
-                            expense.payment_mode === 'CASH'
-                              ? 'bg-gray-100 text-gray-800'
-                              : expense.payment_mode === 'UPI'
-                              ? 'bg-blue-100 text-blue-800'
-                              : expense.payment_mode === 'BANK'
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-orange-100 text-orange-800'
-                          }`}>
-                            {expense.payment_mode === 'CASH' ? 'Cash' : expense.payment_mode === 'UPI' ? 'UPI' : expense.payment_mode === 'BANK' ? 'Bank' : 'Cheque'}
-                          </span>
-                        </div>
+                  {/* Manual Expenses Section */}
+                  {expenses.length > 0 && (
+                    <>
+                      <div className="border-b border-gray-200 pb-2">
+                        <h4 className="text-sm font-semibold text-gray-700">🏢 Manual Expenses (₹{totalExpenses.toLocaleString()})</h4>
                       </div>
-                    </div>
-                  ))}
+                      {expenses.map((expense: any) => (
+                        <div
+                          key={expense.id}
+                          onClick={() => goTo(`/admin/accounts/expense/${expense.id}`)}
+                          className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors flex-shrink-0"
+                        >
+                          <div className="grid grid-cols-5 gap-3 text-sm">
+                            <div>
+                              <p className="text-gray-500 mb-1">Type</p>
+                              <p className="text-gray-900 truncate">{expense.expense_types?.name || '-'}</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500 mb-1">Subtype</p>
+                              <p className="text-gray-900 truncate">{expense.expense_subtypes?.name || '-'}</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500 mb-1">Comments</p>
+                              <p className="text-gray-900 truncate">{expense.comments || '-'}</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500 mb-1">Amount</p>
+                              <p className="text-gray-900">₹{(expense.amount || 0).toLocaleString()}</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500 mb-1">Payment Mode</p>
+                              <span className={`inline-block px-2 py-1 rounded-full text-xs ${
+                                expense.payment_mode === 'CASH'
+                                  ? 'bg-gray-100 text-gray-800'
+                                  : expense.payment_mode === 'UPI'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : expense.payment_mode === 'BANK'
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-orange-100 text-orange-800'
+                              }`}>
+                                {expense.payment_mode === 'CASH' ? 'Cash' : expense.payment_mode === 'UPI' ? 'UPI' : expense.payment_mode === 'BANK' ? 'Bank' : 'Cheque'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
+
+                  {/* Procurements Section */}
+                  {procurements.length > 0 && (
+                    <>
+                      <div className="border-b border-gray-200 pb-2 mt-4">
+                        <h4 className="text-sm font-semibold text-gray-700">📦 Procurements (₹{totalProcurements.toLocaleString()})</h4>
+                      </div>
+                      {procurements.map((procurement: any) => (
+                        <div
+                          key={procurement.id}
+                          className="border border-blue-200 bg-blue-50 rounded-lg p-4 hover:bg-blue-100 transition-colors flex-shrink-0"
+                        >
+                          <div className="grid grid-cols-5 gap-3 text-sm">
+                            <div>
+                              <p className="text-gray-500 mb-1">Date</p>
+                              <p className="text-gray-900">{new Date(procurement.date).toLocaleDateString()}</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500 mb-1">Material</p>
+                              <p className="text-gray-900 truncate">{procurement.materials?.[0]?.name || '-'}</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500 mb-1">Vendor</p>
+                              <p className="text-gray-900 truncate">{procurement.vendors?.[0]?.name || '-'}</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500 mb-1">Amount</p>
+                              <p className="text-gray-900 font-semibold">₹{(procurement.total_price || 0).toLocaleString()}</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500 mb-1">Status</p>
+                              <span className="inline-block px-2 py-1 rounded-full text-xs bg-blue-200 text-blue-800">
+                                Approved
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
                 </div>
               )}
             </div>
