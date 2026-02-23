@@ -3,6 +3,7 @@ import { ArrowLeft, Droplets, Mountain, Sparkles, Hammer, Wind, Boxes } from 'lu
 import { Popup } from '../../../../components/Popup';
 import { useAdminNavigation } from '../../../hooks/useAdminNavigation';
 import { useProcurementsCountWithFilter } from '../../../hooks/useProcurementsWithFilters';
+import { useAllInventoryStock } from '../../../hooks/useInventoryStock';
 
 type FilterType = 'Current month' | 'Last month' | 'Last year' | 'Custom range';
 type TabType = 'Procurement' | 'Usage' | 'Adjustments';
@@ -130,6 +131,41 @@ export function InventoryManagementScreen() {
     filterType === 'Custom range' ? customStartDate : undefined,
     filterType === 'Custom range' ? customEndDate : undefined
   );
+
+  // Fetch inventory stock data
+  const { stock: inventoryStock } = useAllInventoryStock();
+
+  // Build inventory metrics from database
+  const buildInventoryMetrics = () => {
+    const metrics: any = {
+      bricksReady: 52000, // This would come from a production table
+      wetAshKg: 0,
+      marblePowderKg: 0,
+      crusherPowderKg: 0,
+      flyAshKg: 0,
+      cementKg: 0,
+    };
+
+    inventoryStock.forEach((item) => {
+      const materialName = item.materials?.name?.toLowerCase() || '';
+      
+      if (materialName.includes('wet ash')) {
+        metrics.wetAshKg = item.quantity;
+      } else if (materialName.includes('marble')) {
+        metrics.marblePowderKg = item.quantity;
+      } else if (materialName.includes('crusher')) {
+        metrics.crusherPowderKg = item.quantity;
+      } else if (materialName.includes('fly ash')) {
+        metrics.flyAshKg = item.quantity;
+      } else if (materialName.includes('cement')) {
+        metrics.cementKg = item.quantity;
+      }
+    });
+
+    return metrics;
+  };
+
+  const INVENTORY_METRICS = buildInventoryMetrics();
 
   // Adjustment form state
   const [adjBricksReady, setAdjBricksReady] = useState('');

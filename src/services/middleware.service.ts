@@ -1588,10 +1588,11 @@ export interface ProcurementWithDetails {
   };
 }
 
-/**
- * Get ALL unapproved procurements (no date range filter)
+/*-----------------------------------------------------------------------
+ * 47.1 Get unapproved procurements
+ * Fetch all unapproved procurements (no date range filter)
  * Used in UnapprovedProcurementsScreen
- */
+-------------------------------------------------------------------------- */
 export async function getUnapprovedProcurements(): Promise<ProcurementWithDetails[]> {
   const { data, error } = await supabase
     .from("procurements")
@@ -1619,10 +1620,11 @@ export async function getUnapprovedProcurements(): Promise<ProcurementWithDetail
   return (data as unknown as ProcurementWithDetails[]) ?? [];
 }
 
-/**
+/**--------------------------------------------------------------------------
+ * 47.2 Get unapproved procurements count
  * Get count of ALL unapproved procurements (no date range filter)
  * Used in InventoryManagementScreen - shows total unapproved count
- */
+------------------------------------------------------------------------------ */
 export async function getUnapprovedProcurementCount(): Promise<number> {
   const { count, error } = await supabase
     .from("procurements")
@@ -1633,15 +1635,94 @@ export async function getUnapprovedProcurementCount(): Promise<number> {
   return count ?? 0;
 }
 
-/**
- * Update procurement approval
- */
+/**------------------------------------------------------------------------------
+ * 47.3 Update inventory stock when procurement is approved
+ * Helper function to add/update material quantity in inventory_stock table
+------------------------------------------------------------------------------ */
+async function updateInventoryStock(
+  materialId: string,
+  quantity: number
+): Promise<void> {
+  // First, check if the material already exists in inventory_stock
+  const { data: existingStock, error: fetchError } = await supabase
+    .from("inventory_stock")
+    .select("*")
+    .eq("material_id", materialId);
+
+  if (fetchError) {
+    throw fetchError;
+  }
+
+  if (existingStock && existingStock.length > 0) {
+    // Material exists, update the quantity
+    const currentStock = existingStock[0];
+    const { error: updateError } = await supabase
+      .from("inventory_stock")
+      .update({
+        quantity: currentStock.quantity + quantity,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("material_id", materialId);
+
+    if (updateError) throw updateError;
+  } else {
+    // Material doesn't exist, create new record
+    const { error: insertError } = await supabase
+      .from("inventory_stock")
+      .insert({
+        material_id: materialId,
+        quantity: quantity,
+        updated_at: new Date().toISOString(),
+      });
+
+    if (insertError) throw insertError;
+  }
+}
+
+/**------------------------------------------------------------------------------
+ * 47.4 Convert quantity to KG based on material type
+ * Handles unit conversion for different materials:
+ * - Cement: Bags to KG (1 bag = 50 kg)
+ * - Crusher Powder: Units to KG (1 unit = 4500 kg)
+ * - Others (Wet Ash, Marble, Fly Ash): Tons to KG (1 ton = 1000 kg)
+------------------------------------------------------------------------------ */
+function convertToKg(materialName: string, quantity: number): number {
+  const name = materialName.toLowerCase();
+  
+  if (name.includes('cement')) {
+    // 1 bag = 50 kg
+    return quantity * 50;
+  } else if (name.includes('crusher')) {
+    // 1 unit = 4500 kg
+    return quantity * 4500;
+  }
+  // Wet Ash, Marble Powder, Fly Ash are in tons, convert to kg
+  // 1 ton = 1000 kg
+  return quantity * 1000;
+}
+
+/**------------------------------------------------------------------------------
+ * 47.5 Approve procurement
+ * Update procurement approval status, rate, and total price
+ * Automatically converts quantity to KG and updates inventory_stock
+------------------------------------------------------------------------------ */
 export async function approveProcurement(
   procurementId: string,
   ratePerUnit: number,
   totalPrice: number
 ): Promise<void> {
-  const { error } = await supabase
+  // First, get the procurement details to access material_id, quantity, and material name
+  const { data: procurement, error: fetchError } = await supabase
+    .from("procurements")
+    .select("material_id, quantity, materials!material_id(name)")
+    .eq("id", procurementId)
+    .single();
+
+  if (fetchError) throw fetchError;
+  if (!procurement) throw new Error("Procurement not found");
+
+  // Update procurement approval status
+  const { error: updateError } = await supabase
     .from("procurements")
     .update({
       approved: true,
@@ -1650,6 +1731,63 @@ export async function approveProcurement(
     })
     .eq("id", procurementId);
 
-  if (error) throw error;
+  if (updateError) throw updateError;
+
+  // Convert quantity to KG based on material type
+  const material = Array.isArray(procurement.materials) 
+    ? procurement.materials[0] 
+    : procurement.materials;
+  const materialName = material?.name || '';
+  const quantityInKg = convertToKg(materialName, procurement.quantity);
+
+  // Update inventory stock for the material (store in KG)
+  await updateInventoryStock(procurement.material_id, quantityInKg);
 }
 
+/**------------------------------------------------------------------------------
+ * 47.6 Get inventory stock for all materials or specific material
+ * Fetch inventory stock with material details
+------------------------------------------------------------------------------ */
+export async function getInventoryStock(materialId?: string): Promise<any[]> {
+  let query = supabase
+    .from("inventory_stock")
+    .select(`
+      material_id,
+      quantity,
+      updated_at,
+      materials!material_id(id, name, unit)
+    `)
+    .order("updated_at", { ascending: false });
+
+  if (materialId) {
+    query = query.eq("material_id", materialId);
+  }
+
+  const { data, error } = await query;
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+/**------------------------------------------------------------------------------
+ * 47.7 Get inventory stock for specific material
+ * Fetch inventory stock details for a single material by ID
+------------------------------------------------------------------------------ */
+export async function getInventoryStockForMaterial(materialId: string): Promise<any | null> {
+  const { data, error } = await supabase
+    .from("inventory_stock")
+    .select(`
+      material_id,
+      quantity,
+      updated_at,
+      materials!material_id(id, name, unit)
+    `)
+    .eq("material_id", materialId)
+    .single();
+
+  if (error && error.code !== "PGRST116") {
+    throw error;
+  }
+
+  return data ?? null;
+}

@@ -81,6 +81,30 @@ export function UnapprovedProcurementsScreen() {
     return (selectedProcurement.quantity * rateValue).toFixed(2);
   };
 
+  const getDisplayUnit = () => {
+    const materialName = getMaterialName().toLowerCase();
+    
+    if (materialName.includes('cement')) {
+      return 'Bags';
+    } else if (materialName.includes('crusher')) {
+      return 'Units';
+    }
+    // Wet Ash, Marble Powder, Fly Ash
+    return 'Tons';
+  };
+
+  const getPriceLabel = () => {
+    const materialName = getMaterialName().toLowerCase();
+    
+    if (materialName.includes('cement')) {
+      return 'Price per Bag';
+    } else if (materialName.includes('crusher')) {
+      return 'Price per Unit';
+    }
+    // Wet Ash, Marble Powder, Fly Ash
+    return 'Price per Ton';
+  };
+
   const getMaterialName = () => {
     if (selectedProcurement?.materials) {
       // Handle both object and array cases
@@ -242,7 +266,7 @@ export function UnapprovedProcurementsScreen() {
                 <label className="block text-gray-700 mb-2">Quantity</label>
                 <input
                   type="text"
-                  value={selectedProcurement ? `${selectedProcurement.quantity} ${getMaterialUnit()}` : ''}
+                  value={selectedProcurement ? `${selectedProcurement.quantity} ${getDisplayUnit()}` : ''}
                   disabled
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
                 />
@@ -251,18 +275,23 @@ export function UnapprovedProcurementsScreen() {
               {/* Rate - Input field */}
               <div>
                 <label htmlFor="rate" className="block text-gray-700 mb-2">
-                  Rate (per unit) <span className="text-red-600">*</span>
+                  {getPriceLabel()} <span className="text-red-600">*</span>
                 </label>
-                <input
-                  id="rate"
-                  type="number"
-                  value={rate}
-                  onChange={(e) => setRate(e.target.value)}
-                  placeholder="Enter rate per unit"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                  step="0.01"
-                  min="0.01"
-                />
+                <div className="flex gap-2">
+                  <span className="inline-flex items-center px-3 py-3 bg-gray-100 border border-gray-300 border-r-0 rounded-l-lg text-gray-700">
+                    ₹
+                  </span>
+                  <input
+                    id="rate"
+                    type="number"
+                    value={rate}
+                    onChange={(e) => setRate(e.target.value)}
+                    placeholder={`Enter price per ${getDisplayUnit().toLowerCase()}`}
+                    className="flex-1 px-4 py-3 border border-gray-300 rounded-r-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                    step="0.01"
+                    min="0.01"
+                  />
+                </div>
               </div>
 
               {/* Total Price - Calculated */}
