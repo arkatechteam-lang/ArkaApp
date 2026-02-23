@@ -1561,3 +1561,95 @@ export async function updateEmployeeStatus(
   if (error) throw error;
 }
 
+/* ------------------------------------------------------------------
+   47. PROCUREMENT FUNCTIONS
+-------------------------------------------------------------------*/
+
+export interface ProcurementWithDetails {
+  id: string;
+  material_id: string;
+  vendor_id: string;
+  quantity: number;
+  rate_per_unit: number;
+  total_price: number;
+  date: string;
+  approved: boolean;
+  created_by: string;
+  created_at: string;
+  materials?: {
+    id: string;
+    name: string;
+    unit: string;
+  };
+  vendors?: {
+    id: string;
+    name: string;
+    phone: string | null;
+  };
+}
+
+/**
+ * Get ALL unapproved procurements (no date range filter)
+ * Used in UnapprovedProcurementsScreen
+ */
+export async function getUnapprovedProcurements(): Promise<ProcurementWithDetails[]> {
+  const { data, error } = await supabase
+    .from("procurements")
+    .select(`
+      id,
+      material_id,
+      vendor_id,
+      quantity,
+      rate_per_unit,
+      total_price,
+      date,
+      approved,
+      created_by,
+      created_at,
+      materials!material_id(id, name, unit),
+      vendors!vendor_id(id, name, phone)
+    `)
+    .eq("approved", false)
+    .order("date", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching procurements:", error);
+    throw error;
+  }
+  return (data as unknown as ProcurementWithDetails[]) ?? [];
+}
+
+/**
+ * Get count of ALL unapproved procurements (no date range filter)
+ * Used in InventoryManagementScreen - shows total unapproved count
+ */
+export async function getUnapprovedProcurementCount(): Promise<number> {
+  const { count, error } = await supabase
+    .from("procurements")
+    .select("id", { count: "exact", head: true })
+    .eq("approved", false);
+
+  if (error) throw error;
+  return count ?? 0;
+}
+
+/**
+ * Update procurement approval
+ */
+export async function approveProcurement(
+  procurementId: string,
+  ratePerUnit: number,
+  totalPrice: number
+): Promise<void> {
+  const { error } = await supabase
+    .from("procurements")
+    .update({
+      approved: true,
+      rate_per_unit: ratePerUnit,
+      total_price: totalPrice,
+    })
+    .eq("id", procurementId);
+
+  if (error) throw error;
+}
+

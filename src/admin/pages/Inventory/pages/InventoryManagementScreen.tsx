@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { ArrowLeft, Droplets, Mountain, Sparkles, Hammer, Wind, Boxes } from 'lucide-react';
 import { Popup } from '../../../../components/Popup';
 import { useAdminNavigation } from '../../../hooks/useAdminNavigation';
+import { useProcurementsCountWithFilter } from '../../../hooks/useProcurementsWithFilters';
 
-type FilterType = 'Last month' | 'Last year' | 'Custom range';
+type FilterType = 'Current month' | 'Last month' | 'Last year' | 'Custom range';
 type TabType = 'Procurement' | 'Usage' | 'Adjustments';
 type MaterialFilter = 'All' | 'Wet Ash' | 'Marble Powder' | 'Crusher Powder' | 'Fly Ash' | 'Cement';
 
@@ -113,7 +114,7 @@ const INVENTORY_METRICS = {
 
 export function InventoryManagementScreen() {
   const {goTo,goBack} = useAdminNavigation();
-  const [filterType, setFilterType] = useState<FilterType>('Last month');
+  const [filterType, setFilterType] = useState<FilterType>('Current month');
   const [showCustomRangeModal, setShowCustomRangeModal] = useState(false);
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
@@ -122,6 +123,13 @@ export function InventoryManagementScreen() {
   const [displayCount, setDisplayCount] = useState(10);
   const [showAdjustmentModal, setShowAdjustmentModal] = useState(false);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+
+  // Fetch unapproved procurements count with filter
+  const { count: unapprovedCount } = useProcurementsCountWithFilter(
+    filterType,
+    filterType === 'Custom range' ? customStartDate : undefined,
+    filterType === 'Custom range' ? customEndDate : undefined
+  );
 
   // Adjustment form state
   const [adjBricksReady, setAdjBricksReady] = useState('');
@@ -245,6 +253,7 @@ export function InventoryManagementScreen() {
                 onChange={(e) => handleFilterChange(e.target.value as FilterType)}
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
               >
+                <option value="Current month">Current month</option>
                 <option value="Last month">Last month</option>
                 <option value="Last year">Last year</option>
                 <option value="Custom range">Custom range</option>
@@ -256,9 +265,11 @@ export function InventoryManagementScreen() {
                 className="relative px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
               >
                 Unapproved procurements
-                <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center">
-                  3
-                </span>
+                {unapprovedCount > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center">
+                    {unapprovedCount}
+                  </span>
+                )}
               </button>
 
               {/* Make Adjustments Button */}
