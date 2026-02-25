@@ -1,4 +1,3 @@
-import React from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Popup } from '../../../../components/Popup';
 import { useCreateVendor } from '../../../hooks/useCreateVendor';

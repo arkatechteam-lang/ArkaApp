@@ -1,4 +1,3 @@
-import React from 'react';
 import { ArrowLeft, Plus, Search, Store, Edit2, Book } from 'lucide-react';
 import { useVendorManagement } from '../../../hooks/useVendorManagement';
 
