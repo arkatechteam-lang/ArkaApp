@@ -1,30 +1,27 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Calendar, X } from 'lucide-react';
+import  { useState, useRef } from 'react';
+import { ArrowLeft, X } from 'lucide-react';
 import { Popup } from '../../../../components/Popup';
 import { useVendorLedger } from '../../../hooks/useVendorLedger';
-
-// Mock procurement data
-const MOCK_PROCUREMENTS = [
-  { id: 'PROC-001', date: '2025-12-15', material: 'Wet Ash', quantityValue: 5, quantityUnit: 'tons', rate: 10, amount: 50000, status: 'Completed', notes: 'Quality checked' },
-  { id: 'PROC-002', date: '2025-12-10', material: 'Crusher Powder', quantityValue: 300, quantityUnit: 'units', rate: 15, amount: 45000, status: 'Completed', notes: '' },
-  { id: 'PROC-003', date: '2025-12-05', material: 'Wet Ash', quantityValue: 4, quantityUnit: 'tons', rate: 10, amount: 40000, status: 'Completed', notes: '' },
-  { id: 'PROC-004', date: '2025-11-28', material: 'Crusher Powder', quantityValue: 600, quantityUnit: 'units', rate: 15, amount: 90000, status: 'Completed', notes: 'Bulk order' },
-  { id: 'PROC-005', date: '2025-11-20', material: 'Wet Ash', quantityValue: 5.5, quantityUnit: 'tons', rate: 10, amount: 55000, status: 'Completed', notes: '' },
-];
-
-// Mock payment data
-const MOCK_PAYMENTS = [
-  { id: 'PAY-001', date: '2025-12-18', amount: 50000, modeOfPayment: 'Bank Transfer', sai: 'HDFC Bank - 1234', rai: 'ICICI Bank - 5678', notes: 'Invoice #001 payment', createdAt: '2025-12-18 10:30 AM', createdBy: 'Admin User' },
-  { id: 'PAY-002', date: '2025-12-12', amount: 45000, modeOfPayment: 'UPI', sai: 'PhonePe - 9876543210', rai: 'GPay - 9876543210', notes: '', createdAt: '2025-12-12 02:15 PM', createdBy: 'Admin User' },
-  { id: 'PAY-003', date: '2025-12-08', amount: 40000, modeOfPayment: 'Cheque', sai: 'SBI - Cheque #123456', rai: 'PNB - 8901', notes: 'Cheque cleared', createdAt: '2025-12-08 11:00 AM', createdBy: 'Admin User' },
-  { id: 'PAY-004', date: '2025-11-30', amount: 90000, modeOfPayment: 'Bank Transfer', sai: 'Axis Bank - 4567', rai: 'ICICI Bank - 5678', notes: 'Bulk payment', createdAt: '2025-11-30 09:45 AM', createdBy: 'Manager' },
-  { id: 'PAY-005', date: '2025-11-25', amount: 30000, modeOfPayment: 'Cash', sai: 'Cash', rai: 'Cash', notes: '', createdAt: '2025-11-25 03:20 PM', createdBy: 'Admin User' },
-];
+import { VendorLedgerExport } from './VendorLedgerExport';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 type TabType = 'procurements' | 'payments';
 
 export function VendorLedgerScreen() {
-  const { vendor, vendorId, loading, goBack, goTo } = useVendorLedger();
+  const {
+    vendor,
+    vendorId,
+    loading,
+    procurements,
+    procurementsLoading,
+    payments,
+    paymentsLoading,
+    financials,
+    goBack,
+    goTo,
+  } = useVendorLedger();
+  const exportRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState<TabType>('procurements');
   const [displayCount, setDisplayCount] = useState(20);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
@@ -48,24 +45,26 @@ export function VendorLedgerScreen() {
   const [showExportErrorPopup, setShowExportErrorPopup] = useState(false);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [exportProcurements, setExportProcurements] = useState<any[]>([]);
+  const [exportPayments, setExportPayments] = useState<any[]>([]);
 
-  // Calculate totals
-  const totalPurchase = MOCK_PROCUREMENTS.reduce((sum, p) => sum + p.amount, 0);
-  const totalPayment = MOCK_PAYMENTS.reduce((sum, p) => sum + p.amount, 0);
-  const outstandingBalance = totalPurchase - totalPayment;
+  // Totals from DB view
+  const totalPurchase = financials?.total_purchase ?? 0;
+  const totalPayment = financials?.total_paid ?? 0;
+  const outstandingBalance = financials?.outstanding_balance ?? 0;
 
   // Filter and sort data
-  const filterAndSortData = (data: any[]) => {
+  const filterAndSortData = (data: any[], dateField = 'date') => {
     const filtered = data.filter(item => {
-      const itemDate = new Date(item.date);
+      const itemDate = new Date(item[dateField]);
       const from = new Date(fromDate);
       const to = new Date(toDate);
       return itemDate >= from && itemDate <= to;
     });
 
     const sorted = [...filtered].sort((a, b) => {
-      const dateA = new Date(a.date).getTime();
-      const dateB = new Date(b.date).getTime();
+      const dateA = new Date(a[dateField]).getTime();
+      const dateB = new Date(b[dateField]).getTime();
       return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
     });
 
@@ -73,8 +72,8 @@ export function VendorLedgerScreen() {
   };
 
   const currentData = activeTab === 'procurements' 
-    ? filterAndSortData(MOCK_PROCUREMENTS) 
-    : filterAndSortData(MOCK_PAYMENTS);
+    ? filterAndSortData(procurements, 'date') 
+    : filterAndSortData(payments, 'payment_date');
 
   const displayedData = currentData.slice(0, displayCount);
   const hasMore = displayCount < currentData.length;
@@ -102,7 +101,7 @@ export function VendorLedgerScreen() {
     setExportToDateError('');
   };
   
-  const handleDownloadExport = () => {
+  const handleDownloadExport = async () => {
     // Clear previous errors
     setExportFromDateError('');
     setExportToDateError('');
@@ -127,14 +126,19 @@ export function VendorLedgerScreen() {
     // Filter procurements and payments within date range
     const fromDateObj = new Date(exportFromDate);
     const toDateObj = new Date(exportToDate);
+
+    if (fromDateObj > toDateObj) {
+      setExportFromDateError('From date cannot be greater than To date.');
+      return;
+    }
     
-    const procurementsInRange = MOCK_PROCUREMENTS.filter(proc => {
+    const procurementsInRange = procurements.filter(proc => {
       const procDate = new Date(proc.date);
       return procDate >= fromDateObj && procDate <= toDateObj;
     });
     
-    const paymentsInRange = MOCK_PAYMENTS.filter(payment => {
-      const paymentDate = new Date(payment.date);
+    const paymentsInRange = payments.filter(payment => {
+      const paymentDate = new Date(payment.payment_date);
       return paymentDate >= fromDateObj && paymentDate <= toDateObj;
     });
     
@@ -144,37 +148,48 @@ export function VendorLedgerScreen() {
       setShowNoTransactionsPopup(true);
       return;
     }
-    
-    // Simulate export generation
-    try {
-      // Calculate totals
-      const totalProcurementAmount = procurementsInRange.reduce((sum, proc) => sum + proc.amount, 0);
-      const totalPaymentAmount = paymentsInRange.reduce((sum, payment) => sum + payment.amount, 0);
-      const closingBalance = outstandingBalance;
-      
-      // // In a real app, this would generate a PDF or Image file
-      // console.log('Exporting vendor ledger:', {
-      //   vendorName: MOCK_VENDOR.name,
-      //   vendorPhone: MOCK_VENDOR.phoneNumber,
-      //   materialsSupplied: MOCK_VENDOR.materialsSupplied,
-      //   dateRange: `${exportFromDate} to ${exportToDate}`,
-      //   openingBalance: outstandingBalance,
-      //   procurements: procurementsInRange,
-      //   payments: paymentsInRange,
-      //   totalProcurementAmount,
-      //   totalPaymentAmount,
-      //   closingBalance,
-      //   format: exportFormat
-      // });
-      
-      // Simulate successful download
-      setSuccessMessage(`Vendor ledger exported successfully as ${exportFormat}`);
-      setShowExportModal(false);
-      setShowSuccessPopup(true);
-    } catch (error) {
-      setShowExportModal(false);
-      setShowExportErrorPopup(true);
-    }
+
+    // Store filtered data for the export component
+    setExportProcurements(procurementsInRange);
+    setExportPayments(paymentsInRange);
+
+    // Wait for component render
+    setTimeout(async () => {
+      try {
+        const element = exportRef.current;
+        if (!element) return;
+
+        const canvas = await html2canvas(element, {
+          scale: 2,
+          useCORS: true,
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+
+        if (exportFormat === 'Image') {
+          const link = document.createElement('a');
+          link.href = imgData;
+          link.download = `Arka_Vendor_Ledger_${vendor?.name}.png`;
+          link.click();
+        } else {
+          const pdf = new jsPDF('p', 'mm', 'a4');
+          const imgProps = pdf.getImageProperties(imgData);
+          const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+          pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+          pdf.save(`Arka_Vendor_Ledger_${vendor?.name}.pdf`);
+        }
+
+        setShowExportModal(false);
+        setSuccessMessage(`Vendor ledger exported successfully as ${exportFormat}`);
+        setShowSuccessPopup(true);
+      } catch (err) {
+        console.error(err);
+        setShowExportModal(false);
+        setShowExportErrorPopup(true);
+      }
+    }, 400);
   };
 
   if (loading) {
@@ -372,32 +387,47 @@ export function VendorLedgerScreen() {
                       <thead className="bg-gray-50">
                         <tr>
                           <th className="px-4 py-3 text-left text-gray-700">Date</th>
-                          <th className="px-4 py-3 text-left text-gray-700">Procurement ID</th>
                           <th className="px-4 py-3 text-left text-gray-700">Material</th>
                           <th className="px-4 py-3 text-left text-gray-700">Quantity</th>
                           <th className="px-4 py-3 text-left text-gray-700">Rate</th>
                           <th className="px-4 py-3 text-left text-gray-700">Amount</th>
+                          <th className="px-4 py-3 text-left text-gray-700">Paid</th>
                           <th className="px-4 py-3 text-left text-gray-700">Status</th>
-                          <th className="px-4 py-3 text-left text-gray-700">Notes</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
-                        {displayedData.map((proc: any) => (
-                          <tr key={proc.id} className="hover:bg-gray-50">
-                            <td className="px-4 py-4 text-gray-900">{formatDate(proc.date)}</td>
-                            <td className="px-4 py-4 text-gray-900">{proc.id}</td>
-                            <td className="px-4 py-4 text-gray-900">{proc.material}</td>
-                            <td className="px-4 py-4 text-gray-900">{proc.quantityValue.toLocaleString()} {proc.quantityUnit}</td>
-                            <td className="px-4 py-4 text-gray-900">₹{proc.rate}</td>
-                            <td className="px-4 py-4 text-gray-900">₹{proc.amount.toLocaleString()}</td>
-                            <td className="px-4 py-4">
-                              <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-sm">
-                                {proc.status}
-                              </span>
-                            </td>
-                            <td className="px-4 py-4 text-gray-900">{proc.notes || '-'}</td>
-                          </tr>
-                        ))}
+                        {displayedData.map((proc: any) => {
+                          const material = Array.isArray(proc.materials) ? proc.materials[0] : proc.materials;
+                          const materialName = material?.name ?? '-';
+                          const materialUnit = material?.unit ?? '';
+                          const statusColor =
+                            proc.payment_status === 'PAID'
+                              ? 'bg-green-100 text-green-800'
+                              : proc.payment_status === 'PARTIALLY_PAID'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-red-100 text-red-800';
+                          const statusLabel =
+                            proc.payment_status === 'PAID'
+                              ? 'Paid'
+                              : proc.payment_status === 'PARTIALLY_PAID'
+                              ? 'Partial'
+                              : 'Unpaid';
+                          return (
+                            <tr key={proc.id} className="hover:bg-gray-50">
+                              <td className="px-4 py-4 text-gray-900">{formatDate(proc.date)}</td>
+                              <td className="px-4 py-4 text-gray-900">{materialName}</td>
+                              <td className="px-4 py-4 text-gray-900">{Number(proc.quantity).toLocaleString()} {materialUnit}</td>
+                              <td className="px-4 py-4 text-gray-900">₹{Number(proc.rate_per_unit).toLocaleString()}</td>
+                              <td className="px-4 py-4 text-gray-900">₹{Number(proc.total_price).toLocaleString()}</td>
+                              <td className="px-4 py-4 text-gray-900">₹{Number(proc.total_paid ?? 0).toLocaleString()}</td>
+                              <td className="px-4 py-4">
+                                <span className={`px-2 py-1 rounded-full text-sm ${statusColor}`}>
+                                  {statusLabel}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -408,27 +438,26 @@ export function VendorLedgerScreen() {
                         <tr>
                           <th className="px-4 py-3 text-left text-gray-700">Date</th>
                           <th className="px-4 py-3 text-left text-gray-700">Amount</th>
-                          <th className="px-4 py-3 text-left text-gray-700">Mode of Payment</th>
-                          <th className="px-4 py-3 text-left text-gray-700">SAI</th>
-                          <th className="px-4 py-3 text-left text-gray-700">RAI</th>
-                          <th className="px-4 py-3 text-left text-gray-700">Notes</th>
+                          <th className="px-4 py-3 text-left text-gray-700">Mode</th>
+                          <th className="px-4 py-3 text-left text-gray-700">Sender Account</th>
+                          <th className="px-4 py-3 text-left text-gray-700">Receiver Info</th>
                           <th className="px-4 py-3 text-left text-gray-700">Created At</th>
-                          <th className="px-4 py-3 text-left text-gray-700">Created By</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
-                        {displayedData.map((pay: any) => (
-                          <tr key={pay.id} className="hover:bg-gray-50">
-                            <td className="px-4 py-4 text-gray-900">{formatDate(pay.date)}</td>
-                            <td className="px-4 py-4 text-gray-900">₹{pay.amount.toLocaleString()}</td>
-                            <td className="px-4 py-4 text-gray-900">{pay.modeOfPayment}</td>
-                            <td className="px-4 py-4 text-gray-900">{pay.sai}</td>
-                            <td className="px-4 py-4 text-gray-900">{pay.rai}</td>
-                            <td className="px-4 py-4 text-gray-900">{pay.notes || '-'}</td>
-                            <td className="px-4 py-4 text-gray-900">{pay.createdAt}</td>
-                            <td className="px-4 py-4 text-gray-900">{pay.createdBy}</td>
-                          </tr>
-                        ))}
+                        {displayedData.map((pay: any) => {
+                          const account = Array.isArray(pay.accounts) ? pay.accounts[0] : pay.accounts;
+                          return (
+                            <tr key={pay.id} className="hover:bg-gray-50">
+                              <td className="px-4 py-4 text-gray-900">{formatDate(pay.payment_date)}</td>
+                              <td className="px-4 py-4 text-gray-900">₹{Number(pay.amount).toLocaleString()}</td>
+                              <td className="px-4 py-4 text-gray-900">{pay.mode}</td>
+                              <td className="px-4 py-4 text-gray-900">{account?.account_number ?? '-'}</td>
+                              <td className="px-4 py-4 text-gray-900">{pay.receiver_account_info || '-'}</td>
+                              <td className="px-4 py-4 text-gray-900">{formatDate(pay.created_at)}</td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -574,6 +603,18 @@ export function VendorLedgerScreen() {
           onClose={() => setShowExportErrorPopup(false)}
         />
       )}
+
+      {/* Offscreen Export Component */}
+      <div style={{ position: "absolute", left: "-9999px", top: 0 }}>
+        <VendorLedgerExport
+          ref={exportRef}
+          vendor={vendor}
+          procurements={exportProcurements}
+          payments={exportPayments}
+          fromDate={exportFromDate}
+          toDate={exportToDate}
+        />
+      </div>
     </div>
   );
 }

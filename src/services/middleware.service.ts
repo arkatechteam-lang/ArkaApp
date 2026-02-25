@@ -2458,3 +2458,135 @@ export async function createAdjustment(
     throw error;
   }
 }
+/* ------------------------------------------------------------------
+  Create Vendor Payment
+------------------------------------------------------------------ */
+export async function createVendorPayment(input: {
+  vendor_id: string
+  payment_date: string
+  amount: number
+  mode: "CASH" | "UPI" | "BANK" | "CHEQUE"
+  sender_account_id: string
+  receiver_account_info?: string
+}) {
+  // 1️⃣ Deduct account balance FIRST (validates sufficient funds)
+  const { error: accountError } = await supabase.rpc(
+    "decrement_account_balance",
+    {
+      p_account_id: input.sender_account_id,
+      p_amount: input.amount
+    }
+  )
+
+  if (accountError) throw accountError
+
+  // 2️⃣ Insert payment (only if balance deduction succeeded)
+  const { data: payment, error } = await supabase
+    .from("vendor_payments")
+    .insert({
+      vendor_id: input.vendor_id,
+      payment_date: input.payment_date,
+      amount: input.amount,
+      mode: input.mode,
+      sender_account_id: input.sender_account_id,
+      receiver_account_info: input.receiver_account_info ?? null
+    })
+    .select()
+    .single()
+
+  if (error) throw error
+
+  // 3️⃣ Apply FIFO settlement
+  const { error: fifoError } = await supabase.rpc(
+    "apply_vendor_payment_fifo",
+    {
+      p_vendor_id: input.vendor_id,
+      p_payment_id: payment.id,
+      p_amount: input.amount
+    }
+  )
+
+  if (fifoError) throw fifoError
+
+  return payment
+}
+/* ------------------------------------------------------------------
+  Get Vendor Procurements
+---------------------------------------------------------------------*/
+export async function getVendorProcurements(
+  vendorId: string
+) {
+  const { data, error } = await supabase
+    .from("procurements")
+    .select(`
+      id,
+      vendor_id,
+      material_id,
+      quantity,
+      rate_per_unit,
+      total_price,
+      total_paid,
+      payment_status,
+      date,
+      approved,
+      created_at,
+      materials!material_id(id, name, unit)
+    `)
+    .eq("vendor_id", vendorId)
+    .eq("approved", true)
+    .order("date", { ascending: false })
+
+  if (error) throw error
+  return data ?? []
+}
+/* ------------------------------------------------------------------
+  Get Vendor Payments
+---------------------------------------------------------------------*/
+
+export async function getVendorPayments(
+  vendorId: string,
+  page = 1
+) {
+  const PAGE_SIZE = 20;
+  const from = (page - 1) * PAGE_SIZE;
+  const to = from + PAGE_SIZE - 1;
+
+  const { data, count, error } = await supabase
+    .from("vendor_payments")
+    .select(`
+      id,
+      vendor_id,
+      payment_date,
+      amount,
+      mode,
+      sender_account_id,
+      receiver_account_info,
+      created_at,
+      accounts (
+        account_number
+      )
+    `, { count: "exact" })
+    .eq("vendor_id", vendorId)
+    .order("payment_date", { ascending: false })
+    .range(from, to);
+
+  if (error) throw error;
+
+  return {
+    data: data ?? [],
+    hasMore: count ? to < count - 1 : false,
+  };
+}
+/* ------------------------------------------------------------------
+  Get Vendor Financials
+---------------------------------------------------------------------*/
+export async function getVendorFinancials(vendorId: string) {
+  const { data, error } = await supabase
+    .from("vendor_financials")
+    .select("*")
+    .eq("vendor_id", vendorId)
+    .single();
+
+  if (error) throw error;
+  return data;
+}
