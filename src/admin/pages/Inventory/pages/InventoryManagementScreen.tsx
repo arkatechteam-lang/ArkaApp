@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { ArrowLeft, Droplets, Mountain, Sparkles, Hammer, Wind, Boxes } from 'lucide-react';
 import { Popup } from '../../../../components/Popup';
 import { useAdminNavigation } from '../../../hooks/useAdminNavigation';

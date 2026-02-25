@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { getExpensesByDateRange, getExpenseTypes, getExpenseSubtypes } from '../../services/middleware.service';
+import { getExpensesByDateRange, getExpenseTypes, getExpenseSubtypes, getProcurementsByDateRange } from '../../services/middleware.service';
 
 type FilterType = 'Current Month' | 'Last month' | 'Last year' | 'Custom range';
 
@@ -17,6 +17,21 @@ interface Expense {
     name: string;
   };
   expense_subtypes?: {
+    id: string;
+    name: string;
+  };
+}
+
+interface Procurement {
+  id: string;
+  date: string;
+  material_id: string;
+  total_price: number;
+  materials?: {
+    id: string;
+    name: string;
+  };
+  vendors?: {
     id: string;
     name: string;
   };
@@ -107,7 +122,7 @@ function getDateRange(
 }
 
 /**
- * Custom hook for fetching and managing expenses data
+ * Custom hook for fetching and managing expenses data (with separate procurements)
  */
 export function useAccountsExpenses(
   filterType: FilterType,
@@ -116,6 +131,7 @@ export function useAccountsExpenses(
   selectedExpenseTypeId?: string
 ) {
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [procurements, setProcurements] = useState<Procurement[]>([]);
   const [expenseTypes, setExpenseTypes] = useState<ExpenseType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -131,13 +147,15 @@ export function useAccountsExpenses(
         // Get date range
         const dateRange = getDateRange(filterType, customStartDate, customEndDate);
 
-        // Fetch expenses and types in parallel
-        const [expensesData, typesData] = await Promise.all([
+        // Fetch expenses and procurements separately
+        const [expensesData, procurementsData, typesData] = await Promise.all([
           getExpensesByDateRange(dateRange.startDate, dateRange.endDate),
+          getProcurementsByDateRange(dateRange.startDate, dateRange.endDate),
           getExpenseTypes(),
         ]);
 
         setExpenses(expensesData);
+        setProcurements(procurementsData);
         setExpenseTypes(typesData);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Failed to fetch expenses';
@@ -151,24 +169,35 @@ export function useAccountsExpenses(
     fetchExpenses();
   }, [filterType, customStartDate, customEndDate]);
 
-  // Calculate total expenses
+  // Calculate total expenses (manual expenses only)
   const totalExpenses = useMemo(() => {
     return expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
   }, [expenses]);
 
-  // Prepare pie chart data
-  // If no specific type selected (Overall), group by type
-  // If specific type selected, group by subtype
+  // Calculate total procurements
+  const totalProcurements = useMemo(() => {
+    return procurements.reduce((sum, proc) => sum + (proc.total_price || 0), 0);
+  }, [procurements]);
+
+  // Prepare pie chart data - by type (expenses + procurements)
   const pieChartData = useMemo(() => {
     if (!selectedExpenseTypeId || selectedExpenseTypeId === 'Overall') {
-      // Group by type
-      const expenseByType: Record<string, number> = {};
+      // Group by type (both expenses and procurements)
+      const dataByType: Record<string, number> = {};
+      
+      // Add manual expenses
       expenses.forEach((expense) => {
         const typeName = expense.expense_types?.name || 'Uncategorized';
-        expenseByType[typeName] = (expenseByType[typeName] || 0) + expense.amount;
+        dataByType[typeName] = (dataByType[typeName] || 0) + expense.amount;
       });
+      
+      // Add procurements as "Procurement" type
+      if (procurements.length > 0) {
+        const procurementTotal = procurements.reduce((sum, proc) => sum + (proc.total_price || 0), 0);
+        dataByType['Procurement'] = (dataByType['Procurement'] || 0) + procurementTotal;
+      }
 
-      return Object.entries(expenseByType).map(([name, value]) => ({
+      return Object.entries(dataByType).map(([name, value]) => ({
         name,
         value,
       }));
@@ -178,18 +207,32 @@ export function useAccountsExpenses(
         (e) => e.type_id === selectedExpenseTypeId
       );
 
-      const expenseBySubtype: Record<string, number> = {};
-      filteredByType.forEach((expense) => {
-        const subtypeName = expense.expense_subtypes?.name || 'Uncategorized';
-        expenseBySubtype[subtypeName] = (expenseBySubtype[subtypeName] || 0) + expense.amount;
-      });
+      let dataBySubtype: Record<string, number> = {};
+      
+      // If "Procurement" type is selected, show procurements grouped by material
+      if (selectedExpenseTypeId === 'Procurement') {
+        procurements.forEach((proc) => {
+          const materialName = Array.isArray(proc.materials) 
+            ? proc.materials?.[0]?.name 
+            : proc.materials?.name 
+            ? proc.materials.name 
+            : 'Unknown Material';
+          dataBySubtype[materialName] = (dataBySubtype[materialName] || 0) + (proc.total_price || 0);
+        });
+      } else {
+        // Show expenses grouped by subtype for other types
+        filteredByType.forEach((expense) => {
+          const subtypeName = expense.expense_subtypes?.name || 'Uncategorized';
+          dataBySubtype[subtypeName] = (dataBySubtype[subtypeName] || 0) + expense.amount;
+        });
+      }
 
-      return Object.entries(expenseBySubtype).map(([name, value]) => ({
+      return Object.entries(dataBySubtype).map(([name, value]) => ({
         name,
         value,
       }));
     }
-  }, [expenses, selectedExpenseTypeId]);
+  }, [expenses, procurements, selectedExpenseTypeId]);
 
   // Get filtered expenses based on selected type
   const filteredExpenses = useMemo(() => {
@@ -205,10 +248,12 @@ export function useAccountsExpenses(
 
   return {
     expenses: filteredExpenses,
+    procurements,
     expenseTypes,
     loading,
     error,
     totalExpenses,
+    totalProcurements,
     pieChartData,
     showError,
     closeError,

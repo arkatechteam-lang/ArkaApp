@@ -1453,6 +1453,157 @@ export async function getExpensesByDateRange(
 }
 
 /* ------------------------------------------------------------------
+   42.0.5 GET EXPENSE BY ID
+-------------------------------------------------------------------*/
+export async function getExpenseById(expenseId: string): Promise<any> {
+  const { data, error } = await supabase
+    .from("expenses")
+    .select(`
+      *,
+      expense_types (
+        id,
+        name
+      ),
+      expense_subtypes (
+        id,
+        name
+      ),
+      accounts (
+        id,
+        account_number
+      )
+    `)
+    .eq("id", expenseId)
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+/* ------------------------------------------------------------------
+   42.1 GET PAPER EXPENSES BY DATE RANGE (Expenses + Procurements)
+-------------------------------------------------------------------*/
+export async function getPaperExpensesByDateRange(
+  startDate: string,
+  endDate: string
+): Promise<any[]> {
+  // 1️⃣ Fetch manual expenses
+  const { data: expenses, error: expenseError } = await supabase
+    .from("expenses")
+    .select(`
+      id,
+      expense_date,
+      amount,
+      expense_types (
+        id,
+        name
+      ),
+      expense_subtypes (
+        id,
+        name
+      ),
+      accounts (
+        id,
+        account_number
+      )
+    `)
+    .gte("expense_date", startDate)
+    .lte("expense_date", endDate);
+
+  if (expenseError) throw expenseError;
+
+  // 2️⃣ Fetch approved procurements only
+  const { data: procurements, error: procError } = await supabase
+    .from("procurements")
+    .select(`
+      id,
+      date,
+      total_price,
+      materials (
+        id,
+        name
+      ),
+      vendors (
+        id,
+        name
+      )
+    `)
+    .eq("approved", true)
+    .gte("date", startDate)
+    .lte("date", endDate);
+
+  if (procError) throw procError;
+
+  // 3️⃣ Transform manual expenses
+  const manualExpenses = (expenses ?? []).map((e: any) => ({
+    id: e.id,
+    expense_date: e.expense_date,
+    amount: e.amount,
+    type: e.expense_types?.[0]?.name || "Unknown",
+    subtype: e.expense_subtypes?.[0]?.name || "Unknown",
+    source: "EXPENSE" as const,
+    account_number: e.accounts?.[0]?.account_number,
+  }));
+
+  // 4️⃣ Transform procurements into expense-like format
+  const procurementExpenses = (procurements ?? []).map((p: any) => ({
+    id: `PROC-${p.id}`,
+    expense_date: p.date,
+    amount: p.total_price,
+    type: "Procurement",
+    subtype: p.materials?.[0]?.name || "Unknown Material",
+    source: "PROCUREMENT" as const,
+    vendor_name: p.vendors?.[0]?.name,
+  }));
+
+  // 5️⃣ Combine and sort by date
+  const combined = [...manualExpenses, ...procurementExpenses];
+  combined.sort((a, b) => new Date(b.expense_date).getTime() - new Date(a.expense_date).getTime());
+
+  return combined;
+}
+
+/* ------------------------------------------------------------------
+   42.2 GET PROCUREMENTS BY DATE RANGE (for Accounts integration)
+-------------------------------------------------------------------*/
+export async function getProcurementsByDateRange(
+  startDate: string,
+  endDate: string
+): Promise<any[]> {
+  const { data, error } = await supabase
+    .from("procurements")
+    .select(`
+      id,
+      date,
+      total_price,
+      material_id,
+      vendor_id,
+      materials (
+        id,
+        name
+      ),
+      vendors (
+        id,
+        name
+      )
+    `)
+    .eq("approved", true)
+    .gte("date", startDate)
+    .lte("date", endDate)
+    .order("date", { ascending: false });
+
+  if (error) throw error;
+  
+  // Transform data to ensure consistent structure
+  return (data ?? []).map(proc => ({
+    ...proc,
+    // Handle both array and object returns from Supabase
+    materials: Array.isArray(proc.materials) ? proc.materials : (proc.materials ? [proc.materials] : []),
+    vendors: Array.isArray(proc.vendors) ? proc.vendors : (proc.vendors ? [proc.vendors] : []),
+  }));
+}
+
+/* ------------------------------------------------------------------
    43. GET CASH ACCOUNT SAI
 -------------------------------------------------------------------*/
 export async function getCashAccount() {
