@@ -1,7 +1,10 @@
-import  { useState } from 'react';
+import  { useState, useRef } from 'react';
 import { ArrowLeft, X } from 'lucide-react';
 import { Popup } from '../../../../components/Popup';
 import { useVendorLedger } from '../../../hooks/useVendorLedger';
+import { VendorLedgerExport } from './VendorLedgerExport';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 type TabType = 'procurements' | 'payments';
 
@@ -18,6 +21,7 @@ export function VendorLedgerScreen() {
     goBack,
     goTo,
   } = useVendorLedger();
+  const exportRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState<TabType>('procurements');
   const [displayCount, setDisplayCount] = useState(20);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
@@ -41,6 +45,8 @@ export function VendorLedgerScreen() {
   const [showExportErrorPopup, setShowExportErrorPopup] = useState(false);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [exportProcurements, setExportProcurements] = useState<any[]>([]);
+  const [exportPayments, setExportPayments] = useState<any[]>([]);
 
   // Totals from DB view
   const totalPurchase = financials?.total_purchase ?? 0;
@@ -95,7 +101,7 @@ export function VendorLedgerScreen() {
     setExportToDateError('');
   };
   
-  const handleDownloadExport = () => {
+  const handleDownloadExport = async () => {
     // Clear previous errors
     setExportFromDateError('');
     setExportToDateError('');
@@ -120,6 +126,11 @@ export function VendorLedgerScreen() {
     // Filter procurements and payments within date range
     const fromDateObj = new Date(exportFromDate);
     const toDateObj = new Date(exportToDate);
+
+    if (fromDateObj > toDateObj) {
+      setExportFromDateError('From date cannot be greater than To date.');
+      return;
+    }
     
     const procurementsInRange = procurements.filter(proc => {
       const procDate = new Date(proc.date);
@@ -137,37 +148,48 @@ export function VendorLedgerScreen() {
       setShowNoTransactionsPopup(true);
       return;
     }
-    
-    // Simulate export generation
-    try {
-      // Calculate totals
-      const totalProcurementAmount = procurementsInRange.reduce((sum: number, proc: any) => sum + Number(proc.total_price ?? 0), 0);
-      const totalPaymentAmount = paymentsInRange.reduce((sum: number, payment: any) => sum + Number(payment.amount ?? 0), 0);
-      const closingBalance = outstandingBalance;
-      
-      // // In a real app, this would generate a PDF or Image file
-      // console.log('Exporting vendor ledger:', {
-      //   vendorName: MOCK_VENDOR.name,
-      //   vendorPhone: MOCK_VENDOR.phoneNumber,
-      //   materialsSupplied: MOCK_VENDOR.materialsSupplied,
-      //   dateRange: `${exportFromDate} to ${exportToDate}`,
-      //   openingBalance: outstandingBalance,
-      //   procurements: procurementsInRange,
-      //   payments: paymentsInRange,
-      //   totalProcurementAmount,
-      //   totalPaymentAmount,
-      //   closingBalance,
-      //   format: exportFormat
-      // });
-      
-      // Simulate successful download
-      setSuccessMessage(`Vendor ledger exported successfully as ${exportFormat}`);
-      setShowExportModal(false);
-      setShowSuccessPopup(true);
-    } catch (error) {
-      setShowExportModal(false);
-      setShowExportErrorPopup(true);
-    }
+
+    // Store filtered data for the export component
+    setExportProcurements(procurementsInRange);
+    setExportPayments(paymentsInRange);
+
+    // Wait for component render
+    setTimeout(async () => {
+      try {
+        const element = exportRef.current;
+        if (!element) return;
+
+        const canvas = await html2canvas(element, {
+          scale: 2,
+          useCORS: true,
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+
+        if (exportFormat === 'Image') {
+          const link = document.createElement('a');
+          link.href = imgData;
+          link.download = `Arka_Vendor_Ledger_${vendor?.name}.png`;
+          link.click();
+        } else {
+          const pdf = new jsPDF('p', 'mm', 'a4');
+          const imgProps = pdf.getImageProperties(imgData);
+          const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+          pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+          pdf.save(`Arka_Vendor_Ledger_${vendor?.name}.pdf`);
+        }
+
+        setShowExportModal(false);
+        setSuccessMessage(`Vendor ledger exported successfully as ${exportFormat}`);
+        setShowSuccessPopup(true);
+      } catch (err) {
+        console.error(err);
+        setShowExportModal(false);
+        setShowExportErrorPopup(true);
+      }
+    }, 400);
   };
 
   if (loading) {
@@ -581,6 +603,18 @@ export function VendorLedgerScreen() {
           onClose={() => setShowExportErrorPopup(false)}
         />
       )}
+
+      {/* Offscreen Export Component */}
+      <div style={{ position: "absolute", left: "-9999px", top: 0 }}>
+        <VendorLedgerExport
+          ref={exportRef}
+          vendor={vendor}
+          procurements={exportProcurements}
+          payments={exportPayments}
+          fromDate={exportFromDate}
+          toDate={exportToDate}
+        />
+      </div>
     </div>
   );
 }
