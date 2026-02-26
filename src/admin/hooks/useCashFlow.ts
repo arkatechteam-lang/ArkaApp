@@ -50,7 +50,9 @@ export function useCashFlow() {
       const data = await getAccounts();
       setAccounts(data);
     } catch (err) {
-      console.error('Failed to load accounts:', err);
+  console.error('Failed to load accounts:', err);
+  setFailureMessage((err as Error).message || 'Failed to load accounts');
+  setShowFailurePopup(true);
     } finally {
       setAccountsLoading(false);
     }
@@ -68,8 +70,13 @@ export function useCashFlow() {
       setOutstandingReceivables(receivables);
       setOutstandingVendorPayables(vendorPayables);
       setOutstandingLoanAmount(loanAmount);
+      if (receivables === 0 && vendorPayables === 0 && loanAmount === 0) {
+        console.warn('All outstanding summaries are zero — check DB/views or network responses');
+      }
     } catch (err) {
-      console.error('Failed to load outstanding summaries:', err);
+  console.error('Failed to load outstanding summaries:', err);
+  setFailureMessage((err as Error).message || 'Failed to load summaries');
+  setShowFailurePopup(true);
     } finally {
       setSummaryLoading(false);
     }
