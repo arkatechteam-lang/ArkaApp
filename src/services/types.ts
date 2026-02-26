@@ -180,7 +180,13 @@ export interface Account {
   id: string;
   account_number: string;
   opening_balance: number;
+  balance: number;
   created_at: string;
+}
+
+export interface CreateAccountInput {
+  account_number: string;
+  opening_balance: number;
 }
 
 export interface Loan {

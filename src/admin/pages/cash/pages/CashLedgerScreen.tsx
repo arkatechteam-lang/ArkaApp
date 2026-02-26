@@ -1,11 +1,7 @@
-import React, { useState } from 'react';
-import { AdminScreen } from '../../AdminApp';
+import { useState } from 'react';
 import { ArrowLeft, X } from 'lucide-react';
-import { Popup } from '../Popup';
-
-interface CashLedgerScreenProps {
-  onNavigate: (screen: AdminScreen) => void;
-}
+import { Popup } from '../../../../components/Popup';
+import { useNavigate } from 'react-router-dom';
 
 interface CashInEntry {
   id: string;
@@ -37,7 +33,8 @@ const MOCK_CASH_OUT: CashOutEntry[] = [
   { id: 'CO-002', time: '02:15 PM', paymentType: 'Salary Payment', senderType: '#3455332', amount: 20000 },
 ];
 
-export function CashLedgerScreen({ onNavigate }: CashLedgerScreenProps) {
+export function CashLedgerScreen() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'cash-in' | 'cash-out'>('cash-in');
   const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
   const [showFreezeConfirmation, setShowFreezeConfirmation] = useState(false);
@@ -126,7 +123,7 @@ export function CashLedgerScreen({ onNavigate }: CashLedgerScreenProps) {
     setShowSuccessPopup(true);
     // Navigate back after short delay
     setTimeout(() => {
-      onNavigate('cash-flow');
+      navigate('/admin/cash');
     }, 1500);
   };
 
@@ -136,7 +133,7 @@ export function CashLedgerScreen({ onNavigate }: CashLedgerScreenProps) {
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => onNavigate('cash-flow')}
+            onClick={() => navigate('/admin/cash')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />
