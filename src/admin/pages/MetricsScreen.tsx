@@ -1,115 +1,101 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Wallet, X, Droplets, Mountain, Sparkles, Hammer, Wind, Package, Square } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowLeft, Wallet, X, Droplets, Mountain, Sparkles, Hammer, Wind, Square } from 'lucide-react';
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { useNavigate } from 'react-router-dom';
 import { useAdminNavigation } from '../hooks/useAdminNavigation';
+import { useAccountsIncome } from '../hooks/useAccountsIncome';
+import { useAccountsExpenses } from '../hooks/useAccountsExpenses';
+import { useAllInventoryStock } from '../hooks/useInventoryStock';
+import { useProductInventory } from '../hooks/useProductInventory';
+import { useProductionByDateRange } from '../hooks/useProductionByDateRange';
 
 
-type FilterType = 'Last month' | 'Last year' | 'Custom range';
-
-// Mock data for Income
-const MOCK_INCOME = 370000;
-
-// Mock data for Expenses
-const MOCK_EXPENSES = [
-  { type: 'Procurement', subtype: 'Fly Ash', amount: 50000 },
-  { type: 'Salary', subtype: 'Production Workers', amount: 35000 },
-  { type: 'Equipment Service', subtype: 'Machine Maintenance', amount: 15000 },
-  { type: 'Fuel', subtype: 'Diesel', amount: 8000 },
-  { type: 'Others', subtype: 'Office Supplies', amount: 5000 },
-];
-
-// Production data
-const PRODUCTION_DATA = [
-  { date: 'Dec 1', bricks: 15000 },
-  { date: 'Dec 2', bricks: 18000 },
-  { date: 'Dec 3', bricks: 16500 },
-  { date: 'Dec 4', bricks: 19000 },
-  { date: 'Dec 5', bricks: 17500 },
-  { date: 'Dec 6', bricks: 20000 },
-  { date: 'Dec 7', bricks: 18500 },
-  { date: 'Dec 8', bricks: 21000 },
-];
-
-// Total production and materials used (in Kg for raw materials)
-const TOTAL_PRODUCTION = {
-  bricks: 145500,
-  round: 40,
-  wetAshKg: 19750,
-  marblePowderKg: 11850,
-  crusherPowderKg: 14200,
-  flyAshKg: 17550,
-  cementKg: 6320,
-};
-
-// Inventory metrics
-const INVENTORY_METRICS = {
-  bricksReady: 52000,
-  wetAshKg: 15000,
-  marblePowderKg: 8500,
-  crusherPowderKg: 10200,
-  flyAshKg: 12500,
-  cementKg: 4800,
-};
+type FilterType = 'Current Month' | 'Last month' | 'Last year' | 'Custom range';
 
 export function MetricsScreen() {
   const { goBack } = useAdminNavigation();
-  const [filterType, setFilterType] = useState<FilterType>('Last month');
+  const [filterType, setFilterType] = useState<FilterType>('Current Month');
   const [showCustomRangeModal, setShowCustomRangeModal] = useState(false);
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
-  const [selectedExpenseType, setSelectedExpenseType] = useState<string>('Overall');
+  const [selectedExpenseTypeId, setSelectedExpenseTypeId] = useState<string>('Overall');
 
-  // Get unique expense types from expenses
-  const expenseTypes = ['Overall', ...Array.from(new Set(MOCK_EXPENSES.map(e => e.type)))];
+  // Fetch income data based on filter
+  const {
+    loading: incomeLoading,
+    totalIncome,
+  } = useAccountsIncome(
+    filterType,
+    filterType === 'Custom range' ? customStartDate : undefined,
+    filterType === 'Custom range' ? customEndDate : undefined
+  );
 
-  // Filter expenses by selected type
-  const filteredExpenses = selectedExpenseType === 'Overall' 
-    ? MOCK_EXPENSES 
-    : MOCK_EXPENSES.filter(e => e.type === selectedExpenseType);
+  // Fetch expenses data based on filter and selected expense type
+  const {
+    expenseTypes,
+    loading: expensesLoading,
+    totalExpenses,
+    totalProcurements,
+    pieChartData,
+  } = useAccountsExpenses(
+    filterType,
+    filterType === 'Custom range' ? customStartDate : undefined,
+    filterType === 'Custom range' ? customEndDate : undefined,
+    selectedExpenseTypeId
+  );
 
-  // Calculate totals
-  const totalExpenses = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-  const profit = MOCK_INCOME - totalExpenses;
+  // Calculate profit (includes procurements)
+  const profit = totalIncome - totalExpenses - totalProcurements;
 
-  // Prepare pie chart data
-  // If "Overall" is selected, group by type
-  // If specific type is selected, group by subtype
-  let pieChartData;
-  if (selectedExpenseType === 'Overall') {
-    const expenseByType = filteredExpenses.reduce((acc, expense) => {
-      acc[expense.type] = (acc[expense.type] || 0) + expense.amount;
-      return acc;
-    }, {} as Record<string, number>);
-    
-    pieChartData = Object.entries(expenseByType).map(([name, value]) => ({
-      name,
-      value,
-    }));
-  } else {
-    // Group by subtype for the selected type
-    const expenseBySubtype = filteredExpenses.reduce((acc, expense) => {
-      const subtype = expense.subtype || 'Uncategorized';
-      acc[subtype] = (acc[subtype] || 0) + expense.amount;
-      return acc;
-    }, {} as Record<string, number>);
-    
-    pieChartData = Object.entries(expenseBySubtype).map(([name, value]) => ({
-      name,
-      value,
-    }));
-  }
+  // Fetch production data based on filter
+  const {
+    loading: productionLoading,
+    totals: productionTotals,
+    graphData: productionGraphData,
+  } = useProductionByDateRange(
+    filterType,
+    filterType === 'Custom range' ? customStartDate : undefined,
+    filterType === 'Custom range' ? customEndDate : undefined
+  );
 
-  const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+  // Fetch inventory stock data (not filter-dependent — always current snapshot)
+  const { stock: inventoryStock, loading: stockLoading } = useAllInventoryStock();
+  const { inventory: productInventory, loading: bricksLoading } = useProductInventory();
 
-  // Helper functions for conversions
-  const convertToTons = (round: number, kgs: number): number => {
-    return (round * kgs) / 1000;
+  const inventoryLoading = stockLoading || bricksLoading;
+
+  // Build inventory metrics from database (same logic as InventoryManagementScreen)
+  const buildInventoryMetrics = () => {
+    const metrics = {
+      bricksReady: productInventory?.quantity ?? 0,
+      wetAshKg: 0,
+      marblePowderKg: 0,
+      crusherPowderKg: 0,
+      flyAshKg: 0,
+      cementKg: 0,
+    };
+
+    inventoryStock.forEach((item) => {
+      const materialName = (item.materials as any)?.name?.toLowerCase() || '';
+
+      if (materialName.includes('wet ash')) {
+        metrics.wetAshKg = item.quantity;
+      } else if (materialName.includes('marble')) {
+        metrics.marblePowderKg = item.quantity;
+      } else if (materialName.includes('crusher')) {
+        metrics.crusherPowderKg = item.quantity;
+      } else if (materialName.includes('fly ash')) {
+        metrics.flyAshKg = item.quantity;
+      } else if (materialName.includes('cement')) {
+        metrics.cementKg = item.quantity;
+      }
+    });
+
+    return metrics;
   };
 
-  const convertToBags = (round: number, kgs: number): number => {
-    return (round * kgs) / 50;
-  };
+  const INVENTORY_METRICS = buildInventoryMetrics();
+
+  const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
 
   const handleFilterChange = (value: FilterType) => {
     if (value === 'Custom range') {
@@ -117,7 +103,7 @@ export function MetricsScreen() {
     } else {
       setFilterType(value);
       // Reset expense type filter to "Overall" when date filter changes
-      setSelectedExpenseType('Overall');
+      setSelectedExpenseTypeId('Overall');
     }
   };
 
@@ -126,7 +112,7 @@ export function MetricsScreen() {
       setFilterType('Custom range');
       setShowCustomRangeModal(false);
       // Reset expense type filter to "Overall" when custom range is applied
-      setSelectedExpenseType('Overall');
+      setSelectedExpenseTypeId('Overall');
     }
   };
 
@@ -159,6 +145,7 @@ export function MetricsScreen() {
                 onChange={(e) => handleFilterChange(e.target.value as FilterType)}
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
               >
+                <option value="Current Month">Current Month</option>
                 <option value="Last month">Last month</option>
                 <option value="Last year">Last year</option>
                 <option value="Custom range">Custom range</option>
@@ -198,7 +185,11 @@ export function MetricsScreen() {
                     <Wallet className="w-10 h-10 text-green-600" />
                   </div>
                   <p className="text-gray-700 mb-2">Total Income</p>
-                  <p className="text-green-600">₹{MOCK_INCOME.toLocaleString()}</p>
+                  {incomeLoading ? (
+                    <p className="text-green-600 text-lg">Loading...</p>
+                  ) : (
+                    <p className="text-green-600 text-lg">₹{totalIncome.toLocaleString()}</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -213,13 +204,15 @@ export function MetricsScreen() {
               <div className="px-6 pt-4 pb-2 bg-red-50 border-b border-gray-200">
                 <label className="block text-gray-700 text-sm mb-2">Filter by Expense Type</label>
                 <select
-                  value={selectedExpenseType}
-                  onChange={(e) => setSelectedExpenseType(e.target.value)}
+                  value={selectedExpenseTypeId}
+                  onChange={(e) => setSelectedExpenseTypeId(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 >
+                  <option value="Overall">Overall</option>
+                  <option value="Procurement">📦 Procurement</option>
                   {expenseTypes.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
+                    <option key={type.id} value={type.id}>
+                      {type.name}
                     </option>
                   ))}
                 </select>
@@ -228,27 +221,39 @@ export function MetricsScreen() {
               {/* Expenses - Pie Chart */}
               <div className="p-6 bg-red-50">
                 <div className="flex flex-col items-center">
-                  <ResponsiveContainer width="100%" height={200}>
-                    <PieChart>
-                      <Pie
-                        data={pieChartData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        outerRadius={70}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {pieChartData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <p className="text-gray-700 mt-4 mb-2">Total Expenses</p>
-                  <p className="text-red-600">₹{totalExpenses.toLocaleString()}</p>
+                  {expensesLoading ? (
+                    <div className="h-48 flex items-center justify-center">
+                      <p className="text-gray-500">Loading chart...</p>
+                    </div>
+                  ) : pieChartData.length === 0 ? (
+                    <div className="h-48 flex items-center justify-center">
+                      <p className="text-gray-500">No expenses for this period</p>
+                    </div>
+                  ) : (
+                    <>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <PieChart>
+                          <Pie
+                            data={pieChartData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            outerRadius={70}
+                            fill="#8884d8"
+                            dataKey="value"
+                          >
+                            {pieChartData.map((_entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(value) => `₹${(value as number).toLocaleString()}`} />
+                          <Legend />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <p className="text-gray-700 mt-4 mb-2">Total Expenses</p>
+                      <p className="text-red-600 text-lg">₹{(totalExpenses + totalProcurements).toLocaleString()}</p>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -259,12 +264,22 @@ export function MetricsScreen() {
         <div className="mb-8">
           <h2 className="text-gray-900 mb-4">Production Performance</h2>
           
+          {productionLoading ? (
+            <div className="bg-white rounded-lg shadow-md p-6 flex justify-center">
+              <p className="text-gray-500">Loading production data...</p>
+            </div>
+          ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Production Graph */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-gray-900 mb-4">Production Trend</h2>
+              {productionGraphData.length === 0 ? (
+                <div className="h-[300px] flex items-center justify-center">
+                  <p className="text-gray-500">No production data for this period</p>
+                </div>
+              ) : (
               <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={PRODUCTION_DATA}>
+                <LineChart data={productionGraphData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="date" />
                   <YAxis />
@@ -281,6 +296,7 @@ export function MetricsScreen() {
                   />
                 </LineChart>
               </ResponsiveContainer>
+              )}
             </div>
 
             {/* Total Production with Progress Circle */}
@@ -315,7 +331,7 @@ export function MetricsScreen() {
                     {/* Center content */}
                     <div className="absolute inset-0 flex items-center justify-center">
                       <div className="text-center">
-                        <p className="text-gray-900 text-2xl">{TOTAL_PRODUCTION.bricks.toLocaleString()}</p>
+                        <p className="text-gray-900 text-2xl">{productionTotals.totalBricks.toLocaleString()}</p>
                         <p className="text-gray-600 text-sm">Bricks</p>
                       </div>
                     </div>
@@ -328,7 +344,7 @@ export function MetricsScreen() {
                     <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
                     <div className="flex justify-between w-full">
                       <span className="text-gray-700">Round:</span>
-                      <span className="text-gray-900">{TOTAL_PRODUCTION.round}</span>
+                      <span className="text-gray-900">{productionTotals.totalRound}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
@@ -336,7 +352,7 @@ export function MetricsScreen() {
                     <div className="flex justify-between w-full">
                       <span className="text-gray-700">Wet Ash:</span>
                       <span className="text-gray-900">
-                        {convertToTons(TOTAL_PRODUCTION.round, TOTAL_PRODUCTION.wetAshKg).toFixed(2)} Tons
+                        {(productionTotals.totalWetAshKg / 1000).toFixed(2)} Tons
                       </span>
                     </div>
                   </div>
@@ -345,7 +361,7 @@ export function MetricsScreen() {
                     <div className="flex justify-between w-full">
                       <span className="text-gray-700">Marble Powder:</span>
                       <span className="text-gray-900">
-                        {convertToTons(TOTAL_PRODUCTION.round, TOTAL_PRODUCTION.marblePowderKg).toFixed(2)} Tons
+                        {(productionTotals.totalMarblePowderKg / 1000).toFixed(2)} Tons
                       </span>
                     </div>
                   </div>
@@ -354,7 +370,7 @@ export function MetricsScreen() {
                     <div className="flex justify-between w-full">
                       <span className="text-gray-700">Crusher Powder:</span>
                       <span className="text-gray-900">
-                        {convertToTons(TOTAL_PRODUCTION.round, TOTAL_PRODUCTION.crusherPowderKg).toFixed(2)} Tons
+                        {(productionTotals.totalCrusherPowderKg / 1000).toFixed(2)} Tons
                       </span>
                     </div>
                   </div>
@@ -363,7 +379,7 @@ export function MetricsScreen() {
                     <div className="flex justify-between w-full">
                       <span className="text-gray-700">Fly Ash:</span>
                       <span className="text-gray-900">
-                        {convertToTons(TOTAL_PRODUCTION.round, TOTAL_PRODUCTION.flyAshKg).toFixed(2)} Tons
+                        {(productionTotals.totalFlyAshKg / 1000).toFixed(2)} Tons
                       </span>
                     </div>
                   </div>
@@ -372,7 +388,7 @@ export function MetricsScreen() {
                     <div className="flex justify-between w-full">
                       <span className="text-gray-700">Cement:</span>
                       <span className="text-gray-900">
-                        {convertToBags(TOTAL_PRODUCTION.round, TOTAL_PRODUCTION.cementKg).toFixed(0)} Bags
+                        {productionTotals.totalCementBags.toFixed(0)} Bags
                       </span>
                     </div>
                   </div>
@@ -380,12 +396,18 @@ export function MetricsScreen() {
               </div>
             </div>
           </div>
+          )}
         </div>
 
         {/* Section 3: Inventory Health */}
         <div className="mb-8">
           <h2 className="text-gray-900 mb-4">Inventory Health</h2>
           
+          {inventoryLoading ? (
+            <div className="bg-white rounded-lg shadow-md p-6 flex justify-center">
+              <p className="text-gray-500">Loading inventory data...</p>
+            </div>
+          ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Bricks Ready */}
             <div className="bg-white rounded-lg shadow-md p-6">
@@ -457,6 +479,7 @@ export function MetricsScreen() {
               </div>
             </div>
           </div>
+          )}
         </div>
       </div>
 

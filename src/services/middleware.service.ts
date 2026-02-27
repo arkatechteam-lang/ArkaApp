@@ -2193,6 +2193,41 @@ export async function getProductionEntries(): Promise<any[]> {
 }
 
 /**------------------------------------------------------------------------------
+ * 47.10 Get production entries by date range
+ * Fetch production entries within a specific date range
+ * Used in MetricsScreen - Production Performance section
+------------------------------------------------------------------------------*/
+export async function getProductionEntriesByDateRange(
+  startDate: string,
+  endDate: string
+): Promise<any[]> {
+  const { data, error } = await supabase
+    .from("production_entries")
+    .select(`
+      id,
+      production_date,
+      bricks,
+      round,
+      wet_ash_kg,
+      marble_powder_kg,
+      crusher_powder_kg,
+      fly_ash_kg,
+      cement_bags,
+      created_by,
+      created_at
+    `)
+    .gte("production_date", startDate)
+    .lte("production_date", endDate)
+    .order("production_date", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching production entries by date range:", error);
+    throw error;
+  }
+  return data ?? [];
+}
+
+/**------------------------------------------------------------------------------
  * 48.0 Get product inventory (Bricks)
  * Fetch the current bricks quantity from product_inventory table
  * Used in InventoryManagementScreen to display bricks ready count
