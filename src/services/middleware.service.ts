@@ -16,6 +16,7 @@ import {
   Customer,
   CreateLoanInput,
   Account,
+  CreateAccountInput,
   CreateCustomerPaymentInput,
   CreateOrderInput,
   ProductionEntry,
@@ -736,7 +737,7 @@ export async function createLoanWithDisbursementAndCashEntry(
 
 
 /* ------------------------------------------------------------------
-   24. GET ACCOUNTS (for loan disbursement)
+   24. GET ACCOUNTS
 -------------------------------------------------------------------*/
 
 export async function getAccounts(): Promise<Account[]> {
@@ -746,6 +747,7 @@ export async function getAccounts(): Promise<Account[]> {
       id,
       account_number,
       opening_balance,
+      balance,
       created_at
     `)
     .order("created_at", { ascending: true });
@@ -753,6 +755,77 @@ export async function getAccounts(): Promise<Account[]> {
   if (error) throw error;
 
   return data ?? [];
+}
+
+/* ------------------------------------------------------------------
+   24a. CREATE ACCOUNT
+-------------------------------------------------------------------*/
+
+export async function createAccount(input: CreateAccountInput): Promise<Account> {
+  const { data, error } = await supabase
+    .from("accounts")
+    .insert({
+      account_number: input.account_number,
+      opening_balance: input.opening_balance,
+      balance: input.opening_balance,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+/* ------------------------------------------------------------------
+   24b. GET TOTAL OUTSTANDING RECEIVABLES (customers)
+-------------------------------------------------------------------*/
+
+export async function getTotalOutstandingReceivables(): Promise<number> {
+  const { data, error } = await supabase
+    .from("customer_financials")
+    .select("outstanding_amount");
+
+  if (error) throw error;
+
+  return (data ?? []).reduce(
+    (sum, row) => sum + Number(row.outstanding_amount ?? 0),
+    0
+  );
+}
+
+/* ------------------------------------------------------------------
+   24c. GET TOTAL OUTSTANDING VENDOR PAYABLES
+-------------------------------------------------------------------*/
+
+export async function getTotalOutstandingVendorPayables(): Promise<number> {
+  const { data, error } = await supabase
+    .from("vendor_financials")
+    .select("outstanding_balance");
+
+  if (error) throw error;
+
+  return (data ?? []).reduce(
+    (sum, row) => sum + Number(row.outstanding_balance ?? 0),
+    0
+  );
+}
+
+/* ------------------------------------------------------------------
+   24d. GET TOTAL OUTSTANDING LOAN AMOUNT
+-------------------------------------------------------------------*/
+
+export async function getTotalOutstandingLoanAmount(): Promise<number> {
+  const { data, error } = await supabase
+    .from("loans")
+    .select("outstanding_balance")
+    .eq("status", "ACTIVE");
+
+  if (error) throw error;
+
+  return (data ?? []).reduce(
+    (sum, row) => sum + Number(row.outstanding_balance ?? 0),
+    0
+  );
 }
 
 /* ------------------------------------------------------------------

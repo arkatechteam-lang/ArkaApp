@@ -144,7 +144,7 @@ const handleSessionExpiredClose = () => {
       title: 'Cash Flow',
       icon: Coins,
       color: 'from-teal-500 to-teal-600',
-      path: '/admin/cashFlow',
+      path: '/admin/cash',
       description: 'Track cash and account balances',
     },
     {

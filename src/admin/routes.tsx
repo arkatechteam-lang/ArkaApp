@@ -4,7 +4,7 @@ import { AdminHomeScreen } from "./pages/AdminHomeScreen";
 import { ProductionStatisticsScreen } from "./pages/ProductionStatisticsScreen";
 import { MetricsScreen } from "./pages/MetricsScreen";
 import { SalaryLedgerScreen } from "./pages/SalaryLedgerScreen";
-import { CashFlowScreen } from "./pages/CashFlowScreen";
+import { CashRoutes } from "./pages/cash/routes";
 import { LoansRoutes } from "./pages/loans/routes";
 import { OrdersRoutes } from "./pages/orders/routes";
 import { CustomersRoutes } from "./pages/customers/routes";
@@ -35,7 +35,7 @@ export function AdminRoutes() {
       <Route path="employees/*" element={<EmployeesRoutes />} />
       <Route path="salarys" element={<SalaryLedgerScreen />} />
       <Route path="vendors/*" element={<VendorsRoutes />} />
-      <Route path="cashFlow" element={<CashFlowScreen />} />
+      <Route path="cash/*" element={<CashRoutes />} />
       <Route path="loans/*" element={<LoansRoutes />} />
 
       {/* Safety fallback */}
