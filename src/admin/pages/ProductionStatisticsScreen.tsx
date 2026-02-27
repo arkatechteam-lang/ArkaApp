@@ -13,7 +13,22 @@ export function ProductionStatisticsScreen() {
   const { goBack } = useAdminNavigation();
   const [showErrorPopup, setShowErrorPopup] = useState(false);
 
-  const { productionEntries, loading, loadMore, hasMore, error } = useProductionEntries();
+  const { entries: productionEntries, loading, refetch, error } = useProductionEntries();
+  // Hook currently returns `entries` and `refetch`. Normalize to the
+  // shape expected by this component (camelCase keys and `date`).
+  const loadMore = refetch; // compatibility alias (no pagination implemented in hook)
+  const hasMore = false;
+
+  const normalizedEntries = productionEntries.map((e: any) => ({
+    date: e.production_date || e.date || '',
+    bricks: e.bricks ?? 0,
+    round: e.round ?? 0,
+    wetAshKg: e.wet_ash_kg ?? e.wetAshKg ?? 0,
+    marblePowderKg: e.marble_powder_kg ?? e.marblePowderKg ?? 0,
+    crusherPowderKg: e.crusher_powder_kg ?? e.crusherPowderKg ?? 0,
+    flyAshKg: e.fly_ash_kg ?? e.flyAshKg ?? 0,
+    cementBags: e.cement_bags ?? e.cementBags ?? 0,
+  }));
   // Show error popup when API fails
   useEffect(() => {
     if (error) {
@@ -27,13 +42,13 @@ export function ProductionStatisticsScreen() {
     goBack('/admin/home');
   };
   // Graph data: use up to first 30 entries from the initial pull; reverse so oldest->newest on x-axis
-  const graphData = productionEntries
+  const graphData = normalizedEntries
     .slice(0, 30)
     .map((e) => ({ date: formatGraphLabel(e.date), bricks: e.bricks }))
     .reverse();
 
   // For the history table we show all entries fetched so far (appended on loadMore)
-  const displayedEntries = productionEntries;
+  const displayedEntries = normalizedEntries;
 
   // Helper functions for conversions
   const convertToTons = (round: number, kgs: number): number => {
@@ -57,7 +72,7 @@ export function ProductionStatisticsScreen() {
   }
 
   // Most recent production entry from the fetched data (if any)
-  const yesterday = productionEntries.length > 0 ? productionEntries[0] : null;
+  const yesterday = normalizedEntries.length > 0 ? normalizedEntries[0] : null;
 
   return (
     <div className="min-h-screen bg-gray-50">
