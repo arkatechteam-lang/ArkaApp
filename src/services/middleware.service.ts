@@ -28,6 +28,8 @@ import {
   CreateEmployeeInput,
   UpdateEmployeeInput,
   EmployeeDetail,
+  CreateRoleInput,
+  Role,
 } from './types'
 import { MaterialPurchaseInput, ProductionInput } from "../employee/types";
 import { getRange, getRangeForProductionStatistics, PAGE_SIZE , mapPaymentModeToDb } from "../utils/reusables";
@@ -2696,5 +2698,36 @@ export async function getVendorFinancials(vendorId: string) {
     .single();
 
   if (error) throw error;
+  return data;
+}
+
+/* ------------------------------------------------------------------
+  Create Role
+---------------------------------------------------------------------*/
+
+export async function createRole(
+  input: CreateRoleInput
+): Promise<Role> {
+  const { data, error } = await supabase
+    .from("roles")
+    .insert({
+      name: input.name,
+      category: input.category,
+      salary_value: input.salary_value,
+      minimum_requirement: input.minimum_requirement ?? null,
+      active: input.active ?? true,
+    })
+    .select(`
+      id,
+      name,
+      category,
+      salary_value,
+      minimum_requirement,
+      active
+    `)
+    .single();
+
+  if (error) throw error;
+
   return data;
 }

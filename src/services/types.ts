@@ -292,3 +292,20 @@ export interface EmployeeDetail {
     category: EmployeeCategory;
   };
 }
+
+export interface CreateRoleInput {
+  name: string;
+  category: EmployeeCategory;
+  salary_value: number;
+  minimum_requirement?: number | null;
+  active?: boolean;
+}
+
+export interface Role {
+  id: string;
+  name: string;
+  category: EmployeeCategory;
+  salary_value: number;
+  minimum_requirement: number | null;
+  active: boolean;
+}

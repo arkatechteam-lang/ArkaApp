@@ -1,99 +1,23 @@
-import React, { useState } from 'react';
-import { AdminScreen } from '../../../../AdminApp';
+import React from 'react';
 import { ArrowLeft, Save } from 'lucide-react';
 import { Popup } from '../../../../components/Popup';
+import { useCreateRole } from '../../../hooks/useCreateRole';
+import type { RoleCategoryLabel } from '../../../validators/createRole.validator';
 
-interface CreateRoleScreenProps {
-  onNavigate: (screen: AdminScreen) => void;
-}
-
-export function CreateRoleScreen({ onNavigate }: CreateRoleScreenProps) {
-  const [formData, setFormData] = useState({
-    roleName: '',
-    category: '' as 'Daily Wages' | 'Fixed Salary' | 'Loadmen' | '',
-    perDayWage: '',
-    monthlySalary: '',
-    ratePerLoad: '',
-    minimumLoadRequirement: '',
-  });
-
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [showPopup, setShowPopup] = useState(false);
-  const [popupStatus, setPopupStatus] = useState<'success' | 'error'>('success');
-
-  const handleCategoryChange = (category: 'Daily Wages' | 'Fixed Salary' | 'Loadmen') => {
-    setFormData({
-      ...formData,
-      category,
-      perDayWage: '',
-      monthlySalary: '',
-      ratePerLoad: '',
-      minimumLoadRequirement: '',
-    });
-    // Clear salary-related errors when category changes
-    const newErrors = { ...errors };
-    delete newErrors.perDayWage;
-    delete newErrors.monthlySalary;
-    delete newErrors.ratePerLoad;
-    setErrors(newErrors);
-  };
-
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.roleName.trim()) newErrors.roleName = 'Role name is required';
-    if (!formData.category) newErrors.category = 'Category is required';
-
-    if (formData.category === 'Daily Wages') {
-      if (!formData.perDayWage.trim()) {
-        newErrors.perDayWage = 'Per day wage is required';
-      } else if (isNaN(Number(formData.perDayWage)) || Number(formData.perDayWage) <= 0) {
-        newErrors.perDayWage = 'Please enter a valid wage amount';
-      } else if (formData.perDayWage.includes('.')) {
-        newErrors.perDayWage = 'Only integers allowed';
-      } else if (formData.perDayWage.length > 5) {
-        newErrors.perDayWage = 'Maximum 5 digits allowed';
-      }
-    }
-
-    if (formData.category === 'Fixed Salary') {
-      if (!formData.monthlySalary.trim()) {
-        newErrors.monthlySalary = 'Monthly salary is required';
-      } else if (isNaN(Number(formData.monthlySalary)) || Number(formData.monthlySalary) <= 0) {
-        newErrors.monthlySalary = 'Please enter a valid salary amount';
-      } else if (formData.monthlySalary.replace('.', '').length > 6) {
-        newErrors.monthlySalary = 'Maximum 6 digits allowed';
-      }
-    }
-
-    if (formData.category === 'Loadmen') {
-      if (!formData.ratePerLoad.trim()) {
-        newErrors.ratePerLoad = 'Rate per load is required';
-      } else if (isNaN(Number(formData.ratePerLoad)) || Number(formData.ratePerLoad) <= 0) {
-        newErrors.ratePerLoad = 'Please enter a valid rate';
-      }
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (validateForm()) {
-      const success = Math.random() > 0.1;
-      setPopupStatus(success ? 'success' : 'error');
-      setShowPopup(true);
-    }
-  };
-
-  const handlePopupClose = () => {
-    setShowPopup(false);
-    if (popupStatus === 'success') {
-      onNavigate('role-setup');
-    }
-  };
+export function CreateRoleScreen() {
+  const {
+    createRoleInput,
+    updateCreateRoleInput,
+    handleCategoryChange,
+    errors,
+    showSuccessPopup,
+    showFailurePopup,
+    loading,
+    handleCreate,
+    handleSuccessClose,
+    handleFailureClose,
+    goBack,
+  } = useCreateRole();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -101,7 +25,7 @@ export function CreateRoleScreen({ onNavigate }: CreateRoleScreenProps) {
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => onNavigate('role-setup')}
+            onClick={() => goBack('/admin/employees/role-setup')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -112,20 +36,24 @@ export function CreateRoleScreen({ onNavigate }: CreateRoleScreenProps) {
         </div>
 
         {/* Form */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="bg-white rounded-lg shadow-lg p-6 sm:p-8">
+          <div className="space-y-6">
             {/* Role Name */}
             <div>
-              <label className="block text-gray-700 mb-2">
+              <label htmlFor="roleName" className="block text-gray-700 mb-2">
                 Role Name <span className="text-red-600">*</span>
               </label>
               <input
+                id="roleName"
                 type="text"
-                value={formData.roleName}
-                onChange={(e) => setFormData({ ...formData, roleName: e.target.value })}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  errors.roleName ? 'border-red-500' : 'border-gray-300'
-                }`}
+                value={createRoleInput.roleName}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (/^[a-zA-Z\s]*$/.test(value)) {
+                    updateCreateRoleInput('roleName', value);
+                  }
+                }}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 placeholder="e.g., Machine Operator, Supervisor, Driver"
               />
               {errors.roleName && <p className="text-red-600 text-sm mt-1">{errors.roleName}</p>}
@@ -133,15 +61,14 @@ export function CreateRoleScreen({ onNavigate }: CreateRoleScreenProps) {
 
             {/* Employee Category */}
             <div>
-              <label className="block text-gray-700 mb-2">
+              <label htmlFor="employeeCategory" className="block text-gray-700 mb-2">
                 Employee Category <span className="text-red-600">*</span>
               </label>
               <select
-                value={formData.category}
-                onChange={(e) => handleCategoryChange(e.target.value as any)}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                  errors.category ? 'border-red-500' : 'border-gray-300'
-                }`}
+                id="employeeCategory"
+                value={createRoleInput.category}
+                onChange={(e) => handleCategoryChange(e.target.value as RoleCategoryLabel)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
               >
                 <option value="">Select category</option>
                 <option value="Daily Wages">Daily Wages</option>
@@ -152,18 +79,22 @@ export function CreateRoleScreen({ onNavigate }: CreateRoleScreenProps) {
             </div>
 
             {/* Dynamic Salary Fields - Daily Wages */}
-            {formData.category === 'Daily Wages' && (
+            {createRoleInput.category === 'Daily Wages' && (
               <div>
-                <label className="block text-gray-700 mb-2">
+                <label htmlFor="perDayWage" className="block text-gray-700 mb-2">
                   Per Day Wage (₹) <span className="text-red-600">*</span>
                 </label>
                 <input
+                  id="perDayWage"
                   type="number"
-                  value={formData.perDayWage}
-                  onChange={(e) => setFormData({ ...formData, perDayWage: e.target.value })}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    errors.perDayWage ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  value={createRoleInput.perDayWage}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (/^\d*$/.test(value)) {
+                      updateCreateRoleInput('perDayWage', value);
+                    }
+                  }}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                   placeholder="Enter daily wage (integers only, max 5 digits)"
                   min="1"
                   step="1"
@@ -173,18 +104,17 @@ export function CreateRoleScreen({ onNavigate }: CreateRoleScreenProps) {
             )}
 
             {/* Dynamic Salary Fields - Fixed Salary */}
-            {formData.category === 'Fixed Salary' && (
+            {createRoleInput.category === 'Fixed Salary' && (
               <div>
-                <label className="block text-gray-700 mb-2">
+                <label htmlFor="monthlySalary" className="block text-gray-700 mb-2">
                   Monthly Salary (₹) <span className="text-red-600">*</span>
                 </label>
                 <input
+                  id="monthlySalary"
                   type="number"
-                  value={formData.monthlySalary}
-                  onChange={(e) => setFormData({ ...formData, monthlySalary: e.target.value })}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    errors.monthlySalary ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  value={createRoleInput.monthlySalary}
+                  onChange={(e) => updateCreateRoleInput('monthlySalary', e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                   placeholder="Enter monthly salary (max 6 digits)"
                   min="1"
                   step="0.01"
@@ -197,19 +127,18 @@ export function CreateRoleScreen({ onNavigate }: CreateRoleScreenProps) {
             )}
 
             {/* Dynamic Salary Fields - Loadmen */}
-            {formData.category === 'Loadmen' && (
+            {createRoleInput.category === 'Loadmen' && (
               <>
                 <div>
-                  <label className="block text-gray-700 mb-2">
+                  <label htmlFor="ratePerLoad" className="block text-gray-700 mb-2">
                     Rate Per Load (₹) <span className="text-red-600">*</span>
                   </label>
                   <input
+                    id="ratePerLoad"
                     type="number"
-                    value={formData.ratePerLoad}
-                    onChange={(e) => setFormData({ ...formData, ratePerLoad: e.target.value })}
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.ratePerLoad ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    value={createRoleInput.ratePerLoad}
+                    onChange={(e) => updateCreateRoleInput('ratePerLoad', e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                     placeholder="Enter rate per load/delivery"
                     min="1"
                     step="0.01"
@@ -221,14 +150,15 @@ export function CreateRoleScreen({ onNavigate }: CreateRoleScreenProps) {
                 </div>
                 
                 <div>
-                  <label className="block text-gray-700 mb-2">
+                  <label htmlFor="minimumLoadRequirement" className="block text-gray-700 mb-2">
                     Minimum Load Requirement (Optional)
                   </label>
                   <input
+                    id="minimumLoadRequirement"
                     type="number"
-                    value={formData.minimumLoadRequirement}
-                    onChange={(e) => setFormData({ ...formData, minimumLoadRequirement: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    value={createRoleInput.minimumLoadRequirement}
+                    onChange={(e) => updateCreateRoleInput('minimumLoadRequirement', e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                     placeholder="Enter minimum loads per month"
                     min="0"
                   />
@@ -240,37 +170,45 @@ export function CreateRoleScreen({ onNavigate }: CreateRoleScreenProps) {
             )}
 
             {/* Submit Button */}
-            <div className="flex gap-4">
+            <div className="flex gap-3 pt-4">
               <button
-                type="submit"
-                className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                type="button"
+                onClick={handleCreate}
+                disabled={loading}
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
                 <Save className="w-5 h-5" />
-                Create Role
+                {loading ? 'Creating...' : 'Create Role'}
               </button>
               <button
                 type="button"
-                onClick={() => onNavigate('role-setup')}
-                className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                onClick={() => goBack('/admin/employees/role-setup')}
+                className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Cancel
               </button>
             </div>
-          </form>
+          </div>
         </div>
       </div>
 
-      {/* Popup */}
-      {showPopup && (
+      {/* Success Popup */}
+      {showSuccessPopup && (
         <Popup
-          title={popupStatus === 'success' ? 'Success' : 'Error'}
-          message={
-            popupStatus === 'success'
-              ? 'Role created successfully!'
-              : 'Failed to create role. Please try again.'
-          }
-          onClose={handlePopupClose}
-          type={popupStatus}
+          title="Role Created Successfully"
+          message="The role has been created successfully."
+          onClose={handleSuccessClose}
+          type="success"
+        />
+      )}
+
+      {/* Failure Popup */}
+      {showFailurePopup && (
+        <Popup
+          title="Creation Failed"
+          message={errors.form || 'Failed to create role. Please try again.'}
+          onClose={handleFailureClose}
+          type="error"
         />
       )}
     </div>
