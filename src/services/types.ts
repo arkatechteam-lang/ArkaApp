@@ -301,6 +301,14 @@ export interface CreateRoleInput {
   active?: boolean;
 }
 
+export interface UpdateRoleInput {
+  name: string;
+  category: EmployeeCategory;
+  salary_value: number;
+  minimum_requirement?: number | null;
+  active?: boolean;
+}
+
 export interface Role {
   id: string;
   name: string;

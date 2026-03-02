@@ -29,6 +29,7 @@ import {
   UpdateEmployeeInput,
   EmployeeDetail,
   CreateRoleInput,
+  UpdateRoleInput,
   Role,
 } from './types'
 import { MaterialPurchaseInput, ProductionInput } from "../employee/types";
@@ -2717,6 +2718,62 @@ export async function createRole(
       minimum_requirement: input.minimum_requirement ?? null,
       active: input.active ?? true,
     })
+    .select(`
+      id,
+      name,
+      category,
+      salary_value,
+      minimum_requirement,
+      active
+    `)
+    .single();
+
+  if (error) throw error;
+
+  return data;
+}
+
+/* ------------------------------------------------------------------
+  Get Role By ID
+---------------------------------------------------------------------*/
+
+export async function getRoleById(roleId: string): Promise<Role> {
+  const { data, error } = await supabase
+    .from("roles")
+    .select(`
+      id,
+      name,
+      category,
+      salary_value,
+      minimum_requirement,
+      active
+    `)
+    .eq("id", roleId)
+    .single();
+
+  if (error) throw error;
+
+  return data;
+}
+
+/* ------------------------------------------------------------------
+  Update Role By ID
+---------------------------------------------------------------------*/
+
+export async function updateRole(
+  roleId: string,
+  input: UpdateRoleInput
+): Promise<Role> {
+  const { data, error } = await supabase
+    .from("roles")
+    .update({
+      name: input.name,
+      category: input.category,
+      salary_value: input.salary_value,
+      minimum_requirement: input.minimum_requirement ?? null,
+      active: input.active ?? true,
+    })
+    .eq("id", roleId)
     .select(`
       id,
       name,

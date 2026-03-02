@@ -5,6 +5,7 @@ import { EmployeeManagementScreen } from "./pages/EmployeeManagementScreen";
 import { EditEmployeeScreen } from "./pages/EditEmployeeScreen";
 import { RoleSetupScreen } from "./pages/RoleSetupScreen";
 import { CreateRoleScreen } from "./pages/CreateRoleScreen";
+import { EditRoleScreen } from "./pages/EditRoleScreen";
 import { AttendanceScreen } from "./pages/AttendanceScreen";
 
 export function EmployeesRoutes() {
@@ -15,6 +16,7 @@ export function EmployeesRoutes() {
       <Route path=":id/edit" element={<EditEmployeeScreen />} />
       <Route path="role-setup" element={<RoleSetupScreen />} />
       <Route path="role-setup/create" element={<CreateRoleScreen />} />
+      <Route path="role-setup/:id/edit" element={<EditRoleScreen />} />
       <Route path="attendance" element={<AttendanceScreen />} />
 
       <Route path="*" element={<Navigate to="/admin/employees" replace />} />
