@@ -1,15 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { RoleSalarySetupScreen } from '../../../../components/admin/RoleSalarySetupScreen';
-import { EditRoleScreen } from '../../../../components/admin/EditRoleScreen';
 import type { AdminScreen, Role } from '../../../../AdminApp';
-
-type LocalScreen = 'list' | 'edit';
 
 export function RoleSetupScreen() {
   const navigate = useNavigate();
-  const [localScreen, setLocalScreen] = useState<LocalScreen>('list');
-  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
 
   const handleNavigate = (screen: AdminScreen) => {
     switch (screen) {
@@ -21,23 +16,16 @@ export function RoleSetupScreen() {
           state: { from: '/admin/employees/role-setup' },
         });
         break;
-      case 'role-setup':
-        setLocalScreen('list');
-        setSelectedRole(null);
-        break;
       default:
         navigate('/admin/employees');
     }
   };
 
   const handleRoleEdit = (role: Role) => {
-    setSelectedRole(role);
-    setLocalScreen('edit');
+    navigate(`/admin/employees/role-setup/${role.id}/edit`, {
+      state: { from: '/admin/employees/role-setup' },
+    });
   };
-
-  if (localScreen === 'edit' && selectedRole) {
-    return <EditRoleScreen role={selectedRole} onNavigate={handleNavigate} />;
-  }
 
   return (
     <RoleSalarySetupScreen
