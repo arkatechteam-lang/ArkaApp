@@ -2788,3 +2788,86 @@ export async function updateRole(
 
   return data;
 }
+
+/* ------------------------------------------------------------------
+  Get Active Roles (Paginated)
+---------------------------------------------------------------------*/
+export async function getActiveRoles(
+  page: number
+): Promise<PaginatedResult<Role>> {
+  const { from, to } = getRange(page);
+
+  const { data, count, error } = await supabase
+    .from("roles")
+    .select(
+      `
+      id,
+      name,
+      category,
+      salary_value,
+      minimum_requirement,
+      active
+      `,
+      { count: "exact" }
+    )
+    .eq("active", true)
+    .order("name")
+    .range(from, to);
+
+  if (error) throw error;
+
+  return {
+    data: (data ?? []) as Role[],
+    total: count ?? 0,
+    hasMore: from + PAGE_SIZE < (count ?? 0),
+  };
+}
+
+/* ------------------------------------------------------------------
+  Get Inactive Roles (Paginated)
+---------------------------------------------------------------------*/
+export async function getInactiveRoles(
+  page: number
+): Promise<PaginatedResult<Role>> {
+  const { from, to } = getRange(page);
+
+  const { data, count, error } = await supabase
+    .from("roles")
+    .select(
+      `
+      id,
+      name,
+      category,
+      salary_value,
+      minimum_requirement,
+      active
+      `,
+      { count: "exact" }
+    )
+    .eq("active", false)
+    .order("name")
+    .range(from, to);
+
+  if (error) throw error;
+
+  return {
+    data: (data ?? []) as Role[],
+    total: count ?? 0,
+    hasMore: from + PAGE_SIZE < (count ?? 0),
+  };
+}
+
+/* ------------------------------------------------------------------
+  Update Role Status (Active / Inactive)
+---------------------------------------------------------------------*/
+export async function updateRoleStatus(
+  roleId: string,
+  isActive: boolean
+): Promise<void> {
+  const { error } = await supabase
+    .from("roles")
+    .update({ active: isActive })
+    .eq("id", roleId);
+
+  if (error) throw error;
+}
