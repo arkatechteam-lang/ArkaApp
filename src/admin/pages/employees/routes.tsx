@@ -3,7 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { CreateEmployeeScreen } from "./pages/CreateEmployeeScreen";
 import { EmployeeManagementScreen } from "./pages/EmployeeManagementScreen";
 import { EditEmployeeScreen } from "./pages/EditEmployeeScreen";
-import { RoleSetupScreen } from "./pages/RoleSetupScreen";
+import { RoleSalarySetupScreen } from "./pages/RoleSalarySetupScreen";
 import { CreateRoleScreen } from "./pages/CreateRoleScreen";
 import { EditRoleScreen } from "./pages/EditRoleScreen";
 import { AttendanceScreen } from "./pages/AttendanceScreen";
@@ -14,7 +14,7 @@ export function EmployeesRoutes() {
       <Route index element={<EmployeeManagementScreen />} />
       <Route path="create" element={<CreateEmployeeScreen />} />
       <Route path=":id/edit" element={<EditEmployeeScreen />} />
-      <Route path="role-setup" element={<RoleSetupScreen />} />
+      <Route path="role-setup" element={<RoleSalarySetupScreen />} />
       <Route path="role-setup/create" element={<CreateRoleScreen />} />
       <Route path="role-setup/:id/edit" element={<EditRoleScreen />} />
       <Route path="attendance" element={<AttendanceScreen />} />
